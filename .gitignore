@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# uv / virtualenv
+.venv/
+
+# Secrets
+.env
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Eval outputs
+evals/results/*.json
+
+# Setup instructions
+repo_setup.md
