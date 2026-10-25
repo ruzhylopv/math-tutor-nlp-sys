@@ -11,6 +11,8 @@ from tutor.state import (
     ErrorType,
     LearnerProfile,
     Misconception,
+    Operation,
+    Relation,
     Stage,
     Step,
     StepVerdict,
@@ -101,5 +103,9 @@ def test_field_types_follow_the_design() -> None:
 def test_literals_match_the_architecture() -> None:
     assert get_args(Stage) == ("new_message", "diagnosed", "hinted")
     assert get_args(Action) == ("ask", "diagnose", "hint", "reply")
+    assert get_args(Relation) == ("equivalent", "implies", "not_valid", "unparsable")
+    assert get_args(Operation) == (
+        "expand", "rearrange", "factor", "zero-product", "substitute", "square", "other",
+    )  # fmt: skip
     # final_answer_only is not a localize output (docs/architecture.md)
     assert "final_answer_only" not in get_args(ErrorType)
