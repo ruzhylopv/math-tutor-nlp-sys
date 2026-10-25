@@ -1,7 +1,8 @@
 name: address-review
 
-# When the developer submits "Request changes" on a PR, Claude Code fixes the requested changes on
-# that PR's branch. Runs only for ruzhylopv, on same-repo PRs. Never merges.
+# When the developer submits "Request changes" on a PR, or a "Comment" review whose body starts with
+# /address-review (GitHub does not let authors request changes on their own PRs), Claude Code fixes
+# the requested changes on that PR's branch. Runs only for ruzhylopv, on same-repo PRs. Never merges.
 on:
   pull_request_review:
     types: [submitted]
@@ -13,7 +14,9 @@ concurrency:
 jobs:
   address-review:
     if: >-
-      github.event.review.state == 'changes_requested' &&
+      (github.event.review.state == 'changes_requested' ||
+        (github.event.review.state == 'commented' &&
+          startsWith(github.event.review.body, '/address-review'))) &&
       github.event.review.user.login == 'ruzhylopv' &&
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
