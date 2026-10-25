@@ -54,6 +54,7 @@ Every change reaches `main` through a reviewed PR. The developer reviews and mer
 ## Tests and evaluation
 - Every node has unit tests that run without network: mock the LLM.
 - Every node has an eval script in evals/scripts/ that writes metrics to evals/results/.
+  Exception: `finish_diagnosis` (a deterministic marker node with nothing to measure) needs unit tests only.
 - Iterate on prompts and logic using the dev split only. The test split is for final reported numbers.
 - Never edit eval datasets, expected labels, or existing tests to make results pass.
   If you believe a label or test is wrong, stop and tell me.

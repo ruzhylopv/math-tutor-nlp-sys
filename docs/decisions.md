@@ -232,3 +232,12 @@ Format: decision | rejected alternative | why.
   message).
 - **Consequence:** CLAUDE.md requires an eval script per node; `parse_input` gets one (problem-extraction and
   step-split accuracy).
+
+## 2026-10-25 | M1 decisions
+- **Replace `langchain-anthropic` with `langchain-openai` for OpenRouter** | keeping the Anthropic client | the
+  developer will use a free OpenRouter model and does not want to pay for tokens. Base URL and structured-output
+  support are verified (docs plus `scripts/check_llm.py`) before relying on them.
+- **API key variable `OPENROUTER_API_KEY`** | keeping `LLM_API_KEY` | names the actual provider; `.env.example` updated.
+- **`finish_diagnosis` is exempt from the per-node eval-script rule** (one line in CLAUDE.md) | a trivial eval stub |
+  it is a deterministic marker with nothing to measure; unit tests still apply.
+- **LLM client in `src/tutor/llm.py`; shared eval runner in `evals/runner.py`.**
