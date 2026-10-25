@@ -32,6 +32,20 @@ def test_missing_required_settings_are_named(monkeypatch: pytest.MonkeyPatch) ->
         load_config()
 
 
+def test_the_key_is_not_in_the_config_repr() -> None:
+    assert "secret-key" not in repr(Config("secret-key", "some/model"))
+
+
+@pytest.mark.parametrize("name", ["OPENROUTER_API_KEY", "MODEL_NAME"])
+def test_an_empty_value_counts_as_missing(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    """.env.example leaves both blank, so a copied-but-unfilled file must not pass."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    monkeypatch.setenv("MODEL_NAME", "m")
+    monkeypatch.setenv(name, "")
+    with pytest.raises(ConfigError, match=name):
+        load_config()
+
+
 def test_get_llm_targets_openrouter_without_a_network_call() -> None:
     llm = get_llm(Config("secret-key", "some/model"))
     assert llm.model_name == "some/model"

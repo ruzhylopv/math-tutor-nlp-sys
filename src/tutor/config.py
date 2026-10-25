@@ -1,7 +1,7 @@
 """Configuration read from the environment (and .env). No secrets live in code."""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from dotenv import load_dotenv
 
@@ -14,7 +14,7 @@ class ConfigError(RuntimeError):
 
 @dataclass(frozen=True)
 class Config:
-    openrouter_api_key: str
+    openrouter_api_key: str = field(repr=False)  # keep the key out of logs and tracebacks
     model_name: str
     learner_db_path: str | None = None
 
