@@ -110,3 +110,12 @@ against real student work. Published sources exist (see `docs/architecture.md`, 
 - **Eedi catalogue size and coverage are unverified.** The number of distinct misconceptions is
   unknown, and the misconceptions expected by scenarios A and B may not exist in it. Fallback: a
   small hand-made supplement.
+
+## 2026-10-25 | address-review replies in each thread, posted by the workflow
+- **Decision:** the agent writes `replies.json`; a workflow step validates and posts one reply per
+  top-level inline comment as `github-actions[bot]`. Replies inside existing threads are ignored.
+  - Rejected: the agent posting replies with `gh api`. Needs a write-capable `gh api`, which we removed
+    from the agent on purpose (it could reach merge and other endpoints).
+  - Rejected: a single summary comment only (the earlier choice). The developer wants each comment answered.
+  - Rejected: the bot resolving threads. Left to the developer.
+  - Accepted trade-off: replies show as `github-actions[bot]`, not the `claude` identity of the summary comment.
