@@ -51,3 +51,5 @@ def test_get_llm_targets_openrouter_without_a_network_call() -> None:
     assert llm.model_name == "some/model"
     assert llm.openai_api_base == OPENROUTER_BASE_URL
     assert "secret-key" not in repr(llm)
+    assert "secret-key" not in str(llm)
+    assert "secret-key" not in str(llm.model_dump())

@@ -1,7 +1,8 @@
 """Try each structured-output method a few times against the chosen OpenRouter model.
 
 Run by hand: `uv run python scripts/check_llm.py`. Makes network calls with the key in .env; it is
-not part of the test suite. Exits non-zero if no method works every time.
+not part of the test suite. Exits non-zero if no method works every time. The prompt below is a
+manual probe, not a graph node, so the "prompts live in src/tutor/prompts/" rule does not apply.
 """
 
 import logging
@@ -33,8 +34,13 @@ def count_successes(llm: ChatOpenAI, method: Method) -> int:
     for attempt in range(1, ATTEMPTS + 1):
         try:
             result = chain.invoke(PROMPT)
-            successes += 1
-            logger.info("  %s attempt %d OK   %s", method, attempt, result)
+            if isinstance(result, Decision):
+                successes += 1
+                logger.info("  %s attempt %d OK   %s", method, attempt, result)
+            else:  # e.g. function_calling returns None when the model answers in plain text
+                logger.info(
+                    "  %s attempt %d FAIL no structured output: %r", method, attempt, result
+                )
         except Exception as exc:  # report any provider or parsing failure per attempt
             logger.info(
                 "  %s attempt %d FAIL %s: %s", method, attempt, type(exc).__name__, str(exc)[:200]
