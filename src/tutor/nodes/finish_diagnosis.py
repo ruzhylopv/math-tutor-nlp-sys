@@ -11,5 +11,5 @@ from tutor.state import TutorState
 
 
 def finish_diagnosis(state: TutorState) -> dict[str, Any]:
-    """Stub: returns fixed placeholder values (see the module docstring)."""
+    """Mark the diagnosis as finished."""
     return {"stage": "diagnosed"}

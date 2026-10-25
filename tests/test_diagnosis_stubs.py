@@ -50,6 +50,8 @@ def test_llm_node_prompt_has_the_required_sections(name: str) -> None:
     text = (PROMPTS / f"{name}.md").read_text(encoding="utf-8")
     for section in ("## Role", "## Inputs", "## Task", "## Output format", "## Rules"):
         assert section in text
+    assert "## Role\nTODO" not in text  # the Role is filled in
+    assert "## Inputs\nTODO" in text  # the rest is still to do
 
 
 def test_finish_diagnosis_marks_the_stage() -> None:

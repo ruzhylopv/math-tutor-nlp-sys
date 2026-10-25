@@ -20,7 +20,7 @@ def route_after_verify(state: TutorState) -> Literal["finish_diagnosis", "locali
     return "finish_diagnosis" if is_clean_solution(state) else "localize"
 
 
-def build_diagnosis_graph() -> CompiledStateGraph:  # type: ignore[type-arg]
+def build_diagnosis_graph() -> CompiledStateGraph[TutorState, None, TutorState, TutorState]:
     """parse_input -> classify -> verify -> (localize -> retrieve ->) finish_diagnosis."""
     graph = StateGraph(TutorState)
     graph.add_node("parse_input", parse_input)
