@@ -42,3 +42,49 @@ Format: date | decision | alternative rejected | why.
   - Rejected: a deny-list of `gh api` write flags. Easy to miss one; an absent capability cannot be misused.
   - Note: on a public repo the login check on the trigger is the only guard on who can start a run,
     and the pre-fetch now also ties the instructions to that same review and author.
+
+## 2026-10-25 | Tutor design (from the planning handoff)
+Format: decision | rejected alternative | why.
+- **Topic:** misconception-diagnosing math tutor | answer-giving math chatbot; contract red-flag
+  assistant; paper-review assistant | personal fit, public labelled data per stage, clear demo.
+- **Hybrid:** fixed pipeline plus agentic orchestrator | fully agentic flow | per-stage evaluation
+  needs fixed, inspectable stages.
+- **LangGraph for orchestration, plain functions for nodes** | classic LangChain chains; a
+  hand-written loop | explicit state, conditional edges, checkpointer, graph export; chains add
+  hard-to-debug layers.
+- **SymPy for all math checking** | LLM verification | LLMs make arithmetic errors.
+- **Equivalence vs implication in `verify`** | equivalence-only check | squaring is valid but not
+  reversible; avoids blaming correct steps.
+- **Retrieval over a misconception catalogue** | RAG over textbooks | answers "why is this wrong" and
+  has labelled eval data.
+- **Diagnosis as a separately compiled subgraph** | nodes inline in the main graph | evals can call it
+  without the chat layer.
+- **Hint returns to the orchestrator, not straight to the student** | hint replies directly | central
+  leakage check and hint-level control.
+- **Skip diagnosis when the student asks a question** | always re-run diagnosis | same result, wasted
+  calls.
+- **Streamlit UI** | custom web frontend | enough for the demo.
+
+## 2026-10-25 | Choices made while turning the handoff into docs
+- **LLM provider: OpenRouter with a free model** | Anthropic API via `langchain-anthropic` (already a
+  dependency) | the developer does not want to pay for tokens. Consequence: likely `langchain-openai`
+  with a `base_url` replacing `langchain-anthropic`; the change needs approval and goes in the first
+  LLM node's plan. Free models vary in structured-output support; to be checked then.
+- **Retrieval: in-memory sentence-transformers + FAISS** | a LangChain vector store; a vector DB server
+  | a few hundred misconceptions fit in memory; fewer layers. New dependencies need approval.
+- **`localize`: rules on SymPy verdicts first, LLM only to interpret and check justifications** |
+  LLM-first localization | keeps the "LLM never checks algebra" rule.
+- **Leakage check: a deterministic function in `src/tutor/tools/`, called by the orchestrator** | logic
+  inside the orchestrator node | testable without the graph and reusable in the hint eval.
+- **Learner DB: SQLite with `attempts` and `misconceptions_seen`** | a document store; no persistence |
+  small, relational, no server.
+- **Target level (provisional): MATH Algebra, levels 1-3** | all MATH subjects | keeps scope small.
+
+## OPEN items (not decided)
+- What the orchestrator does when the leakage check rejects a hint (regenerate with a cap, canned
+  fallback, or loop back to `hint`).
+- Whether `localize` writes a `focus_step` for `omission_extraneous_root`, where `first_error_step` is None.
+- How the learner profile is keyed across sessions (the checkpointer uses `thread_id`; a `student_id` is needed).
+- How Eedi's multiple-choice records map to the retrieval query (problem + wrong step); verify its
+  fields and Kaggle terms before use.
+- The target grades, and the final free OpenRouter model.
