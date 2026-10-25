@@ -20,8 +20,23 @@ graded Socratic hints without revealing the answer. Architecture: docs/architect
 3. Keep diffs small. Ask before adding or removing dependencies.
 4. Before saying a task is done, run:
    `uv run ruff check . && uv run mypy src && uv run pytest -q`
-5. Commit with conventional messages (feat:, fix:, test:, chore:, docs:). Never push.
+5. Commit with conventional messages (feat:, fix:, test:, chore:, docs:).
 6. Record any design choice with an alternative you rejected in docs/decisions.md.
+
+## Branches and pull requests (always follow)
+Every change reaches `main` through a reviewed PR. The developer reviews and merges; agents do not.
+- Never commit or push on `main`. Start each feature on a branch: `feat/<topic>`, `fix/<topic>`,
+  `chore/<topic>`, `docs/<topic>`, `test/<topic>`.
+- One PR per feature, using `.github/pull_request_template.md`. Use the `open-pr` skill.
+- Split into a stack when the work has more than one logical concern or is about 400+ changed
+  lines (e.g. state + node + graph wiring, or implementation + eval). Use the `gh-stack` skill:
+  one concern per layer, dependencies in lower layers.
+- Pushing is allowed for feature branches only. Never push `main`, never force-push, never merge
+  a PR (`gh pr merge`, `gh stack merge` are denied).
+- After opening a PR, run the `review-loop` skill: reviewer subagent, then fixer subagent, at most
+  2 passes. Findings are graded P0 (blocker), P1 (critical), P2 (should fix), P3 (nit). P0 and P1
+  must be resolved or escalated in the PR; P3 is reported, not fixed.
+- The plan gate (rule 1) still applies. A plan is approved in chat before any code is written.
 
 ## Code rules
 - Node contract: a node is a pure function `(TutorState) -> dict` returning only the fields it changed.

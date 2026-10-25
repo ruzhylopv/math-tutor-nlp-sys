@@ -10,7 +10,33 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git switch:*)",
+      "Bash(git checkout -b:*)",
+      "Bash(git fetch:*)",
+      "Bash(git push -u origin:*)",
+      "Bash(git push origin:*)",
+      "Bash(git push)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(gh pr comment:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh stack init:*)",
+      "Bash(gh stack add:*)",
+      "Bash(gh stack view --json)",
+      "Bash(gh stack submit --auto:*)",
+      "Bash(gh stack push:*)",
+      "Bash(gh stack sync:*)",
+      "Bash(gh stack rebase:*)",
+      "Bash(gh stack up:*)",
+      "Bash(gh stack down:*)",
+      "Bash(gh stack top)",
+      "Bash(gh stack bottom)",
+      "Bash(gh stack checkout:*)"
     ],
     "ask": [
       "Bash(uv add:*)",
@@ -18,11 +44,19 @@
     ],
     "deny": [
       "Read(./.env)",
-      "Bash(git push:*)",
       "Bash(git reset --hard:*)",
       "Bash(rm -rf:*)",
       "Edit(./evals/datasets/test/**)",
-      "Write(./evals/datasets/test/**)"
+      "Write(./evals/datasets/test/**)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push * main)",
+      "Bash(git push * main:*)",
+      "Bash(git push * HEAD:main)",
+      "Bash(git push --delete:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh stack merge:*)",
+      "Bash(gh stack modify:*)"
     ]
   },
   "hooks": {
@@ -30,14 +64,31 @@
       {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/lint_python.sh" }
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/lint_python.sh"
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check_before_stop.sh" }
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check_before_stop.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/block_main.sh"
+          }
         ]
       }
     ]
