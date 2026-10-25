@@ -18,6 +18,8 @@ a prompt. The student submits a problem and their own step-by-step attempt
 In scope: school-level arithmetic and algebra (linear equations, brackets, quadratics, factoring,
 radical and rational equations). Out of scope: calculus, proofs, geometry diagrams, other languages.
 Target level (provisional): MATH "Algebra", levels 1-3. OPEN: confirm the grades.
+Input is text for now. Photos of handwritten work would need a vision/OCR model in front of `parse_input`;
+out of scope.
 
 This is not vanilla RAG: retrieval answers "which misconception explains this wrong step?" over a
 misconception catalogue, inside a verified diagnosis pipeline with an agentic conversation layer.
@@ -44,7 +46,7 @@ to the orchestrator (see "Orchestrator modes").
 Fixed order, compiled separately so evals can call it without the chat layer.
 ```mermaid
 flowchart LR
-  START --> classify --> verify
+  START --> parse_input --> classify --> verify
   verify -->|"correct, all steps valid, no flagged justification"| finish_diagnosis
   verify -->|otherwise| localize --> retrieve --> finish_diagnosis
   finish_diagnosis --> END
@@ -67,9 +69,10 @@ invalid step, therefore goes on to `localize` (error type `reasoning_result_mism
 | Node | Type | Purpose | Reads | Writes | Metric |
 |---|---|---|---|---|---|
 | orchestrator | LLM (structured `Decision`) on a new student message; plain code in the other two modes | Decide the next action; ask for working when missing; after a diagnosis set or escalate the hint level; after a hint run the leakage check; call DB tools | messages, stage, state so far | next_action, stage, hint_level, hint_retries, learner_profile, reply_text, messages, turns, hints_used, misconceptions_seen | routing accuracy on labelled turns |
-| classify | LLM | Tag topic and level; split each step into claim and justification; tag the operation | problem, raw message | topic, level, student_steps | topic accuracy / macro-F1; step-split accuracy; SymPy parse rate of claims |
+| parse_input | LLM, structured output | Turn the student's raw text into our structure: the problem text and the attempt as `Step`s (claim, justification, optional justification claim, operation tag). Keeps the stored problem when the message has none. (Boundary with `classify` is a proposal; OPEN.) | latest student message, stored problem | problem, student_steps | problem-extraction accuracy; step-split accuracy; SymPy parse rate of claims |
+| classify | LLM | Tag topic and level | problem, student_steps | topic, level | topic accuracy / macro-F1 |
 | verify | deterministic (SymPy) | Solve the original; check the final answer; check each step as equivalent / implies / not_valid; evaluate arithmetic claims in justifications | problem, student_steps | is_correct, step_verdicts | answer-check accuracy; step-verdict accuracy |
-| localize | rules on SymPy verdicts, LLM only for interpretation | First wrong step or error type; check that the justification matches what happened | step_verdicts, student_steps | first_error_step, error_type | first-error-step accuracy; error-type accuracy; mismatch detection rate |
+| localize | rules on SymPy verdicts, LLM only for interpretation | First wrong step or error type; check that the justification matches what happened | step_verdicts, student_steps | first_error_step, focus_step, error_type | first-error-step accuracy; error-type accuracy; mismatch detection rate |
 | retrieve | retrieval | Query: problem + wrong step + topic + error type; search the misconception catalogue | above | misconception_candidates, misconception | Recall@k, MAP@k |
 | finish_diagnosis | deterministic | Last node of the diagnosis subgraph; marks the diagnosis as finished | none | stage | none (unit test only; see OPEN in decisions.md) |
 | hint | LLM | Socratic hint grounded in the misconception, at `hint_level`; praise what was right; never give the answer | misconception, wrong step, hint_level, profile, counterexample values (from a SymPy tool) | hint_text, stage | answer-leakage rate (automatic); rubric judge and a small human check |
@@ -131,7 +134,7 @@ the LLM only words the hint. OPEN: the tool's design (how it chooses the value, 
   added roots that were never rejected. `first_error_step` is None.
 - `reasoning_result_mismatch`: the math is right but the stated justification is wrong
   (for example "-2 and -9 add to 11").
-- `final_answer_only`: no steps given. Not produced by `localize`: `classify` finds zero steps and the
+- `final_answer_only`: no steps given. Not produced by `localize`: `parse_input` finds zero steps and the
   orchestrator routes to `ask`, so diagnosis does not continue.
 
 ### Acceptance scenarios
@@ -211,7 +214,7 @@ support and have rate limits; the first LLM node must check that structured outp
 
 ## Build order
 1. `verify` (no LLM; its tests use hand-built `Step` lists)
-2. `classify`
+2. `parse_input` and `classify`
 3. `localize`
 4. `retrieve` (needs the Eedi catalogue)
 5. `hint` and the leakage check

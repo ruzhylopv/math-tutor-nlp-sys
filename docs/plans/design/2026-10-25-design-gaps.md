@@ -11,6 +11,9 @@ Docs only. Resolves the three P1s and the state mismatches that the review of PR
 3. Numbers in hints come from a SymPy tool, never from the LLM. The tool's design stays OPEN.
 4. The `stage = diagnosed` write is done by a tiny final node `finish_diagnosis` inside the diagnosis subgraph
    (the subgraph is a node of the main graph but writes no fields itself).
+5. State additions: `localize` writes `focus_step`; a separate LLM node `parse_input` extracts the problem and
+   structures the student's text (text input only for now); `justification_claim` on `Step`; `student_id` is a name
+   from a login-style UI field.
 Provisional numbers (hint levels 1-4, practice at the third occurrence) were proposed and not objected to.
 
 ## Files

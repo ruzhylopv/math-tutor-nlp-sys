@@ -84,8 +84,7 @@ Format: decision | rejected alternative | why.
 
 ## OPEN items (not decided)
 - (Resolved 2026-10-25: retry once, then a canned fallback; see "Design gaps" below.)
-- Whether `localize` writes a `focus_step` for `omission_extraneous_root`, where `first_error_step` is None.
-- How the learner profile is keyed across sessions (the checkpointer uses `thread_id`; a `student_id` is needed).
+- (Resolved 2026-10-25: `localize` writes `focus_step`; `student_id` is a name from a login-style UI field. See "State additions" below.)
 - How Eedi's multiple-choice records map to the retrieval query (problem + wrong step); verify its
   fields and Kaggle terms before use.
 - The target grades, and the final free OpenRouter model.
@@ -176,10 +175,9 @@ Format: decision | rejected alternative | why.
 
 ### Still OPEN after this change
 - The counterexample tool: how it chooses a value, its interface, when `hint` calls it. (The rule is decided.)
-- Who extracts `problem` from the first message, and who extracts a checkable claim from free-text
-  justifications (proposals in the TutorState outline).
+- The boundary between `parse_input` and `classify`, and where `parse_input` sits (proposal in the TutorState outline).
 - The checkpointer: in-memory for now; a persistent one is a new dependency and needs approval.
-- Whether `localize` writes a `focus_step`; the `student_id`; the error-type taxonomy and Eedi items above;
+- The error-type taxonomy and Eedi items above;
   the hint cap, the recurrence threshold, the target grades and the final model.
 
 ### Found in the design-gaps review (not decided; to settle before the nodes they touch)
@@ -216,3 +214,20 @@ Format: decision | rejected alternative | why.
   - Rejected: `verify` and `retrieve` each writing `stage`. Two writers for one fact.
 - **OPEN:** CLAUDE.md requires an eval script for every node. `finish_diagnosis` has nothing to measure. Either
   a unit test only (needs an exemption in CLAUDE.md, the developer's call) or a trivial eval stub.
+
+## 2026-10-25 | State additions settled
+- **`localize` writes `focus_step`** | reusing `first_error_step = None` | `retrieve` and `hint` need a step to talk
+  about for `omission_extraneous_root`.
+- **A separate LLM node, `parse_input`, extracts the problem and structures the student's text into the state.
+  Input is text only for now** | an optional `problem_text` on the orchestrator's `Decision`; a vision/OCR model
+  now | the orchestrator should route, not extract; a vision model is out of scope.
+- **`justification_claim` is an optional field on `Step`**, filled where the steps are split and evaluated by SymPy
+  in `verify` | having the LLM judge justifications | the LLM never checks math.
+- **`student_id` is a name typed into a login-style field in the Streamlit UI** | real authentication; a random id |
+  enough for a demo; a typo creates a new profile, which is acceptable here.
+- **OPEN:** the boundary between `parse_input` and `classify` (proposal: `parse_input` takes the problem and steps,
+  `classify` only tags topic and level), and `parse_input`'s position (proposal: first node of the diagnosis
+  subgraph, so pure questions cost no LLM call; alternative: before the orchestrator, which gives it the structure
+  to route on but costs a call on every message).
+- **Consequence:** CLAUDE.md requires an eval script per node; `parse_input` gets one (problem-extraction and
+  step-split accuracy).

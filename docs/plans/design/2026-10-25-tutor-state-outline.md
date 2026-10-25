@@ -7,12 +7,13 @@ Nothing here is implemented. Items marked OPEN need a decision before the code i
 | Field | Meaning | Written by |
 |---|---|---|
 | messages | chat history, appended (`add_messages`); a hint enters it only after the leakage check | orchestrator, UI |
-| problem | problem text | orchestrator |
-| student_steps | list of `Step` | classify |
+| problem | problem text | parse_input |
+| student_steps | list of `Step` | parse_input |
 | topic, level | topic label, difficulty | classify |
 | is_correct | final answer matches ground truth | verify |
 | step_verdicts | list of `StepVerdict` | verify |
-| first_error_step | index or None | localize |
+| first_error_step | 1-based index or None | localize |
+| focus_step | 1-based step that retrieval and the hint talk about; equals `first_error_step` when that exists, otherwise the step that caused the problem (for `omission_extraneous_root`, the non-reversible step) | localize |
 | error_type | see below | localize |
 | misconception_candidates | ranked list of `Misconception` | retrieve |
 | misconception | top chosen misconception | retrieve |
@@ -24,26 +25,29 @@ Nothing here is implemented. Items marked OPEN need a decision before the code i
 | turns, hints_used | counters for `record_attempt` | orchestrator |
 | misconceptions_seen | misconception ids diagnosed in this attempt; the last entry is the stored id used to reset or escalate `hint_level` | orchestrator |
 | next_action | ask / diagnose / hint / reply | orchestrator |
+| student_id | name typed in a login-style field in the Streamlit UI; identifies, does not authenticate | UI |
 | learner_profile | weak topics, past misconceptions | orchestrator (via `get_profile`) |
 
-OPEN additions (not in the handoff):
-- `focus_step`: for `omission_extraneous_root`, `first_error_step` is None but `retrieve` and `hint`
-  need a step to talk about (the "implies" step, for example the squaring). Proposal: `localize`
-  writes `focus_step`.
-- `problem` extraction: who pulls the problem text out of the first message, and who parses it into a SymPy
-  equation. Proposal: an optional `problem_text` on `Decision`; `verify` parses it with a restricted parser.
-- `justification_claim`: who turns free-text justifications such as "add to 11" into a checkable claim.
-  Proposal: an optional `justification_claim` on `Step` (the claimed equation), filled by `classify`, evaluated
-  by SymPy in `verify`.
-- `student_id`: the checkpointer is keyed by `thread_id`, but the profile spans sessions, so the
-  learner DB needs a student identity. Proposal: a name field in the Streamlit UI.
+Settled additions (2026-10-25):
+- `focus_step`: written by `localize`.
+- `problem`: extracted by a separate LLM node, `parse_input`, which structures the student's text into the
+  state. Input is text only for now (photos would need a vision/OCR model first). `verify` parses `problem`
+  into a SymPy equation with a restricted parser.
+- `justification_claim` on `Step`: the claimed equation behind a free-text justification (for example "-2 + -9 = 11"
+  for "add to 11"), filled by the node that splits the steps (`parse_input` in the proposal) and evaluated by
+  SymPy in `verify`.
+- `student_id`: the name typed into a login-style field in the Streamlit UI.
+
+OPEN: the boundary between `parse_input` and `classify`, and where `parse_input` sits. Proposal: `parse_input`
+takes the problem and the step structure, `classify` only tags topic and level, and `parse_input` is the first
+node of the diagnosis subgraph so that pure questions cost no extra LLM call.
 
 ## Pydantic models
-- `Step`: claim (math expression or equation), justification (text, may be empty), (OPEN) justification_claim, operation tag
+- `Step`: claim (math expression or equation), justification (text, may be empty), justification_claim (optional), operation tag
   (expand / rearrange / factor / zero-product / substitute / square / other).
 - `StepVerdict`: step index; relation to the previous step (equivalent / implies / not_valid /
   unparsable); justification_claims_ok (bool or None); notes.
-- `Decision`: action (ask / diagnose / hint / reply), reason, reply_text (optional), (OPEN) problem_text (optional).
+- `Decision`: action (ask / diagnose / hint / reply), reason, reply_text (optional).
 - `Misconception`: id, description, topic, score.
 
 ## Error types
