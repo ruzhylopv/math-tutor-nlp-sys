@@ -23,7 +23,12 @@ RESULTS_DIR = EVALS_DIR / "results"
 SPLITS = ("dev", "test")
 
 
-def parse_split(description: str, argv: Sequence[str] | None = None) -> str:
+def setup_logging() -> None:
+    """Plain message-only logging for eval scripts."""
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+
+def parse_split(description: str | None, argv: Sequence[str] | None = None) -> str:
     """Parse --split. Defaults to dev; test is only for the final reported numbers."""
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--split", choices=SPLITS, default="dev")
@@ -75,7 +80,7 @@ def write_result(
     *,
     model_name: str | None = None,
     prompt_path: Path | None = None,
-    results_dir: Path = RESULTS_DIR,
+    results_dir: Path | None = None,
     commit: str | None = None,
 ) -> Path:
     """Write the result file for one eval run and return its path.
@@ -95,7 +100,7 @@ def write_result(
         "git_hash": commit,
         "timestamp": now.isoformat(),
     }
-    out_dir = results_dir / component
+    out_dir = (results_dir or RESULTS_DIR) / component
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"{now.strftime('%Y%m%dT%H%M%SZ')}_{commit}.json"
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -103,13 +108,13 @@ def write_result(
 
 
 def run_eval_stub(
-    component: str, milestone: str, description: str, argv: Sequence[str] | None = None
+    component: str, milestone: str, description: str | None, argv: Sequence[str] | None = None
 ) -> None:
     """Body of an eval script whose dataset and metrics do not exist yet.
 
     Reports a missing dataset and invents no labels; if a dataset appears first it fails loudly.
     """
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    setup_logging()
     split = parse_split(description, argv)
     path = dataset_path(component, split)
     if not path.exists():

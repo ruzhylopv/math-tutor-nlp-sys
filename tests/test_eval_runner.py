@@ -16,6 +16,8 @@ from evals.runner import (
     write_result,
 )
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def test_split_defaults_to_dev_and_accepts_test() -> None:
     assert parse_split("x", []) == "dev"
@@ -38,8 +40,21 @@ def test_load_jsonl_skips_blank_lines(tmp_path: Path) -> None:
     assert load_jsonl(path) == [{"a": 1}, {"a": 2}]
 
 
+@pytest.mark.skipif(not (REPO_ROOT / ".git").exists(), reason="not a git checkout")
 def test_git_hash_reads_the_repo() -> None:
     assert re.fullmatch(r"[0-9a-f]{7,40}", git_hash())
+
+
+def test_git_hash_runs_git_in_the_evals_folder(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, object] = {}
+
+    def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        seen.update(kwargs)
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout="abc1234\n")
+
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    assert git_hash() == "abc1234"
+    assert seen["cwd"] == runner.EVALS_DIR
 
 
 @pytest.mark.parametrize("error", [subprocess.CalledProcessError(128, "git"), FileNotFoundError()])
@@ -101,3 +116,9 @@ def test_eval_stub_fails_loudly_once_a_dataset_exists(
     (tmp_path / "dev" / "verify.jsonl").write_text("{}\n", encoding="utf-8")
     with pytest.raises(NotImplementedError, match="M2"):
         run_eval_stub("verify", "M2", "desc", [])
+
+
+def test_results_dir_is_read_at_call_time(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(runner, "RESULTS_DIR", tmp_path)
+    path = write_result("verify", "dev", 1, {"a": 1.0}, commit="abc1234")
+    assert path.parent == tmp_path / "verify"
