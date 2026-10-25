@@ -83,10 +83,8 @@ Format: decision | rejected alternative | why.
 - **Target level (provisional): MATH Algebra, levels 1-3** | all MATH subjects | keeps scope small.
 
 ## OPEN items (not decided)
-- What the orchestrator does when the leakage check rejects a hint (regenerate with a cap, canned
-  fallback, or loop back to `hint`).
-- Whether `localize` writes a `focus_step` for `omission_extraneous_root`, where `first_error_step` is None.
-- How the learner profile is keyed across sessions (the checkpointer uses `thread_id`; a `student_id` is needed).
+- (Resolved 2026-10-25: retry once, then a canned fallback; see "Design gaps" below.)
+- (Resolved 2026-10-25: `localize` writes `focus_step`; `student_id` is a name from a login-style UI field. See "State additions" below.)
 - How Eedi's multiple-choice records map to the retrieval query (problem + wrong step); verify its
   fields and Kaggle terms before use.
 - The target grades, and the final free OpenRouter model.
@@ -152,3 +150,85 @@ against real student work. Published sources exist (see `docs/architecture.md`, 
   `git status` (a denied `git branch` call had wasted a turn).
   - Rejected: keeping 10 turns. The task needs more than that.
   - Rejected: no cap. A cap bounds the Pro usage of a run.
+
+## 2026-10-25 | Design gaps found in the PR #11 review
+Format: decision | rejected alternative | why.
+- **`verify` short-circuits only when the answer is correct, every step is valid and no justification is
+  flagged** | redefining `is_correct` as "answer right and nothing flagged" | one field would hide two facts.
+  Fixes required behaviour 5 and the "right answer through invalid steps" case.
+- **`diagnosis` and `hint` always return to the orchestrator; the orchestrator has three modes (new message,
+  after diagnosis, after hint)** | `diagnosis -> hint` directly, or the leakage check inside `hint` with its own
+  retry loop | the hint level can only be reset or escalated by the orchestrator, and the central leakage check
+  was the original reason for routing hints back. The two non-LLM modes are plain code, so no extra LLM call.
+- **Leakage failure: retry `hint` once, then a canned hint for the level** | looping until the hint passes |
+  a hard cap keeps the loop bounded.
+- **Hint level resets when a different misconception id is diagnosed and escalates by one for the same id;
+  levels 1-4, capped at 4; practice offered at the third occurrence** | (provisional numbers) | simple and
+  testable. The cap and the threshold may change after the first scenario runs.
+- **Numbers in hints (counterexamples) come from a SymPy tool, never from the LLM** | letting the hint LLM
+  pick the values | breaks the "LLM never does arithmetic" rule.
+- **`hint` writes `hint_text`; only the orchestrator and UI write `messages`; one `reply_text` field** |
+  `hint` writing straight to `messages` | a rejected hint would already be in the chat history.
+- **`final_answer_only` is produced by `classify` and routed to `ask`, not by `localize`** | keeping it as a
+  `localize` output | `localize` is never reached in that case.
+- **Step numbers are 1-based; step 1's predecessor is the problem statement.**
+
+### Still OPEN after this change
+- The counterexample tool: how it chooses a value, its interface, when `hint` calls it. (The rule is decided.)
+- Where `parse_input` sits (proposal in the TutorState outline: first node of the diagnosis subgraph).
+- The checkpointer: in-memory for now; a persistent one is a new dependency and needs approval.
+- The error-type taxonomy and Eedi items above;
+  the hint cap, the recurrence threshold, the target grades and the final model.
+
+### Found in the design-gaps review (not decided; to settle before the nodes they touch)
+- **`stage` writers: settled** (see "finish_diagnosis" below). The UI and the scenario runner must still set
+  `new_message` at the start of every run.
+- **Reset points** for `hint_retries`, `turns`, `hints_used`, `misconceptions_seen` and `hint_level` when a hint
+  is published, a new problem starts or `record_attempt` has run, and for the diagnosis fields (`misconception`,
+  `error_type`, `first_error_step`, `misconception_candidates`) that go stale when `verify` short-circuits.
+  `finish_diagnosis` could clear the stale ones; undecided.
+- **`final_answer_only` path.** `classify` writes no routing field and the subgraph has no early exit on zero
+  steps. Either the orchestrator `Decision` is the only path to `ask`, or add an edge after `classify`.
+- **Leakage-check inputs.** The check needs the correct final answer and the key intermediate expression; no
+  state field holds them. Recompute from `problem` with SymPy, or add a reference-solution field written by `verify`.
+- **What "valid" means in `verify`** (equivalent or implies; unparsable is not valid), and how substitute / check
+  steps are handled (scenario B T4: "x = 9" after "x = 9 or x = 2" is not a consequence of the previous step).
+- **Non-arithmetic wrong justifications** give `justification_claims_ok = None`, so `verify` short-circuits and
+  behaviour 5 holds only for justifications SymPy can check, until the `justification_claim` extraction is settled.
+- **`misconceptions_seen` entries** hold ids only, but `record_attempt` stores `error_type` and `focus_step` too.
+- **Reads columns** in the node table: `localize` also needs `is_correct`; `hint` needs `error_type` and `is_correct`.
+- **Precedence** when both `omission_extraneous_root` and `reasoning_result_mismatch` hold (the mismatch
+  variant of scenario B).
+- **Single predicate** for "correct and nothing flagged": one pure function in `tools/`, used by both `verify`
+  and the orchestrator.
+
+## 2026-10-25 | `finish_diagnosis`: a tiny last node in the diagnosis subgraph
+- **Decision:** the diagnosis subgraph ends in a deterministic node `finish_diagnosis` that writes
+  `stage = diagnosed`. Both exits (`verify`'s short-circuit and `retrieve`) go through it. The subgraph itself
+  is a node of the main graph, but it writes no fields of its own, so a node inside it must write `stage`.
+  - Rejected: splitting the orchestrator into `route`, `after_diagnosis` and `after_hint`. It would remove the
+    `stage` field and make each mode a separate file, but adds two nodes and replaces the approved single
+    orchestrator.
+  - Rejected: a wrapper node in the main graph that calls the compiled subgraph. It hides the subgraph's inner
+    steps from graph export and streaming.
+  - Rejected: `verify` and `retrieve` each writing `stage`. Two writers for one fact.
+- **OPEN:** CLAUDE.md requires an eval script for every node. `finish_diagnosis` has nothing to measure. Either
+  a unit test only (needs an exemption in CLAUDE.md, the developer's call) or a trivial eval stub.
+
+## 2026-10-25 | State additions settled
+- **`localize` writes `focus_step`** | reusing `first_error_step = None` | `retrieve` and `hint` need a step to talk
+  about for `omission_extraneous_root`.
+- **A separate LLM node, `parse_input`, extracts the problem and structures the student's text into the state.
+  Input is text only for now** | an optional `problem_text` on the orchestrator's `Decision`; a vision/OCR model
+  now | the orchestrator should route, not extract; a vision model is out of scope.
+- **`justification_claim` is an optional field on `Step`**, filled where the steps are split and evaluated by SymPy
+  in `verify` | having the LLM judge justifications | the LLM never checks math.
+- **`student_id` is a name typed into a login-style field in the Streamlit UI** | real authentication; a random id |
+  enough for a demo; a typo creates a new profile, which is acceptable here.
+- **`parse_input` takes the problem and the step structure; `classify` only tags topic and level** | one node doing
+  both | each node then has its own eval (extraction and step-split accuracy vs topic accuracy).
+- **OPEN:** `parse_input`'s position (proposal: first node of the diagnosis subgraph, so pure questions cost no LLM
+  call; alternative: before the orchestrator, which gives it the structure to route on but costs a call on every
+  message).
+- **Consequence:** CLAUDE.md requires an eval script per node; `parse_input` gets one (problem-extraction and
+  step-split accuracy).
