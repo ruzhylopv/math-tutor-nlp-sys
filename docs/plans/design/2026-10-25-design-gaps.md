@@ -9,6 +9,8 @@ Docs only. Resolves the three P1s and the state mismatches that the review of PR
    field. After diagnosis it sets or escalates the hint level in plain code; after a hint it runs the
    leakage check (retry once, then a canned hint) in plain code.
 3. Numbers in hints come from a SymPy tool, never from the LLM. The tool's design stays OPEN.
+4. The `stage = diagnosed` write is done by a tiny final node `finish_diagnosis` inside the diagnosis subgraph
+   (the subgraph is a node of the main graph but writes no fields itself).
 Provisional numbers (hint levels 1-4, practice at the third occurrence) were proposed and not objected to.
 
 ## Files

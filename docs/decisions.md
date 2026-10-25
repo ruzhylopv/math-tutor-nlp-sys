@@ -183,11 +183,12 @@ Format: decision | rejected alternative | why.
   the hint cap, the recurrence threshold, the target grades and the final model.
 
 ### Found in the design-gaps review (not decided; to settle before the nodes they touch)
-- **`stage` writers.** The diagnosis subgraph is not a node. Proposal: `verify` (short-circuit) and `retrieve`
-  (full path) both write `stage = diagnosed`, or a tiny final node does. The UI and the scenario runner set
+- **`stage` writers: settled** (see "finish_diagnosis" below). The UI and the scenario runner must still set
   `new_message` at the start of every run.
 - **Reset points** for `hint_retries`, `turns`, `hints_used`, `misconceptions_seen` and `hint_level` when a hint
-  is published, a new problem starts or `record_attempt` has run.
+  is published, a new problem starts or `record_attempt` has run, and for the diagnosis fields (`misconception`,
+  `error_type`, `first_error_step`, `misconception_candidates`) that go stale when `verify` short-circuits.
+  `finish_diagnosis` could clear the stale ones; undecided.
 - **`final_answer_only` path.** `classify` writes no routing field and the subgraph has no early exit on zero
   steps. Either the orchestrator `Decision` is the only path to `ask`, or add an edge after `classify`.
 - **Leakage-check inputs.** The check needs the correct final answer and the key intermediate expression; no
@@ -202,3 +203,16 @@ Format: decision | rejected alternative | why.
   variant of scenario B).
 - **Single predicate** for "correct and nothing flagged": one pure function in `tools/`, used by both `verify`
   and the orchestrator.
+
+## 2026-10-25 | `finish_diagnosis`: a tiny last node in the diagnosis subgraph
+- **Decision:** the diagnosis subgraph ends in a deterministic node `finish_diagnosis` that writes
+  `stage = diagnosed`. Both exits (`verify`'s short-circuit and `retrieve`) go through it. The subgraph itself
+  is a node of the main graph, but it writes no fields of its own, so a node inside it must write `stage`.
+  - Rejected: splitting the orchestrator into `route`, `after_diagnosis` and `after_hint`. It would remove the
+    `stage` field and make each mode a separate file, but adds two nodes and replaces the approved single
+    orchestrator.
+  - Rejected: a wrapper node in the main graph that calls the compiled subgraph. It hides the subgraph's inner
+    steps from graph export and streaming.
+  - Rejected: `verify` and `retrieve` each writing `stage`. Two writers for one fact.
+- **OPEN:** CLAUDE.md requires an eval script for every node. `finish_diagnosis` has nothing to measure. Either
+  a unit test only (needs an exemption in CLAUDE.md, the developer's call) or a trivial eval stub.
