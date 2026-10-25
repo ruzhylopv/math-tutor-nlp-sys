@@ -3,8 +3,11 @@
 Source: the planning handoff of 2026-10-25. Items marked OPEN are not decided.
 
 ## Problem and scope
-Students repeat the same algebra mistakes, and generic chatbots either give the answer away or cannot
-say why the student went wrong. The student submits a problem and their own step-by-step attempt
+Students repeat the same algebra mistakes. Modern chatbots can tutor well given enough context, and a
+prompt can ask for a Socratic structure, but that structure gradually gets lost, and a student who
+loses discipline can ask for a faster answer. This system acts as a teacher who cannot be sped up:
+verification, the hint ladder and the leakage check are enforced by the graph and tools, not left to
+a prompt. The student submits a problem and their own step-by-step attempt
 (math lines plus natural-language justifications). The tutor:
 1. verifies the steps symbolically;
 2. finds the first wrong step, or the type of error if no single step is wrong;

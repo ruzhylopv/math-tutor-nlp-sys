@@ -5,9 +5,13 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 **Evaluation**.
 
 ## Business understanding
-- 2026-10-25 | project | Students repeat the same algebra mistakes; generic chatbots give the answer
-  away or cannot say why the student went wrong. Success = correct diagnosis and helpful hints
-  without answer leakage. Scope and architecture: `docs/architecture.md`.
+- 2026-10-25 | project | Students repeat the same algebra mistakes. Modern chatbots (ChatGPT etc.)
+  can tutor well given enough context, and a prompt can ask for a Socratic structure, but that
+  structure erodes over a long conversation, and a student who loses discipline can simply ask for
+  the answer faster. The aim is a tutor that cannot be sped up: verification, the hint ladder and
+  the leakage check are enforced by the system, not by the prompt. Success = correct diagnosis and
+  helpful hints without answer leakage, also under pressure to skip steps. Scope and architecture:
+  `docs/architecture.md`.
 
 ## Data understanding
 - Planned, not started: explore MATH, GSM8K, ProcessBench / PRM800K and Eedi; note gaps that need
