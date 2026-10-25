@@ -246,9 +246,11 @@ Format: decision | rejected alternative | why.
 - **The "correct and nothing flagged" predicate (`is_clean_solution` in `tools/diagnosis.py`) was written in M1,
   not M2**, because the diagnosis subgraph's conditional edge needs it. How substitute / check steps count as
   valid is still settled in M2.
-- **Eval scripts add the repo root to `sys.path`** (two lines plus `# noqa: E402`) so `evals.runner` imports when a
-  script is run as `uv run python evals/scripts/eval_x.py`. | Running them with `-m` (would change the allow rule
-  in `.claude/settings.json` and the `run-eval` skill) | keeps the documented command unchanged.
+- **`evals` is packaged with the project (`packages = ["src/tutor", "evals"]` in `pyproject.toml`)** so
+  `uv run python evals/scripts/eval_x.py` can `import evals.runner` from any folder | a `sys.path.insert` plus
+  `# noqa: E402` in every script (tried first, then removed); running scripts with `-m` (changes the allow rule in
+  `.claude/settings.json` and the `run-eval` skill) | one packaging line instead of a repeated hack, and the
+  documented command is unchanged.
 - **Node stub tests share one parametrised file (`tests/test_node_stubs.py`)** | one file per node | the stubs are
   identical in shape; each real node gets its own test file when its logic lands.
 - **`ruff` treats `evals` as first-party (`src = [..., "."]`) and pytest puts the repo root on `pythonpath`.**
@@ -267,12 +269,15 @@ Format: decision | rejected alternative | why.
   only `dev/` and `test/`). The runner moved ahead of the stubs because every eval stub uses it. `git_hash` runs in the
   evals folder and falls back to `"nogit"` so a finished eval never loses its metrics. The `.gitignore` rule for
   `evals/results/*.json` matched nothing and is removed: result files are committed, as the `run-eval` skill expects.
-  `mypy` now also checks `evals/` through `files` in `pyproject.toml`; CLAUDE.md and the stop hook still run
-  `mypy src`, so updating them to plain `mypy` is the developer's call.
-- **Eval stubs (layer 5):** each stub is three lines on the shared `run_eval_stub` helper; tests redirect the datasets
-  folder to a temp dir so they do not depend on real datasets.
+  `mypy` checks `evals/` through `files = ["src", "evals"]` in `pyproject.toml`. An explicit `mypy src` overrides
+  that setting, so (with the developer's approval) CLAUDE.md, the stop hook, the agents, the skills and the PR
+  template now run plain `uv run mypy`.
+- **Eval stubs (layer 5):** each stub is a docstring and one call to the shared `run_eval_stub`; tests redirect the
+  datasets folder to a temp dir so they do not depend on real datasets.
 - **Routing default:** `route_from_orchestrator` ends the run when `next_action` is missing (the state is `total=False`).
   Revisit when the real orchestrator exists; raising on an unknown action may be better.
 - **`docs/graph.mmd` escapes:** langgraph writes `\3a` for the `:` in subgraph node ids. Not yet verified to render in
   Mermaid; if it does not, post-process the file in `scripts/draw_graph.py`.
-
+- **Open for later milestones:** `Classification.topic` is free text; M3 decides whether it becomes a `Literal` or a
+  catalogue-backed set. A visited-nodes test on the main graph needs `stream(..., subgraphs=True)`, because the default
+  updates stream shows top-level nodes only.

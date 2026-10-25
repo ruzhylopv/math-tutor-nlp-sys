@@ -47,7 +47,7 @@ def route_from_orchestrator(state: TutorState) -> Literal["diagnosis", "hint", "
     A missing `next_action` ends the run (the state is `total=False`). "__end__" is langgraph's
     END; it must stay a literal here because langgraph reads the edge targets from this annotation.
     """
-    action = state.get("next_action", "reply")
+    action = state.get("next_action")
     if action == "diagnose":
         return "diagnosis"
     if action == "hint":
