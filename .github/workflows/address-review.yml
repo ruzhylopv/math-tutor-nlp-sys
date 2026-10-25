@@ -62,14 +62,16 @@ jobs:
             its inline comments are in .review-context/comments.json; use only those files.
             Follow CLAUDE.md. Do not merge. Do not touch other branches.
           claude_args: |
-            --max-turns 10
+            --max-turns 20
             --allowedTools "Read,Edit,Write,Grep,Glob,Bash(uv run pytest:*),Bash(uv run ruff:*),Bash(uv run mypy:*),Bash(git status),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*),Bash(git push),Bash(git push origin HEAD),Bash(gh pr comment:*)"
-            --disallowedTools "Bash(gh pr merge:*),Bash(gh api:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git push --force:*),Bash(git push -f:*),Bash(git push --force-with-lease:*),Bash(git push --delete:*),Bash(git push * main),Bash(git push *:main),Bash(git push +*),Edit(./.claude/**),Write(./.claude/**),Edit(./.github/**),Write(./.github/**),Edit(./CLAUDE.md),Write(./CLAUDE.md)"
+            --disallowedTools "Bash(gh pr merge:*),Bash(gh api:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git push --force:*),Bash(git push -f:*),Bash(git push --force-with-lease:*),Bash(git push --delete:*),Bash(git push * main),Bash(git push *:main),Bash(git push +*),Edit(./.git/**),Write(./.git/**),Edit(./.claude/**),Write(./.claude/**),Edit(./.github/**),Write(./.github/**),Edit(./CLAUDE.md),Write(./CLAUDE.md)"
 
-      # The agent writes .review-context/replies.json; this step, not the agent, posts the replies.
+      # The agent writes .review-context/replies.json; this step, not the agent, posts the replies. It also
+      # runs when the agent step fails (for example on the turn cap), so replies already written are not lost.
       # The allowed comment ids are re-fetched here with the workflow's own call, not read from a file
       # the agent could have edited, so replies can only go to this review's top-level comments.
       - name: Post per-thread replies
+        if: ${{ !cancelled() }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -82,17 +84,17 @@ jobs:
           allowed=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews/$REVIEW_ID/comments?per_page=100" \
             --jq '[.[] | select(.in_reply_to_id == null) | .id]')
           total=$(jq 'length' "$f")
-          if [ "$total" -gt 50 ]; then echo "::warning::replies.json has $total entries; only 50 are considered"; fi
+          if [ "$total" -gt 50 ]; then echo "::warning::replies.json has $total entries; at most 50 valid replies are posted"; fi
           replies=$(jq -c --argjson allowed "$allowed" '
-            [.[] | select(type == "object")]
+            [.[] | select(type == "object")
+                 | select((.comment_id | type) == "number" and (.comment_id | floor) == .comment_id
+                          and (.comment_id | IN($allowed[])))
+                 | select(.status == "done" or .status == "not_done")]
             | unique_by(.comment_id)
             | .[:50][]
-            | select((.comment_id | type) == "number" and (.comment_id | floor) == .comment_id
-                     and (.comment_id | IN($allowed[])))
-            | select(.status == "done" or .status == "not_done")
             | {comment_id: (.comment_id | floor | tostring),
                status,
-               commit: (if ((.commit // "") | tostring | test("^[0-9a-f]{7,40}$")) then (.commit | tostring) else "" end),
+               commit: ((.commit // "") | if type == "string" and test("^[0-9a-f]{7,40}$") then . else "" end),
                text: ((.text // "") | tostring | .[:1000]
                       | gsub("@"; "@​") | gsub("#(?<d>[0-9])"; "#​\(.d)")
                       | gsub("!\\["; "[") | gsub("\\]\\("; "] ("))}' "$f")

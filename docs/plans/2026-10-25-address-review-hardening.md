@@ -18,5 +18,13 @@ review (broad `uv run`, `gh pr view`/`gh pr diff`, weak push rules, writable `.c
 - a non-array file failed loudly; an empty list and a missing file were no-ops.
 Not yet run on a real runner: do it on a fresh throwaway PR after merging.
 
+- dedupe after validation (a bad entry no longer hides a good duplicate); junk entries no longer use up the 50-reply cap.
+
+## Added after the first CI run of per-thread replies (PR #13 smoke test)
+The Claude step used 13 turns (cap 10), was reported as failed, and the post step was skipped, so no
+thread replies appeared. Fixes: `--max-turns 20`; the post step runs when the agent step fails; the
+skill writes `replies.json` before pushing and commenting; dedupe now runs after validation;
+`.git/**` added to the Edit/Write denies.
+
 ## Out of scope
 Branch protection on `main` (only the owner can enable it). Pagination beyond 100 comments.
