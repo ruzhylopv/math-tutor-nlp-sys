@@ -7,7 +7,7 @@ import pytest
 from evals import runner
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "evals" / "scripts"
-STUBS = ["parse_input", "classify", "verify", "localize", "retrieve"]
+STUBS = ["parse_input", "classify", "verify", "localize", "retrieve", "hint", "orchestrator"]
 
 
 @pytest.mark.parametrize("name", STUBS)

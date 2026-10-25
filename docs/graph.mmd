@@ -1,0 +1,33 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	orchestrator(orchestrator)
+	hint(hint)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> orchestrator;
+	diagnosis\3afinish_diagnosis --> orchestrator;
+	hint --> orchestrator;
+	orchestrator -.-> __end__;
+	orchestrator -.-> diagnosis\3aparse_input;
+	orchestrator -.-> hint;
+	subgraph diagnosis
+	diagnosis\3aparse_input(parse_input)
+	diagnosis\3aclassify(classify)
+	diagnosis\3averify(verify)
+	diagnosis\3alocalize(localize)
+	diagnosis\3aretrieve(retrieve)
+	diagnosis\3afinish_diagnosis(finish_diagnosis)
+	diagnosis\3aclassify --> diagnosis\3averify;
+	diagnosis\3alocalize --> diagnosis\3aretrieve;
+	diagnosis\3aparse_input --> diagnosis\3aclassify;
+	diagnosis\3aretrieve --> diagnosis\3afinish_diagnosis;
+	diagnosis\3averify -.-> diagnosis\3afinish_diagnosis;
+	diagnosis\3averify -.-> diagnosis\3alocalize;
+	end
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
