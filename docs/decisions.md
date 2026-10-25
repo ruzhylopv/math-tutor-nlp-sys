@@ -181,3 +181,24 @@ Format: decision | rejected alternative | why.
 - The checkpointer: in-memory for now; a persistent one is a new dependency and needs approval.
 - Whether `localize` writes a `focus_step`; the `student_id`; the error-type taxonomy and Eedi items above;
   the hint cap, the recurrence threshold, the target grades and the final model.
+
+### Found in the design-gaps review (not decided; to settle before the nodes they touch)
+- **`stage` writers.** The diagnosis subgraph is not a node. Proposal: `verify` (short-circuit) and `retrieve`
+  (full path) both write `stage = diagnosed`, or a tiny final node does. The UI and the scenario runner set
+  `new_message` at the start of every run.
+- **Reset points** for `hint_retries`, `turns`, `hints_used`, `misconceptions_seen` and `hint_level` when a hint
+  is published, a new problem starts or `record_attempt` has run.
+- **`final_answer_only` path.** `classify` writes no routing field and the subgraph has no early exit on zero
+  steps. Either the orchestrator `Decision` is the only path to `ask`, or add an edge after `classify`.
+- **Leakage-check inputs.** The check needs the correct final answer and the key intermediate expression; no
+  state field holds them. Recompute from `problem` with SymPy, or add a reference-solution field written by `verify`.
+- **What "valid" means in `verify`** (equivalent or implies; unparsable is not valid), and how substitute / check
+  steps are handled (scenario B T4: "x = 9" after "x = 9 or x = 2" is not a consequence of the previous step).
+- **Non-arithmetic wrong justifications** give `justification_claims_ok = None`, so `verify` short-circuits and
+  behaviour 5 holds only for justifications SymPy can check, until the `justification_claim` extraction is settled.
+- **`misconceptions_seen` entries** hold ids only, but `record_attempt` stores `error_type` and `focus_step` too.
+- **Reads columns** in the node table: `localize` also needs `is_correct`; `hint` needs `error_type` and `is_correct`.
+- **Precedence** when both `omission_extraneous_root` and `reasoning_result_mismatch` hold (the mismatch
+  variant of scenario B).
+- **Single predicate** for "correct and nothing flagged": one pure function in `tools/`, used by both `verify`
+  and the orchestrator.

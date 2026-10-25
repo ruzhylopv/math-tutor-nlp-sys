@@ -22,7 +22,7 @@ Nothing here is implemented. Items marked OPEN need a decision before the code i
 | stage | `new_message` / `diagnosed` / `hinted`; selects the orchestrator's mode | UI (new_message), diagnosis subgraph (diagnosed), hint (hinted) |
 | reply_text | text sent to the student | orchestrator |
 | turns, hints_used | counters for `record_attempt` | orchestrator |
-| misconceptions_seen | misconception ids diagnosed in this attempt | orchestrator |
+| misconceptions_seen | misconception ids diagnosed in this attempt; the last entry is the stored id used to reset or escalate `hint_level` | orchestrator |
 | next_action | ask / diagnose / hint / reply | orchestrator |
 | learner_profile | weak topics, past misconceptions | orchestrator (via `get_profile`) |
 

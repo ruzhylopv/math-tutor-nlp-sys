@@ -79,13 +79,16 @@ One node, three modes, chosen from the `stage` field (`new_message`, `diagnosed`
 `new_message` at the start of each run; the diagnosis subgraph sets `diagnosed` on its way out and `hint`
 sets `hinted`:
 - **new_message** (the student wrote something): the LLM `Decision` picks `ask`, `diagnose`, `hint` or
-  `reply`. Counters (`turns`) are plain code.
+  `reply`. Counters (`turns`) are plain code. When the action is `hint` without a new diagnosis (the
+  student asked a question, as in scenario B T2), plain code escalates `hint_level` by one (capped at 4) for
+  the current misconception, i.e. the last entry of `misconceptions_seen`.
 - **diagnosed** (back from `diagnosis`): plain code. If the answer is correct and nothing is flagged, call
   `record_attempt`, offer practice if a misconception has recurred, and reply. Otherwise compare the new
-  `misconception` id with the stored one: a different id resets `hint_level` to 1, the same id
+  `misconception` id with the stored one (the last entry of `misconceptions_seen`, compared before the new id
+  is appended): a different id resets `hint_level` to 1, the same id
   escalates it by one (capped). Route to `hint`.
 - **hinted** (back from `hint`): plain code. Run the leakage check on `hint_text`. If it passes, append the
-  hint to `messages`, set `reply_text` and finish. If it leaks, retry `hint` once (`hint_retries`),
+  hint to `messages`, increment `hints_used`, set `reply_text` and finish. If it leaks, retry `hint` once (`hint_retries`),
   then fall back to a canned hint for the current level. A rejected hint never enters `messages`.
 
 Hint leakage check: a deterministic function in `src/tutor/tools/`, called by the orchestrator. It
