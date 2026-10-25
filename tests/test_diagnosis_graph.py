@@ -50,7 +50,13 @@ def test_routing_after_verify() -> None:
     assert route_after_verify(_state(is_correct=False)) == "localize"
 
 
-def test_the_stubs_take_the_full_path_through_localize_and_retrieve() -> None:
+def test_a_failing_verify_takes_the_full_path_through_localize_and_retrieve(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def failing_verify(state: TutorState) -> dict[str, Any]:
+        return {"is_correct": False, "step_verdicts": []}
+
+    monkeypatch.setattr(graph_module, "verify", failing_verify)
     assert _visited({"problem": "3(x + 2) = 15"}) == [
         "parse_input",
         "classify",
@@ -77,10 +83,3 @@ def test_a_clean_solution_short_circuits_to_finish_diagnosis(
         "verify",
         "finish_diagnosis",
     ]
-
-
-def test_diagnosis_graph_has_the_designed_nodes() -> None:
-    nodes = set(build_diagnosis_graph().get_graph().nodes)
-    assert nodes >= {
-        "parse_input", "classify", "verify", "localize", "retrieve", "finish_diagnosis",
-    }  # fmt: skip
