@@ -81,7 +81,7 @@ class TutorState(TypedDict, total=False):
     error_type: ErrorType
     misconception_candidates: list[Misconception]
     misconception: Misconception | None
-    hint_level: int
+    hint_level: int  # 1-4, capped (see docs/architecture.md)
     hint_text: str
     hint_retries: int
     stage: Stage
