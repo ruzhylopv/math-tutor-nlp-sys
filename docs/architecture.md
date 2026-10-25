@@ -34,21 +34,24 @@ flowchart TD
   orchestrator -->|diagnose| diagnosis
   orchestrator -->|hint| hint
   orchestrator -->|ask / reply| END
-  diagnosis -->|is_correct| orchestrator
-  diagnosis -->|not correct| hint
+  diagnosis --> orchestrator
   hint --> orchestrator
 ```
-The orchestrator sets the reply text for `ask` and `reply`. Hints come back to the orchestrator,
-which checks them for answer leakage before replying.
+The orchestrator sets `reply_text` for `ask` and `reply`. Both `diagnosis` and `hint` always return
+to the orchestrator (see "Orchestrator modes").
 
 ### Diagnosis subgraph
 Fixed order, compiled separately so evals can call it without the chat layer.
 ```mermaid
 flowchart LR
   START --> classify --> verify
-  verify -->|is_correct| END
-  verify -->|not correct| localize --> retrieve --> END
+  verify -->|"correct, all steps valid, no flagged justification"| END
+  verify -->|otherwise| localize --> retrieve --> END
 ```
+`verify` short-circuits only when the final answer is correct, every step is valid, and no
+`justification_claims_ok` is False. A correct answer with a wrong justification, or reached through an
+invalid step, therefore goes on to `localize` (error type `reasoning_result_mismatch` or
+`algebraic_transformation`).
 
 ### Around the graph
 - Learner DB (SQLite), exposed to the orchestrator as tools `get_profile` and `record_attempt`.
@@ -60,34 +63,59 @@ flowchart LR
 ## Nodes
 | Node | Type | Purpose | Reads | Writes | Metric |
 |---|---|---|---|---|---|
-| orchestrator | LLM, structured output (`Decision`) | Decide the next action; ask for working when missing; escalate or reset hint level; check hint leakage; call DB tools | messages, state so far | next_action, hint_level, learner_profile, reply | routing accuracy on labelled turns |
+| orchestrator | LLM (structured `Decision`) on a new student message; plain code in the other two modes | Decide the next action; ask for working when missing; after a diagnosis set or escalate the hint level; after a hint run the leakage check; call DB tools | messages, stage, state so far | next_action, stage, hint_level, hint_retries, learner_profile, reply_text, messages, turns, hints_used, misconceptions_seen | routing accuracy on labelled turns |
 | classify | LLM | Tag topic and level; split each step into claim and justification; tag the operation | problem, raw message | topic, level, student_steps | topic accuracy / macro-F1; step-split accuracy; SymPy parse rate of claims |
 | verify | deterministic (SymPy) | Solve the original; check the final answer; check each step as equivalent / implies / not_valid; evaluate arithmetic claims in justifications | problem, student_steps | is_correct, step_verdicts | answer-check accuracy; step-verdict accuracy |
 | localize | rules on SymPy verdicts, LLM only for interpretation | First wrong step or error type; check that the justification matches what happened | step_verdicts, student_steps | first_error_step, error_type | first-error-step accuracy; error-type accuracy; mismatch detection rate |
 | retrieve | retrieval | Query: problem + wrong step + topic + error type; search the misconception catalogue | above | misconception_candidates, misconception | Recall@k, MAP@k |
-| hint | LLM | Socratic hint grounded in the misconception, at `hint_level`; praise what was right; never give the answer | misconception, wrong step, hint_level, profile | hint text (via messages) | answer-leakage rate (automatic); rubric judge and a small human check |
+| hint | LLM | Socratic hint grounded in the misconception, at `hint_level`; praise what was right; never give the answer | misconception, wrong step, hint_level, profile, counterexample values (from a SymPy tool) | hint_text, stage | answer-leakage rate (automatic); rubric judge and a small human check |
 
 Hard rule: the LLM never does arithmetic or verifies algebra. SymPy does. `localize` uses rules
 first (the first `not_valid` verdict gives the step and error type); the LLM only interprets and
 checks justifications.
 
+### Orchestrator modes
+One node, three modes, chosen from the `stage` field (`new_message`, `diagnosed`, `hinted`). The UI sets
+`new_message` at the start of each run; the diagnosis subgraph sets `diagnosed` on its way out and `hint`
+sets `hinted`:
+- **new_message** (the student wrote something): the LLM `Decision` picks `ask`, `diagnose`, `hint` or
+  `reply`. Counters (`turns`) are plain code.
+- **diagnosed** (back from `diagnosis`): plain code. If the answer is correct and nothing is flagged, call
+  `record_attempt`, offer practice if a misconception has recurred, and reply. Otherwise compare the new
+  `misconception` id with the stored one: a different id resets `hint_level` to 1, the same id
+  escalates it by one (capped). Route to `hint`.
+- **hinted** (back from `hint`): plain code. Run the leakage check on `hint_text`. If it passes, append the
+  hint to `messages`, set `reply_text` and finish. If it leaks, retry `hint` once (`hint_retries`),
+  then fall back to a canned hint for the current level. A rejected hint never enters `messages`.
+
 Hint leakage check: a deterministic function in `src/tutor/tools/`, called by the orchestrator. It
 rejects a hint containing the final answer or the key correct intermediate expression (for example
 `3x + 6`, `x^2 - 10x + 25`), compared with SymPy where possible, not only by string match.
-OPEN: what happens on rejection (regenerate with a cap, canned fallback, or loop back to `hint`).
+
+### Counterexamples
+Numbers in a hint (for example the level-2 numeric counterexample) are never computed by the LLM. A
+SymPy-based function in `src/tutor/tools/` produces them and the `hint` node passes them into the prompt;
+the LLM only words the hint. OPEN: the tool's design (how it chooses the value, its interface, when
+`hint` calls it).
+
+### Conventions
+- Step numbers are 1-based. Step 1's predecessor is the problem statement.
 
 ## Required behaviours
 1. Answer only, no steps: `ask` for working; diagnosis is not run.
 2. The student asks a question instead of a new attempt: diagnosis is skipped; the hint level
    escalates for the same misconception.
-3. Hint levels: 1 Socratic question; 2 concrete numeric counterexample; higher levels more direct.
-   The level resets to 1 when a new misconception is diagnosed.
+3. Hint levels (provisional, to be tuned): 1 Socratic question; 2 concrete numeric counterexample (values
+   from a SymPy tool); 3 more direct; 4 the most direct level, which still never gives the answer. Capped at
+   4. The level resets to 1 when a different misconception id is diagnosed and escalates by one when the
+   same id is diagnosed again.
 4. `verify` distinguishes equivalence from one-way implication. Squaring both sides is valid and
    implies, but is not equivalent to, the previous step. A naive per-step equivalence check would
    wrongly blame the squaring step.
-5. Correct math with a wrong justification is flagged gently even when the answer is right.
+5. Correct math with a wrong justification is flagged gently even when the answer is right (`verify` does not
+   short-circuit in that case; see the diagnosis subgraph).
 6. On solve: `record_attempt` (turns, hints used, misconceptions seen); if a misconception recurs,
-   offer targeted practice.
+   offer targeted practice (provisional threshold: the third occurrence, as in scenario A).
 7. Hints praise the correct parts before pointing at the problem.
 
 ### Error types (`localize`)
@@ -96,7 +124,8 @@ OPEN: what happens on rejection (regenerate with a cap, canned fallback, or loop
   added roots that were never rejected. `first_error_step` is None.
 - `reasoning_result_mismatch`: the math is right but the stated justification is wrong
   (for example "-2 and -9 add to 11").
-- `final_answer_only`: no steps given (normally routed to `ask` before diagnosis).
+- `final_answer_only`: no steps given. Not produced by `localize`: `classify` finds zero steps and the
+  orchestrator routes to `ask`, so diagnosis does not continue.
 
 ### Acceptance scenarios
 Both become multi-turn YAML in `evals/scenarios/` (format to be fixed with the first scenario

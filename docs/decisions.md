@@ -83,8 +83,7 @@ Format: decision | rejected alternative | why.
 - **Target level (provisional): MATH Algebra, levels 1-3** | all MATH subjects | keeps scope small.
 
 ## OPEN items (not decided)
-- What the orchestrator does when the leakage check rejects a hint (regenerate with a cap, canned
-  fallback, or loop back to `hint`).
+- (Resolved 2026-10-25: retry once, then a canned fallback; see "Design gaps" below.)
 - Whether `localize` writes a `focus_step` for `omission_extraneous_root`, where `first_error_step` is None.
 - How the learner profile is keyed across sessions (the checkpointer uses `thread_id`; a `student_id` is needed).
 - How Eedi's multiple-choice records map to the retrieval query (problem + wrong step); verify its
@@ -152,3 +151,33 @@ against real student work. Published sources exist (see `docs/architecture.md`, 
   `git status` (a denied `git branch` call had wasted a turn).
   - Rejected: keeping 10 turns. The task needs more than that.
   - Rejected: no cap. A cap bounds the Pro usage of a run.
+
+## 2026-10-25 | Design gaps found in the PR #11 review
+Format: decision | rejected alternative | why.
+- **`verify` short-circuits only when the answer is correct, every step is valid and no justification is
+  flagged** | redefining `is_correct` as "answer right and nothing flagged" | one field would hide two facts.
+  Fixes required behaviour 5 and the "right answer through invalid steps" case.
+- **`diagnosis` and `hint` always return to the orchestrator; the orchestrator has three modes (new message,
+  after diagnosis, after hint)** | `diagnosis -> hint` directly, or the leakage check inside `hint` with its own
+  retry loop | the hint level can only be reset or escalated by the orchestrator, and the central leakage check
+  was the original reason for routing hints back. The two non-LLM modes are plain code, so no extra LLM call.
+- **Leakage failure: retry `hint` once, then a canned hint for the level** | looping until the hint passes |
+  a hard cap keeps the loop bounded.
+- **Hint level resets when a different misconception id is diagnosed and escalates by one for the same id;
+  levels 1-4, capped at 4; practice offered at the third occurrence** | (provisional numbers) | simple and
+  testable. The cap and the threshold may change after the first scenario runs.
+- **Numbers in hints (counterexamples) come from a SymPy tool, never from the LLM** | letting the hint LLM
+  pick the values | breaks the "LLM never does arithmetic" rule.
+- **`hint` writes `hint_text`; only the orchestrator and UI write `messages`; one `reply_text` field** |
+  `hint` writing straight to `messages` | a rejected hint would already be in the chat history.
+- **`final_answer_only` is produced by `classify` and routed to `ask`, not by `localize`** | keeping it as a
+  `localize` output | `localize` is never reached in that case.
+- **Step numbers are 1-based; step 1's predecessor is the problem statement.**
+
+### Still OPEN after this change
+- The counterexample tool: how it chooses a value, its interface, when `hint` calls it. (The rule is decided.)
+- Who extracts `problem` from the first message, and who extracts a checkable claim from free-text
+  justifications (proposals in the TutorState outline).
+- The checkpointer: in-memory for now; a persistent one is a new dependency and needs approval.
+- Whether `localize` writes a `focus_step`; the `student_id`; the error-type taxonomy and Eedi items above;
+  the hint cap, the recurrence threshold, the target grades and the final model.
