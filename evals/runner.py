@@ -1,0 +1,82 @@
+"""Shared helpers for the per-component eval scripts in evals/scripts/.
+
+Dataset paths, JSONL loading, the --split flag and the result file. The result file layout follows
+the run-eval skill: evals/results/<component>/<timestamp>_<git-hash>.json. Dataset formats are
+defined by each component, not here.
+"""
+
+import argparse
+import hashlib
+import json
+import subprocess
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+EVALS_DIR = Path(__file__).resolve().parent
+DATASETS_DIR = EVALS_DIR / "datasets"
+RESULTS_DIR = EVALS_DIR / "results"
+SPLITS = ("dev", "test")
+
+
+def parse_split(description: str, argv: Sequence[str] | None = None) -> str:
+    """Parse --split. Defaults to dev; test is only for the final reported numbers."""
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--split", choices=SPLITS, default="dev")
+    return str(parser.parse_args(argv).split)
+
+
+def dataset_path(component: str, split: str, datasets_dir: Path = DATASETS_DIR) -> Path:
+    """Where a component's dataset for a split lives: datasets/<split>/<component>.jsonl."""
+    return datasets_dir / split / f"{component}.jsonl"
+
+
+def load_jsonl(path: Path) -> list[dict[str, Any]]:
+    """Read one JSON object per non-empty line."""
+    with path.open(encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle if line.strip()]
+
+
+def git_hash() -> str:
+    """Short hash of the current commit."""
+    out = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True
+    )
+    return out.stdout.strip()
+
+
+def file_hash(path: Path) -> str:
+    """Short sha256 of a file, used to record which prompt produced a result."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+
+
+def write_result(
+    component: str,
+    split: str,
+    n_examples: int,
+    metrics: Mapping[str, float],
+    *,
+    model_name: str | None = None,
+    prompt_path: Path | None = None,
+    results_dir: Path = RESULTS_DIR,
+    commit: str | None = None,
+) -> Path:
+    """Write the result file for one eval run and return its path."""
+    commit = commit or git_hash()
+    now = datetime.now(UTC)
+    payload: dict[str, Any] = {
+        "component": component,
+        "split": split,
+        "n_examples": n_examples,
+        "metrics": dict(metrics),
+        "model_name": model_name,
+        "prompt_hash": file_hash(prompt_path) if prompt_path else None,
+        "git_hash": commit,
+        "timestamp": now.isoformat(),
+    }
+    out_dir = results_dir / component
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{now.strftime('%Y%m%dT%H%M%SZ')}_{commit}.json"
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return path
