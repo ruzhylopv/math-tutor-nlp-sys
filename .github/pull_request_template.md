@@ -3,7 +3,7 @@
 
 ## Component and plan
 - Component: <!-- e.g. verify, localize, retrieve, workflow -->
-- Plan: <!-- docs/plans/YYYY-MM-DD-<topic>.md -->
+- Plan: <!-- docs/plans/<area>/YYYY-MM-DD-<topic>.md -->
 
 ## Changes
 <!-- Bullet list of files or areas changed, grouped by concern. -->

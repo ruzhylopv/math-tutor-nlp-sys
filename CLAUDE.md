@@ -15,7 +15,8 @@ graded Socratic hints without revealing the answer. Architecture: docs/architect
 
 ## Workflow (always follow)
 1. Any change touching more than one file: propose a plan first and wait for approval.
-   Save the approved plan to docs/plans/YYYY-MM-DD-<topic>.md.
+   Save the approved plan to docs/plans/<area>/YYYY-MM-DD-<topic>.md
+   (area: workflow, design or nodes).
 2. Work on one component per session. Do not modify other nodes unless the plan says so.
 3. Keep diffs small. Ask before adding or removing dependencies.
 4. Before saying a task is done, run:

@@ -6,7 +6,7 @@ Source: the planning handoff from the chat outside this repo. Docs only; no code
 - `docs/architecture.md` (new)
 - `docs/decisions.md` (append)
 - `docs/crisp_dm_log.md` (new)
-- `docs/plans/2026-10-25-tutor-state-outline.md` (new; the TutorState plan, not code)
+- `docs/plans/design/2026-10-25-tutor-state-outline.md` (new; the TutorState plan, not code)
 
 ## Answers to the OPEN questions
 - LLM: OpenRouter, a free model (the developer will not pay for tokens). Dependency swap deferred.

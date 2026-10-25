@@ -183,4 +183,4 @@ support and have rate limits; the first LLM node must check that structured outp
 7. Checkpointer and multi-turn scenarios
 8. Streamlit UI
 
-State shapes: see `docs/plans/2026-10-25-tutor-state-outline.md`.
+State shapes: see `docs/plans/design/2026-10-25-tutor-state-outline.md`.
