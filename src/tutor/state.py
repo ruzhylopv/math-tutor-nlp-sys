@@ -1,0 +1,93 @@
+"""Shared data shapes: TutorState and the pydantic models used inside it.
+
+Single source of truth for state fields. Design: docs/architecture.md and
+docs/plans/design/2026-10-25-tutor-state-outline.md.
+"""
+
+from typing import Annotated, Literal, TypedDict
+
+from langchain_core.messages import AnyMessage
+from langgraph.graph.message import add_messages
+from pydantic import BaseModel, Field
+
+Operation = Literal[
+    "expand", "rearrange", "factor", "zero-product", "substitute", "square", "other"
+]
+Relation = Literal["equivalent", "implies", "not_valid", "unparsable"]
+Action = Literal["ask", "diagnose", "hint", "reply"]
+ErrorType = Literal[
+    "algebraic_transformation",
+    "omission_extraneous_root",
+    "reasoning_result_mismatch",
+]
+Stage = Literal["new_message", "diagnosed", "hinted"]
+
+
+class Step(BaseModel):
+    """One line of the student's attempt, split into claim and justification."""
+
+    claim: str
+    justification: str = ""
+    justification_claim: str | None = None
+    operation: Operation = "other"
+
+
+class StepVerdict(BaseModel):
+    """SymPy's verdict on one step. Step numbers are 1-based; step 1 follows the problem."""
+
+    step_index: int = Field(ge=1)
+    relation: Relation
+    justification_claims_ok: bool | None = None
+    notes: str = ""
+
+
+class Decision(BaseModel):
+    """The orchestrator's structured decision for a new student message."""
+
+    action: Action
+    reason: str
+    reply_text: str | None = None
+
+
+class Misconception(BaseModel):
+    """A misconception from the catalogue, with its retrieval score."""
+
+    id: str
+    description: str
+    topic: str
+    score: float
+
+
+class LearnerProfile(BaseModel):
+    """What the learner DB knows about a student. Shape is finalised with the DB tools (M6)."""
+
+    weak_topics: list[str] = Field(default_factory=list)
+    misconception_counts: dict[str, int] = Field(default_factory=dict)
+
+
+class TutorState(TypedDict, total=False):
+    """Graph state. Every node returns only the fields it changed."""
+
+    messages: Annotated[list[AnyMessage], add_messages]
+    student_id: str
+    problem: str
+    student_steps: list[Step]
+    topic: str
+    level: int
+    is_correct: bool
+    step_verdicts: list[StepVerdict]
+    first_error_step: int | None
+    focus_step: int | None
+    error_type: ErrorType
+    misconception_candidates: list[Misconception]
+    misconception: Misconception | None
+    hint_level: int
+    hint_text: str
+    hint_retries: int
+    stage: Stage
+    next_action: Action
+    reply_text: str
+    turns: int
+    hints_used: int
+    misconceptions_seen: list[str]
+    learner_profile: LearnerProfile
