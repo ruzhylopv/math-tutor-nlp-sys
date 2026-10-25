@@ -7,11 +7,13 @@ from pydantic import ValidationError
 
 from tutor.state import (
     Action,
+    Classification,
     Decision,
     ErrorType,
     LearnerProfile,
     Misconception,
     Operation,
+    ParsedInput,
     Relation,
     Stage,
     Step,
@@ -109,3 +111,14 @@ def test_literals_match_the_architecture() -> None:
     )  # fmt: skip
     # final_answer_only is not a localize output (docs/architecture.md)
     assert "final_answer_only" not in get_args(ErrorType)
+
+
+def test_parsed_input_defaults_to_no_problem_and_no_steps() -> None:
+    parsed = ParsedInput()
+    assert parsed.problem is None and parsed.steps == []
+
+
+def test_classification_level_starts_at_one() -> None:
+    assert Classification(topic="algebra", level=1).level == 1
+    with pytest.raises(ValidationError):
+        Classification(topic="algebra", level=0)

@@ -12,7 +12,7 @@
 <!-- TutorState fields added, read or written. "None" if not applicable. -->
 
 ## Tests
-<!-- New or changed tests, and the result of: uv run ruff check . && uv run mypy src && uv run pytest -q -->
+<!-- New or changed tests, and the result of: uv run ruff check . && uv run mypy && uv run pytest -q -->
 
 ## Eval
 <!-- Path to the metrics file in evals/results/<component>/ and key metric (dev split only). "N/A" if no eval applies. -->

@@ -41,6 +41,20 @@ class StepVerdict(BaseModel):
     notes: str = ""
 
 
+class ParsedInput(BaseModel):
+    """What `parse_input` extracts from the student's raw message."""
+
+    problem: str | None = None
+    steps: list[Step] = Field(default_factory=list)
+
+
+class Classification(BaseModel):
+    """What `classify` returns: the topic label and the difficulty level."""
+
+    topic: str
+    level: int = Field(ge=1)
+
+
 class Decision(BaseModel):
     """The orchestrator's structured decision for a new student message."""
 

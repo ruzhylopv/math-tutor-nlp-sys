@@ -22,7 +22,7 @@ graph wiring, docs. Dependencies go in lower layers.
 - Single PR: continue below.
 
 ## Step 3: Checks
-Run `uv run ruff check . && uv run mypy src && uv run pytest -q` on every branch you are about to
+Run `uv run ruff check . && uv run mypy && uv run pytest -q` on every branch you are about to
 push. pytest exit code 5 (no tests collected) is fine early in the project. Fix failures first.
 
 ## Step 4: Push and open

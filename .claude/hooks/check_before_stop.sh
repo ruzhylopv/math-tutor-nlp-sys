@@ -8,7 +8,7 @@ input=$(cat)
 changed=$(git status --porcelain -- '*.py')
 [[ -z "$changed" ]] && exit 0
 
-if ! out=$(uv run mypy src 2>&1); then
+if ! out=$(uv run mypy 2>&1); then
   printf 'Type check failed, fix before finishing:\n%s\n' "$(echo "$out" | tail -30)" >&2
   exit 2
 fi
