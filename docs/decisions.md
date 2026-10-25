@@ -175,7 +175,7 @@ Format: decision | rejected alternative | why.
 
 ### Still OPEN after this change
 - The counterexample tool: how it chooses a value, its interface, when `hint` calls it. (The rule is decided.)
-- The boundary between `parse_input` and `classify`, and where `parse_input` sits (proposal in the TutorState outline).
+- Where `parse_input` sits (proposal in the TutorState outline: first node of the diagnosis subgraph).
 - The checkpointer: in-memory for now; a persistent one is a new dependency and needs approval.
 - The error-type taxonomy and Eedi items above;
   the hint cap, the recurrence threshold, the target grades and the final model.
@@ -225,9 +225,10 @@ Format: decision | rejected alternative | why.
   in `verify` | having the LLM judge justifications | the LLM never checks math.
 - **`student_id` is a name typed into a login-style field in the Streamlit UI** | real authentication; a random id |
   enough for a demo; a typo creates a new profile, which is acceptable here.
-- **OPEN:** the boundary between `parse_input` and `classify` (proposal: `parse_input` takes the problem and steps,
-  `classify` only tags topic and level), and `parse_input`'s position (proposal: first node of the diagnosis
-  subgraph, so pure questions cost no LLM call; alternative: before the orchestrator, which gives it the structure
-  to route on but costs a call on every message).
+- **`parse_input` takes the problem and the step structure; `classify` only tags topic and level** | one node doing
+  both | each node then has its own eval (extraction and step-split accuracy vs topic accuracy).
+- **OPEN:** `parse_input`'s position (proposal: first node of the diagnosis subgraph, so pure questions cost no LLM
+  call; alternative: before the orchestrator, which gives it the structure to route on but costs a call on every
+  message).
 - **Consequence:** CLAUDE.md requires an eval script per node; `parse_input` gets one (problem-extraction and
   step-split accuracy).
