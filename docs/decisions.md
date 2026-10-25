@@ -25,6 +25,7 @@ Format: date | decision | alternative rejected | why.
 - **Decision:** CI fixes only the reviewed branch; stack rebases happen locally.
   - Rejected: installing `gh-stack` in the workflow. More setup and more failure modes for a rare case.
 - **Decision:** replies are one summary PR comment, and `gh api` is limited to GET-style calls.
+  (Superseded 2026-10-25: `gh api` was removed from the agent entirely; see the pre-fetch and thread-reply entries.)
   - Rejected: per-thread replies via `gh api` POST. Needs write-capable `gh api`, which could also merge.
 
 ## 2026-10-25 | address-review also triggers on a `/address-review` comment review
@@ -119,3 +120,23 @@ against real student work. Published sources exist (see `docs/architecture.md`, 
   - Rejected: a single summary comment only (the earlier choice). The developer wants each comment answered.
   - Rejected: the bot resolving threads. Left to the developer.
   - Accepted trade-off: replies show as `github-actions[bot]`, not the `claude` identity of the summary comment.
+
+## 2026-10-25 | address-review hardening (from the PR #9 and PR #12 reviews)
+- **Decision:** the post step re-fetches the allowed comment ids itself instead of reading
+  `comments.json` after the agent ran, runs with `pipefail`, skips malformed entries, dedupes by id,
+  warns and continues when one post fails (then fails the job), verifies the commit with
+  `git cat-file`, and neutralises `@`, `#<digits>`, `![` and `](` in the agent's text.
+  - Rejected: keeping the allowlist file somewhere the agent "should not" write. Not a boundary.
+  - Rejected: stopping at the first failed post. Silently drops the other replies.
+- **Decision:** narrower agent tools: only `uv run pytest|ruff|mypy`; no `gh pr view`/`gh pr diff`;
+  `git push` only plain or `origin HEAD`, with pushes to `main`, `--delete`, `+refspec` and
+  force variants denied; `Edit`/`Write` denied on `.claude/**`, `.github/**` and `CLAUDE.md`.
+  - Rejected: `Bash(uv run:*)`. Allows arbitrary code through `uv run python`.
+  - Consequence: a review that asks the agent to change those protected paths gets `not_done`.
+- **Residual risks (accepted, not removed):**
+  - `uv run pytest` runs repository code, so a malicious test file could run commands, and
+    `GITHUB_TOKEN` is in the job environment. The trigger is limited to the developer's reviews on
+    same-repo PRs.
+  - Reply text is only partly neutralised (bare URLs still render as links).
+  - A workflow re-run after a partial failure can post some replies twice.
+  - Branch protection on `main` is the real backstop; only the repository owner can enable it.

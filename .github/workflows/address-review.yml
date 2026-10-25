@@ -63,30 +63,51 @@ jobs:
             Follow CLAUDE.md. Do not merge. Do not touch other branches.
           claude_args: |
             --max-turns 10
-            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(uv run:*),Bash(git status),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*),Bash(git push),Bash(git push origin:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
-            --disallowedTools "Bash(gh pr merge:*),Bash(gh api:*),Bash(git push --force:*),Bash(git push -f:*)"
+            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(uv run pytest:*),Bash(uv run ruff:*),Bash(uv run mypy:*),Bash(git status),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*),Bash(git push),Bash(git push origin HEAD),Bash(gh pr comment:*)"
+            --disallowedTools "Bash(gh pr merge:*),Bash(gh api:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(git push --force:*),Bash(git push -f:*),Bash(git push --force-with-lease:*),Bash(git push --delete:*),Bash(git push * main),Bash(git push *:main),Bash(git push +*),Edit(./.claude/**),Write(./.claude/**),Edit(./.github/**),Write(./.github/**),Edit(./CLAUDE.md),Write(./CLAUDE.md)"
 
       # The agent writes .review-context/replies.json; this step, not the agent, posts the replies.
-      # Only replies to comments in comments.json are posted, so the agent cannot reach other threads.
+      # The allowed comment ids are re-fetched here with the workflow's own call, not read from a file
+      # the agent could have edited, so replies can only go to this review's top-level comments.
       - name: Post per-thread replies
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
+          REVIEW_ID: ${{ github.event.review.id }}
         run: |
           f=.review-context/replies.json
           if [ ! -f "$f" ]; then echo "No replies.json, nothing to post."; exit 0; fi
           jq -e 'type == "array"' "$f" > /dev/null
-          allowed=$(jq -c '[.[].id]' .review-context/comments.json)
-          jq -c --argjson allowed "$allowed" '
-            .[:50][]
-            | select((.comment_id | type) == "number" and (.comment_id | IN($allowed[])))
+          allowed=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/reviews/$REVIEW_ID/comments?per_page=100" \
+            --jq '[.[] | select(.in_reply_to_id == null) | .id]')
+          total=$(jq 'length' "$f")
+          if [ "$total" -gt 50 ]; then echo "::warning::replies.json has $total entries; only 50 are considered"; fi
+          replies=$(jq -c --argjson allowed "$allowed" '
+            [.[] | select(type == "object")]
+            | unique_by(.comment_id)
+            | .[:50][]
+            | select((.comment_id | type) == "number" and (.comment_id | floor) == .comment_id
+                     and (.comment_id | IN($allowed[])))
             | select(.status == "done" or .status == "not_done")
-            | {comment_id,
-               body: ((if .status == "done" then "Done" else "Not done" end)
-                 + (if (.commit // "" | test("^[0-9a-f]{7,40}$")) then " in " + .commit else "" end)
-                 + ": " + ((.text // "") | tostring | .[:1000] | gsub("@"; "@\u200b")))}' "$f" |
+            | {comment_id: (.comment_id | floor | tostring),
+               status,
+               commit: (if ((.commit // "") | tostring | test("^[0-9a-f]{7,40}$")) then (.commit | tostring) else "" end),
+               text: ((.text // "") | tostring | .[:1000]
+                      | gsub("@"; "@​") | gsub("#(?<d>[0-9])"; "#​\(.d)")
+                      | gsub("!\\["; "[") | gsub("\\]\\("; "] ("))}' "$f")
+          failed=0
           while IFS= read -r reply; do
+            [ -n "$reply" ] || continue
             id=$(jq -r '.comment_id' <<< "$reply")
-            body=$(jq -r '.body' <<< "$reply")
-            gh api -X POST "repos/$GITHUB_REPOSITORY/pulls/$PR/comments/$id/replies" -f body="$body" > /dev/null
-          done
+            commit=$(jq -r '.commit' <<< "$reply")
+            if [ -n "$commit" ] && ! git cat-file -e "${commit}^{commit}" 2> /dev/null; then commit=""; fi
+            if [ "$(jq -r '.status' <<< "$reply")" = "done" ]; then label="Done"; else label="Not done"; fi
+            if [ -n "$commit" ]; then label="$label in $commit"; fi
+            body="$label: $(jq -r '.text' <<< "$reply")"
+            if ! gh api -X POST "repos/$GITHUB_REPOSITORY/pulls/$PR/comments/$id/replies" -f body="$body" > /dev/null; then
+              echo "::warning::reply to comment $id failed"
+              failed=1
+            fi
+          done <<< "$replies"
+          exit "$failed"
