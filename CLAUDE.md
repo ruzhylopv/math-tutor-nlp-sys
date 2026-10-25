@@ -20,7 +20,7 @@ graded Socratic hints without revealing the answer. Architecture: docs/architect
 2. Work on one component per session. Do not modify other nodes unless the plan says so.
 3. Keep diffs small. Ask before adding or removing dependencies.
 4. Before saying a task is done, run:
-   `uv run ruff check . && uv run mypy src && uv run pytest -q`
+   `uv run ruff check . && uv run mypy && uv run pytest -q`
 5. Commit with conventional messages (feat:, fix:, test:, chore:, docs:).
 6. Record any design choice with an alternative you rejected in docs/decisions.md.
 

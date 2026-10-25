@@ -72,7 +72,7 @@ If the diff is appropriately simple, say so explicitly in one line.
 - P2 should fix: missing or weak tests, over-engineering, missing docs or log entries.
 - P3 nit: style and naming.
 
-Run `uv run ruff check . && uv run mypy src && uv run pytest -q` yourself. A failure is a P0.
+Run `uv run ruff check . && uv run mypy && uv run pytest -q` yourself. A failure is a P0.
 
 ## Output
 One line per finding, most severe first:

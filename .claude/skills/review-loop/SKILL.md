@@ -17,7 +17,7 @@ For a stack, run it once per layer, bottom to top, and push each fixed layer bef
 2. Spawn the `code-reviewer` subagent with the base branch. Ask for findings in its P0-P3 format.
 3. If there are no P0, P1 or P2 findings, stop. The PR is clean.
 4. Otherwise spawn the `review-fixer` subagent with the full findings text. P3 is left alone.
-5. Re-run `uv run ruff check . && uv run mypy src && uv run pytest -q` yourself and confirm the fixer's commits exist.
+5. Re-run `uv run ruff check . && uv run mypy && uv run pytest -q` yourself and confirm the fixer's commits exist.
 6. Push the branch (`git push`, or `gh stack push` for a stack).
 
 After pass 2, run the reviewer once more without fixing, to get the final state.

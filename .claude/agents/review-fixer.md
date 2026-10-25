@@ -15,7 +15,7 @@ Input: the reviewer's findings (lines of the form `P<n> | file:line | problem | 
 5. Never edit eval datasets, expected labels, or existing tests to make a check pass. If a finding
    seems to require that, or you believe a finding is wrong, do not act on it and report it.
 6. Do not push, merge or switch branches.
-7. After the fixes run `uv run ruff check . && uv run mypy src && uv run pytest -q`
+7. After the fixes run `uv run ruff check . && uv run mypy && uv run pytest -q`
    (pytest exit code 5, no tests collected, is fine).
 
 Output:

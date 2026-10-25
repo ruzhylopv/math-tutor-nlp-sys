@@ -45,7 +45,7 @@ Do the remaining requests that are allowed.
   conventional message (`fix:`, `test:`, `docs:`), ending with the trailer
   `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 - Follow all code rules in CLAUDE.md.
-- Run `uv run ruff check . && uv run mypy src && uv run pytest -q` (pytest exit 5, no tests, is fine).
+- Run `uv run ruff check . && uv run mypy && uv run pytest -q` (pytest exit 5, no tests, is fine).
   Fix failures you caused.
 
 ## Step 4: Write the replies
