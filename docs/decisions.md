@@ -26,3 +26,10 @@ Format: date | decision | alternative rejected | why.
   - Rejected: installing `gh-stack` in the workflow. More setup and more failure modes for a rare case.
 - **Decision:** replies are one summary PR comment, and `gh api` is limited to GET-style calls.
   - Rejected: per-thread replies via `gh api` POST. Needs write-capable `gh api`, which could also merge.
+
+## 2026-10-25 | address-review also triggers on a `/address-review` comment review
+- **Decision:** a "Comment" review by the developer whose body starts with `/address-review` also
+  triggers the workflow, because authors cannot request changes on their own PRs.
+  - Rejected: a second GitHub account for reviews. Needs an account and a changed login check on a public repo.
+  - Rejected: bot-authored PRs from a second Actions workflow. Larger change; unverified who the author would be.
+  - Rejected: triggering on every comment review. Fires on routine inline comments; the phrase makes it explicit.
