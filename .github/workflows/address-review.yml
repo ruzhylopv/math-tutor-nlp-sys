@@ -36,8 +36,9 @@ jobs:
 
       - run: uv sync
 
-      # The agent gets no `gh api`. This step fetches only the triggering review and its inline
-      # comments with the workflow's read-only calls, and checks the author.
+      # The agent gets no `gh api`. This step fetches only the triggering review and its top-level
+      # inline comments (replies inside existing threads are ignored) with the workflow's own calls,
+      # and checks the author.
       - name: Fetch the triggering review
         env:
           GH_TOKEN: ${{ github.token }}
@@ -49,7 +50,7 @@ jobs:
           gh api "$base" --jq '{id, author: .user.login, state, body}' > .review-context/review.json
           jq -e '.author == "ruzhylopv"' .review-context/review.json > /dev/null
           gh api "$base/comments?per_page=100" \
-            --jq '[.[] | {path, line, original_line, author: .user.login, body}]' \
+            --jq '[.[] | select(.in_reply_to_id == null) | {id, path, line, original_line, author: .user.login, body}]' \
             > .review-context/comments.json
 
       - uses: anthropics/claude-code-action@v1
@@ -64,3 +65,28 @@ jobs:
             --max-turns 10
             --allowedTools "Read,Edit,Write,Grep,Glob,Bash(uv run:*),Bash(git status),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*),Bash(git push),Bash(git push origin:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
             --disallowedTools "Bash(gh pr merge:*),Bash(gh api:*),Bash(git push --force:*),Bash(git push -f:*)"
+
+      # The agent writes .review-context/replies.json; this step, not the agent, posts the replies.
+      # Only replies to comments in comments.json are posted, so the agent cannot reach other threads.
+      - name: Post per-thread replies
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          f=.review-context/replies.json
+          if [ ! -f "$f" ]; then echo "No replies.json, nothing to post."; exit 0; fi
+          jq -e 'type == "array"' "$f" > /dev/null
+          allowed=$(jq -c '[.[].id]' .review-context/comments.json)
+          jq -c --argjson allowed "$allowed" '
+            .[:50][]
+            | select((.comment_id | type) == "number" and (.comment_id | IN($allowed[])))
+            | select(.status == "done" or .status == "not_done")
+            | {comment_id,
+               body: ((if .status == "done" then "Done" else "Not done" end)
+                 + (if (.commit // "" | test("^[0-9a-f]{7,40}$")) then " in " + .commit else "" end)
+                 + ": " + ((.text // "") | tostring | .[:1000] | gsub("@"; "@\u200b")))}' "$f" |
+          while IFS= read -r reply; do
+            id=$(jq -r '.comment_id' <<< "$reply")
+            body=$(jq -r '.body' <<< "$reply")
+            gh api -X POST "repos/$GITHUB_REPOSITORY/pulls/$PR/comments/$id/replies" -f body="$body" > /dev/null
+          done
