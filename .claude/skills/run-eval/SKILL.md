@@ -44,3 +44,6 @@ Append an entry to `docs/crisp_dm_log.md` under **Evaluation**:
 ## Step 7: Report to the user
 The comparison table, any regressions, the failure categories, and one suggested next step.
 Do not modify code or prompts in this skill. Iteration is a separate task.
+
+If the run produced new files (a results file, a CRISP-DM log entry), commit them on a feature
+branch (`chore/eval-<component>`) and use the `open-pr` skill. Never commit them on `main`.
