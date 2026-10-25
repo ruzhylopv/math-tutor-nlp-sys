@@ -56,7 +56,8 @@ Register the node and add its edges as agreed in the plan. Do not change unrelat
 1. Add the node to `docs/architecture.md` (one line: purpose, reads, writes).
 2. Run `uv run ruff check . && uv run mypy src && uv run pytest -q`; fix failures.
 3. Run `uv run python scripts/draw_graph.py` if it exists, and confirm the node appears.
-4. Commit: `feat(<name>): scaffold node`.
+4. Work on a feature branch, never `main`. Commit: `feat(<name>): scaffold node`.
+5. Hand off to the `open-pr` skill to push and open the PR, then run `review-loop`.
 
 ## Final summary to the user
 List the files created and changed, the state fields added, and what is still a TODO.
