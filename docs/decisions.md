@@ -71,7 +71,8 @@ Format: decision | rejected alternative | why.
   with a `base_url` replacing `langchain-anthropic`; the change needs approval and goes in the first
   LLM node's plan. Free models vary in structured-output support; to be checked then.
 - **Retrieval: in-memory sentence-transformers + FAISS** | a LangChain vector store; a vector DB server
-  | a few hundred misconceptions fit in memory; fewer layers. New dependencies need approval.
+  | fewer layers than a server or a framework store. The catalogue size is UNVERIFIED (earlier text
+  said "a few hundred"; that had no source). New dependencies need approval.
 - **`localize`: rules on SymPy verdicts first, LLM only to interpret and check justifications** |
   LLM-first localization | keeps the "LLM never checks algebra" rule.
 - **Leakage check: a deterministic function in `src/tutor/tools/`, called by the orchestrator** | logic
@@ -88,3 +89,24 @@ Format: decision | rejected alternative | why.
 - How Eedi's multiple-choice records map to the retrieval query (problem + wrong step); verify its
   fields and Kaggle terms before use.
 - The target grades, and the final free OpenRouter model.
+
+## OPEN: error-type taxonomy and its data (added after the PR #11 review)
+Status: not decided. The four error types come from the planning handoff and have not been checked
+against real student work. Published sources exist (see `docs/architecture.md`, section
+"Error-type taxonomy: candidate sources").
+- **Derive the taxonomy from data**, not from the handoff alone: map labels from the candidate
+  datasets onto ours and count what does not fit. Decide after that mapping.
+- **Add a fallback value** (`other` / `unclassified`) so unmatched cases are visible. Undecided.
+- **Cases the four types do not cover:**
+  - lost solutions (for example dividing by `x` loses `x = 0`), the opposite of `omission_extraneous_root`;
+  - several errors in one solution (`first_error_step` names only the first);
+  - a correct final answer reached through invalid steps (the graph currently short-circuits on `is_correct`);
+  - a wrong method choice, or answering a different question;
+  - copy errors (misreading the problem makes step 1 `not_valid`, labelled `algebraic_transformation`);
+  - unparsable steps (`StepVerdict` can be `unparsable`, but no error type or route exists);
+  - steps that stop before an answer (not `final_answer_only`).
+- **`final_answer_only` has no producer.** Proposed: `classify` finds zero steps and the orchestrator
+  routes to `ask`, so `localize` never emits it. Undecided.
+- **Eedi catalogue size and coverage are unverified.** The number of distinct misconceptions is
+  unknown, and the misconceptions expected by scenarios A and B may not exist in it. Fallback: a
+  small hand-made supplement.

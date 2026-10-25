@@ -13,6 +13,12 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 - Planned, not started: explore MATH, GSM8K, ProcessBench / PRM800K and Eedi; note gaps that need
   hand-made sets (equivalence vs implication, reasoning-result mismatch, routing). Verify each
   source's format and licence first.
+- 2026-10-25 | error taxonomy | Searched for published step-level error datasets: Cognitive Tutor /
+  DataShop (24-label scheme), MathEDU, MR-GSM8K, ErrorRadar, MathCCS (links in
+  `docs/architecture.md`). Nothing downloaded or verified. Next: check formats and licences, map their
+  labels onto our four error types, count what does not fit. Open items: `docs/decisions.md`.
+- 2026-10-25 | Eedi | A paper reports 1,857 questions; the number of distinct misconceptions and
+  whether the scenario A/B misconceptions exist in it are unverified.
 
 ## Data preparation
 - Planned, not started: convert each source to the per-component JSONL format; fixed dev/test splits.

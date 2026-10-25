@@ -124,7 +124,7 @@ Formats and licences are not yet verified; check each before use and do not assu
 | Topic / level classification | MATH (topic and level labels) | filter to algebra-relevant subjects |
 | Final-answer checking | GSM8K, MATH | ground-truth answers |
 | First-error localization | ProcessBench, PRM800K | labelled first wrong step |
-| Misconception catalogue and retrieval eval | Eedi "Mining Misconceptions in Mathematics" (Kaggle) | question + wrong answer -> misconception id; its fields differ from our query (problem + wrong step), so a query mapping is needed. Check Kaggle terms |
+| Misconception catalogue and retrieval eval | Eedi "Mining Misconceptions in Mathematics" (Kaggle); a paper reports 1,857 questions with four expert-written options each ([MISTAKE](https://arxiv.org/pdf/2510.11502)); the number of distinct misconceptions is unverified | question + wrong answer -> misconception id; its fields differ from our query (problem + wrong step), so a query mapping is needed. Check Kaggle terms |
 | Equivalence vs implication | hand-made, about 20-30 radical / rational cases | public sets do not label this |
 | Reasoning-result mismatch | hand-made, about 20-30 cases | report as a limitation |
 | Routing | hand-made labelled turns (ask / diagnose / hint / reply) | include question-vs-attempt cases |
@@ -132,6 +132,25 @@ Formats and licences are not yet verified; check each before use and do not assu
 
 Every dataset gets a fixed dev/test split. Iterate on dev only; test is for final numbers.
 Never copy eval examples into prompts.
+
+### Error-type taxonomy: candidate sources
+The four error types above are provisional (OPEN, see `docs/decisions.md`). Published datasets and
+taxonomies to map them against. The notes come from search results, not from reading the papers:
+formats, label definitions, sizes and licences are unverified.
+- Cognitive Tutor algebra logs (PSLC DataShop): step-level Algebra I work; a paper reports 5,744
+  grouped error steps labelled with a 24-label scheme. Access terms unchecked.
+  [Algebra Error Classification with LLMs](https://arxiv.org/pdf/2305.06163)
+- MathEDU: expert-annotated error steps with coarse categories (wrong operation or concept,
+  calculation error, incomplete answer, others). [MathEDU](https://arxiv.org/pdf/2505.18056)
+- MR-GSM8K: first erroneous step and an error reason (calculation, formula, misunderstanding);
+  word problems. [MR-GSM8K](https://arxiv.org/pdf/2312.17080)
+- ErrorRadar: K-12 error-step identification and categorization, multimodal (part of it concerns
+  diagrams). [ErrorRadar](https://arxiv.org/pdf/2410.04509)
+- MathCCS: expert-annotated error categories and longitudinal student data; whether it has a
+  first-error-step label is unchecked. [MathCCS](https://arxiv.org/pdf/2502.13789)
+
+`omission_extraneous_root` and `reasoning_result_mismatch` are not known to appear in any of these;
+that is why they need hand-made sets.
 
 ## Retrieval
 In-memory index over the misconception catalogue (sentence-transformers embeddings, FAISS). Neither
