@@ -42,7 +42,11 @@ def build_diagnosis_graph() -> CompiledStateGraph[TutorState, None, TutorState, 
 
 
 def route_from_orchestrator(state: TutorState) -> Literal["diagnosis", "hint", "__end__"]:
-    """Follow `next_action`: diagnose and hint go on; ask and reply end the run."""
+    """Follow `next_action`: diagnose and hint go on; ask and reply end the run.
+
+    A missing `next_action` ends the run (the state is `total=False`). "__end__" is langgraph's
+    END; it must stay a literal here because langgraph reads the edge targets from this annotation.
+    """
     action = state.get("next_action", "reply")
     if action == "diagnose":
         return "diagnosis"
@@ -51,7 +55,7 @@ def route_from_orchestrator(state: TutorState) -> Literal["diagnosis", "hint", "
     return "__end__"
 
 
-def build_main_graph() -> CompiledStateGraph:  # type: ignore[type-arg]
+def build_main_graph() -> CompiledStateGraph[TutorState, None, TutorState, TutorState]:
     """orchestrator <-> diagnosis / hint. Both always return to the orchestrator."""
     graph = StateGraph(TutorState)
     graph.add_node("orchestrator", orchestrator)

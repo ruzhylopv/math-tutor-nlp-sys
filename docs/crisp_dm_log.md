@@ -31,7 +31,7 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 - Planned build order: verify, classify, localize, retrieve, hint, orchestrator + graph, checkpointer
   + scenarios, Streamlit UI.
 - 2026-10-25 | M1 skeleton | State models, config, the OpenRouter client, the shared eval runner, eight stub
-  nodes, the diagnosis subgraph and the main graph compile and pass 64 unit tests; `docs/graph.mmd` is the
+  nodes, the diagnosis subgraph and the main graph compile and pass 82 unit tests; `docs/graph.mmd` is the
   Mermaid export. No model has been called yet: `scripts/check_llm.py` is the next step to run by hand once
   `MODEL_NAME` is chosen. Plan: `docs/plans/design/2026-10-25-m1-skeleton.md`.
 
