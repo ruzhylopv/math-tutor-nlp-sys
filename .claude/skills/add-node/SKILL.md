@@ -17,7 +17,7 @@ Ask for anything missing. Do not guess:
 
 ## Step 1: Plan
 Write a short plan listing every file you will create or change and the state fields involved.
-Wait for approval, then save it to `docs/plans/YYYY-MM-DD-add-<name>.md`.
+Wait for approval, then save it to `docs/plans/nodes/YYYY-MM-DD-add-<name>.md`.
 
 ## Step 2: State
 If the node writes new fields, add them to `TutorState` in `src/tutor/state.py` with type hints.
