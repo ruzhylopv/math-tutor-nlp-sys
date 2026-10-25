@@ -22,5 +22,8 @@ dist/
 # Eval outputs
 evals/results/*.json
 
+# address-review CI context
+.review-context/
+
 # Setup instructions
 repo_setup.md

@@ -36,14 +36,31 @@ jobs:
 
       - run: uv sync
 
+      # The agent gets no `gh api`. This step fetches only the triggering review and its inline
+      # comments with the workflow's read-only calls, and checks the author.
+      - name: Fetch the triggering review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REVIEW_ID: ${{ github.event.review.id }}
+        run: |
+          mkdir -p .review-context
+          base="repos/$GITHUB_REPOSITORY/pulls/$PR/reviews/$REVIEW_ID"
+          gh api "$base" --jq '{id, author: .user.login, state, body}' > .review-context/review.json
+          jq -e '.author == "ruzhylopv"' .review-context/review.json > /dev/null
+          gh api "$base/comments?per_page=100" \
+            --jq '[.[] | {path, line, original_line, author: .user.login, body}]' \
+            > .review-context/comments.json
+
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
             Run the address-review skill for pull request #${{ github.event.pull_request.number }}
-            in ${{ github.repository }} (review id ${{ github.event.review.id }}).
+            in ${{ github.repository }}. The triggering review is in .review-context/review.json and
+            its inline comments are in .review-context/comments.json; use only those files.
             Follow CLAUDE.md. Do not merge. Do not touch other branches.
           claude_args: |
             --max-turns 10
-            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(uv run:*),Bash(git status),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*),Bash(git push),Bash(git push origin:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api repos/:*)"
-            --disallowedTools "Bash(gh pr merge:*),Bash(gh api -X:*),Bash(gh api --method:*),Bash(gh api -f:*),Bash(gh api -F:*),Bash(git push --force:*),Bash(git push -f:*)"
+            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(uv run:*),Bash(git status),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*),Bash(git push),Bash(git push origin:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*)"
+            --disallowedTools "Bash(gh pr merge:*),Bash(gh api:*),Bash(git push --force:*),Bash(git push -f:*)"
