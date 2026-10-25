@@ -33,3 +33,12 @@ Format: date | decision | alternative rejected | why.
   - Rejected: a second GitHub account for reviews. Needs an account and a changed login check on a public repo.
   - Rejected: bot-authored PRs from a second Actions workflow. Larger change; unverified who the author would be.
   - Rejected: triggering on every comment review. Fires on routine inline comments; the phrase makes it explicit.
+
+## 2026-10-25 | address-review pre-fetches the review; the agent has no `gh api`
+- **Decision:** a workflow step fetches the triggering review and its inline comments (GET, by review
+  id, author checked) into `.review-context/`; the agent reads those files only.
+  - Rejected: fixing the allow pattern (`gh api repos/*`). Still lets the agent read other users'
+    comments and, with flag gaps (`--field`, `--input`), reach write endpoints.
+  - Rejected: a deny-list of `gh api` write flags. Easy to miss one; an absent capability cannot be misused.
+  - Note: on a public repo the login check on the trigger is the only guard on who can start a run,
+    and the pre-fetch now also ties the instructions to that same review and author.

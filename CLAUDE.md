@@ -36,7 +36,7 @@ Every change reaches `main` through a reviewed PR. The developer reviews and mer
 - After opening a PR, run the `review-loop` skill: reviewer subagent, then fixer subagent, at most
   2 passes. Findings are graded P0 (blocker), P1 (critical), P2 (should fix), P3 (nit). P0 and P1
   must be resolved or escalated in the PR; P3 is reported, not fixed.
-- When the developer requests changes on a PR, the `address-review` workflow (GitHub Actions) runs the
+- When the developer requests changes on a PR (or submits a comment review starting with `/address-review`), the `address-review` workflow (GitHub Actions) runs the
   `address-review` skill on that PR's branch. It is limited to the developer's account and never merges.
 - The plan gate (rule 1) still applies. A plan is approved in chat before any code is written.
 
