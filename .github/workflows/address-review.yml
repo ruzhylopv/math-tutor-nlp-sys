@@ -1,0 +1,45 @@
+name: address-review
+
+# When the developer submits "Request changes" on a PR, Claude Code fixes the requested changes on
+# that PR's branch. Runs only for ruzhylopv, on same-repo PRs. Never merges.
+on:
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: address-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  address-review:
+    if: >-
+      github.event.review.state == 'changes_requested' &&
+      github.event.review.user.login == 'ruzhylopv' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+
+      - run: uv sync
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Run the address-review skill for pull request #${{ github.event.pull_request.number }}
+            in ${{ github.repository }} (review id ${{ github.event.review.id }}).
+            Follow CLAUDE.md. Do not merge. Do not touch other branches.
+          claude_args: |
+            --max-turns 10
+            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(uv run:*),Bash(git status),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*),Bash(git push),Bash(git push origin:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api repos/:*)"
+            --disallowedTools "Bash(gh pr merge:*),Bash(gh api -X:*),Bash(gh api --method:*),Bash(gh api -f:*),Bash(gh api -F:*),Bash(git push --force:*),Bash(git push -f:*)"

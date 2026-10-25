@@ -16,3 +16,13 @@ Format: date | decision | alternative rejected | why.
   - Rejected: loop until clean. Can churn indefinitely on subjective findings.
 - **Decision:** keep the plan-approval gate before multi-file changes.
   - Rejected: moving the plan into the PR description. Code would be written before approval.
+
+## 2026-10-25 | address-review runs in GitHub Actions
+- **Decision:** a `pull_request_review` workflow runs Claude Code when the developer requests
+  changes, using the Pro OAuth token, restricted to `ruzhylopv`, `--max-turns 10`.
+  - Rejected: polling with `/loop`. Only works while a local session is open; delayed.
+  - Rejected: a scheduled cloud routine. Still polling, extra setup.
+- **Decision:** CI fixes only the reviewed branch; stack rebases happen locally.
+  - Rejected: installing `gh-stack` in the workflow. More setup and more failure modes for a rare case.
+- **Decision:** replies are one summary PR comment, and `gh api` is limited to GET-style calls.
+  - Rejected: per-thread replies via `gh api` POST. Needs write-capable `gh api`, which could also merge.
