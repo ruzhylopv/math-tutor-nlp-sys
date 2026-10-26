@@ -45,8 +45,8 @@ extra LLM call (as drawn in `docs/architecture.md`).
 ## Pydantic models
 - `Step`: claim (math expression or equation), justification (text, may be empty), justification_claim (optional), operation tag
   (expand / rearrange / factor / zero-product / substitute / square / other).
-- `StepVerdict`: step index; relation to the previous step (equivalent / implies / not_valid /
-  unparsable); justification_claims_ok (bool or None); notes.
+- `StepVerdict`: step index; relation to the previous step (equivalent / implies / narrows /
+  not_valid / unparsable; `narrows` = rejecting an extraneous root, see the M2 plan); justification_claims_ok (bool or None); notes.
 - `Decision`: action (ask / diagnose / hint / reply), reason, reply_text (optional).
 - `Misconception`: id, description, topic, score.
 

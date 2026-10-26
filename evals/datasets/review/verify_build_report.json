@@ -1,0 +1,10 @@
+{
+  "seed": 0,
+  "mined_pairs": 1251,
+  "agreed": 1118,
+  "disagreed": 9,
+  "unparsable": 124,
+  "agreement_rate_on_parseable": 0.9920141969831411,
+  "parse_rate": 0.9008792965627498,
+  "note": "mined labels come from MATH solution authors; see evals/datasets/README.md"
+}

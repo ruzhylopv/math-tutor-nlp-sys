@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 Operation = Literal[
     "expand", "rearrange", "factor", "zero-product", "substitute", "square", "other"
 ]
-Relation = Literal["equivalent", "implies", "not_valid", "unparsable"]
+Relation = Literal["equivalent", "implies", "narrows", "not_valid", "unparsable"]
 Action = Literal["ask", "diagnose", "hint", "reply"]
 ErrorType = Literal[
     "algebraic_transformation",
