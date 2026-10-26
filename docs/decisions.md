@@ -175,7 +175,7 @@ Format: decision | rejected alternative | why.
 
 ### Still OPEN after this change
 - The counterexample tool: how it chooses a value, its interface, when `hint` calls it. (The rule is decided.)
-- Where `parse_input` sits (proposal in the TutorState outline: first node of the diagnosis subgraph).
+- (Resolved 2026-10-26: `parse_input` sits before the orchestrator; see "M3 decisions" below.)
 - The checkpointer: in-memory for now; a persistent one is a new dependency and needs approval.
 - The error-type taxonomy and Eedi items above;
   the hint cap, the recurrence threshold, the target grades and the final model.
@@ -364,3 +364,18 @@ The five reviews found five P1s; the stack had been merged before they could be 
 - **`verify` needs a plain-text problem statement**; a prose problem makes step 1 `unparsable` and `is_correct` False until M3's
   `parse_input` supplies one (listed in the roadmap). `is_correct` cannot say "could not judge" (a tri-state is an option).
 
+## 2026-10-26 | M3 decisions
+- **`parse_input` sits in the main graph between the UI and the orchestrator** | the first node of the diagnosis subgraph
+  (proposed earlier) | the orchestrator then routes on a structure (problem, steps) and not only on raw text. Cost: one
+  LLM call per message, including pure questions. `parse_input` resets `student_steps` for a message without working, so
+  stale steps are never mistaken for a new attempt.
+- **`topic` is one of the 7 MATH subjects and `level` is MATH's 1-5** | our own finer taxonomy (brackets, quadratics, ...) |
+  labels exist, are human-assigned and independent of our code; a finer taxonomy would need hand labels. In scope:
+  Prealgebra, Algebra, Intermediate Algebra; `classify` doubles as a scope guard.
+- **`parse_input` is evaluated by normalized exact match of each claim** | equivalence under SymPy | SymPy's parser
+  distributes `3(x+2)` into `3x+6`, so an LLM that "repairs" a student's mistake would go unnoticed.
+- **An invalid model output twice in a row gives an empty result, not an exception** | raising | the orchestrator then asks
+  the student to resend; a free model failing once must not crash a session.
+- **The committed `verify` datasets are not rebuilt** | rebuilding with the stricter miner (preview: dev 1,237, test 479) |
+  the developer decided it was not needed. Known consequence: about a dozen identical trivial pairs appear in both
+  splits, and the miner in `evals/builders/` no longer reproduces the committed files.

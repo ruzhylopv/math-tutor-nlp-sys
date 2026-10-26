@@ -32,7 +32,7 @@ evaluated in isolation on its own dataset.
 ### Main graph
 ```mermaid
 flowchart TD
-  START --> orchestrator
+  START --> parse_input --> orchestrator
   orchestrator -->|diagnose| diagnosis
   orchestrator -->|hint| hint
   orchestrator -->|ask / reply| END
@@ -42,11 +42,15 @@ flowchart TD
 The orchestrator sets `reply_text` for `ask` and `reply`. Both `diagnosis` and `hint` always return
 to the orchestrator (see "Orchestrator modes").
 
+`parse_input` runs on every student message, before the orchestrator, so the orchestrator routes on a
+structure (is there a problem, are there steps) and not only on raw text. For a message without working
+it resets `student_steps` to empty; for a message without a problem it keeps the stored `problem`.
+
 ### Diagnosis subgraph
 Fixed order, compiled separately so evals can call it without the chat layer.
 ```mermaid
 flowchart LR
-  START --> parse_input --> classify --> verify
+  START --> classify --> verify
   verify -->|"correct, all steps valid, no flagged justification"| finish_diagnosis
   verify -->|otherwise| localize --> retrieve --> finish_diagnosis
   finish_diagnosis --> END
@@ -69,7 +73,7 @@ invalid step, therefore goes on to `localize` (error type `reasoning_result_mism
 | Node | Type | Purpose | Reads | Writes | Metric |
 |---|---|---|---|---|---|
 | orchestrator | LLM (structured `Decision`) on a new student message; plain code in the other two modes | Decide the next action; ask for working when missing; after a diagnosis set or escalate the hint level; after a hint run the leakage check; call DB tools | messages, stage, state so far | next_action, hint_level, hint_retries, learner_profile, reply_text, messages, turns, hints_used, misconceptions_seen | routing accuracy on labelled turns |
-| parse_input | LLM, structured output | Turn the student's raw text into our structure: the problem text and the attempt as `Step`s (claim, justification, optional justification claim, operation tag). Keeps the stored problem when the message has none. | latest student message, stored problem | problem, student_steps | problem-extraction accuracy; step-split accuracy; SymPy parse rate of claims |
+| parse_input | LLM, structured output (main graph, before the orchestrator) | Turn the student's raw text into our structure: the problem text and the attempt as `Step`s (claim, justification, optional justification claim, operation tag). Keeps the stored problem when the message has none. | latest student message, stored problem | problem, student_steps | problem-extraction accuracy; step-split accuracy; SymPy parse rate of claims |
 | classify | LLM | Tag topic and level | problem, student_steps | topic, level | topic accuracy / macro-F1 |
 | verify | deterministic (SymPy) | Solve the original; check the final answer; check each step as equivalent / implies / narrows / not_valid / unparsable; evaluate arithmetic claims in justifications | problem, student_steps | is_correct, step_verdicts | answer-check accuracy; step-verdict accuracy |
 | localize | rules on SymPy verdicts, LLM only for interpretation | First wrong step or error type; check that the justification matches what happened | step_verdicts, student_steps | first_error_step, focus_step, error_type | first-error-step accuracy; error-type accuracy; mismatch detection rate |

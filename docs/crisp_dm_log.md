@@ -25,6 +25,9 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   MATH dataset card; sizes, schema and the Algebra levels 1-3 yield are in `docs/plans/nodes/2026-10-26-m2-verify.md`.
   PRM800K is a good fit for the final-answer check and for localize (M4), a poor fit for step relations. The
   `phase2_train` file (435 MB) is not downloaded yet.
+- 2026-10-26 | MATH labels for classify | MATH has 12,500 problems with human-assigned `subject` (Algebra 2,931; Prealgebra
+  2,076; Intermediate Algebra 2,198; Geometry 1,350; Number Theory 1,409; Precalculus 1,291; Counting & Probability 1,245)
+  and `level` 1-5, in the PRM800K `math_splits` files. `classify` uses them as labels; no finer topic taxonomy.
 - 2026-10-25 | Eedi | A paper reports 1,857 questions; the number of distinct misconceptions and
   whether the scenario A/B misconceptions exist in it are unverified.
 

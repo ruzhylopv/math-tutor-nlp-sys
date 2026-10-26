@@ -20,6 +20,7 @@ Path: `docs/plans/<area>/YYYY-MM-DD-<topic>.md`.
 | 2026-10-25 | [address-review: hardening](workflow/2026-10-25-address-review-hardening.md) | implemented |
 | 2026-10-25 | [Design handoff to docs](design/2026-10-25-design-handoff.md) | implemented |
 | 2026-10-25 | [Design gaps (PR #11 review)](design/2026-10-25-design-gaps.md) | implemented (docs) |
+| 2026-10-26 | [M3 input layer](nodes/2026-10-26-m3-input-layer.md) | approved, in progress |
 | 2026-10-26 | [M2 verify](nodes/2026-10-26-m2-verify.md) | approved, in progress |
 | 2026-10-25 | [Roadmap M1-M7](design/2026-10-25-roadmap.md) | draft, awaiting review |
 | 2026-10-25 | [M1 skeleton](design/2026-10-25-m1-skeleton.md) | approved, in progress |
