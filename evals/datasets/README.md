@@ -31,6 +31,12 @@ Where the labels come from:
 Splits: mined and generated cases by source problem with a fixed seed (no problem in both splits);
 hand-written cases stratified by relation, because they share problem texts.
 
+How much to trust a metric on these splits: accuracy here is high by construction. Mined positives were
+kept only where SymPy agreed with the author, generated negatives passed a witness check, and the
+hand-written labels were reconciled with the checker. Treat the splits as a regression suite.
+The independent numbers are in `review/verify_build_report.json`: how often the checker agrees with
+a human-written step (agreement rate on parseable pairs) and how often it cannot parse one.
+
 Known limits:
 - The rare relations are few in test (implies 4, narrows 2, unparsable 5): report them with their
   counts and do not over-read a single wrong case.

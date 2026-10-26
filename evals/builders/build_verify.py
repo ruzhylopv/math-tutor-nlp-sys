@@ -146,6 +146,30 @@ def write_jsonl(path: Path, records: list[Record]) -> None:
     )
 
 
+def write_report(path: Path, counts: Counter[str], seed: int) -> None:
+    """The agreement numbers that exist before the checker's verdict filters the positives.
+
+    The split files contain only pairs SymPy agreed with, so accuracy on them is high by
+    construction. These counts are the independent evidence: how often the checker agrees with a
+    human-written step, and how often it cannot parse one.
+    """
+    agreed = counts["mined positives"]
+    disagreed = counts["mined pairs sent to review"]
+    unparsable = counts["mined pairs dropped (unparsable)"]
+    parseable = agreed + disagreed
+    report = {
+        "seed": seed,
+        "mined_pairs": parseable + unparsable,
+        "agreed": agreed,
+        "disagreed": disagreed,
+        "unparsable": unparsable,
+        "agreement_rate_on_parseable": agreed / parseable if parseable else None,
+        "parse_rate": parseable / (parseable + unparsable) if parseable + unparsable else None,
+        "note": "mined labels come from MATH solution authors; see evals/datasets/README.md",
+    }
+    path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+
+
 def build(math_dir: Path, out_dir: Path, seed: int) -> Counter[str]:
     kept, review, counts = mine_records(load_math(math_dir), seed)
     by_split: dict[str, list[Record]] = {"dev": [], "test": []}
@@ -157,6 +181,7 @@ def build(math_dir: Path, out_dir: Path, seed: int) -> Counter[str]:
         write_jsonl(out_dir / split / "verify_steps.jsonl", records)
         counts.update(f"{split}: {r['source']}/{r['relation']}" for r in records)
     write_jsonl(out_dir / "review" / "verify_steps_disagreements.jsonl", review)
+    write_report(out_dir / "review" / "verify_build_report.json", counts, seed)
     return counts
 
 

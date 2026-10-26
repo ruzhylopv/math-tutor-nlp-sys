@@ -113,3 +113,13 @@ def test_every_relation_is_in_both_splits_for_the_handwritten_cases(tmp_path: Pa
             if item["source"] == "handwritten"
         }
         assert relations == {"equivalent", "implies", "narrows", "not_valid", "unparsable"}
+
+
+def test_the_build_report_has_the_agreement_numbers(tmp_path: Path) -> None:
+    out = tmp_path / "datasets"
+    counts = build(_math_dir(tmp_path), out, seed=0)
+    report = json.loads((out / "review" / "verify_build_report.json").read_text(encoding="utf-8"))
+    assert report["agreed"] == counts["mined positives"]
+    assert report["disagreed"] == counts["mined pairs sent to review"] >= 1
+    parseable = report["agreed"] + report["disagreed"]
+    assert report["agreement_rate_on_parseable"] == report["agreed"] / parseable
