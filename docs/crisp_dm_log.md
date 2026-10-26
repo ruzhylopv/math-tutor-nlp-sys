@@ -29,7 +29,7 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   2,076; Intermediate Algebra 2,198; Geometry 1,350; Number Theory 1,409; Precalculus 1,291; Counting & Probability 1,245)
   and `level` 1-5, in the PRM800K `math_splits` files. `classify` uses them as labels; no finer topic taxonomy.
 - 2026-10-26 | parse_input messages | No dataset of messy student algebra messages with a known parse was found or checked;
-  the expected parse is instead known by construction: mined MATH step chains (one per problem; a preview of the builder found 540 usable ones, the real build is pending the
+  the expected parse is instead known by construction: mined MATH step chains (one per problem; a preview of the builder found 535 usable ones, the real build is pending the
   developer's run), rendered in
   four layouts and four notations, with typos in words only, chatty frames and some deliberately wrong steps, plus 29
   hand-written messages. Details and limits: `evals/datasets/README.md`.
