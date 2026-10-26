@@ -103,6 +103,6 @@ split by problem hash; 20 (dev) and 9 (test) hand-written ones. `review/parse_in
 24 generated messages from the dev split only (the test split stays unread while the prompt is tuned); hand-written cases carry `spot_check: pending`.
 
 How much to trust a metric: the messages are synthetic and only as messy as the renderer makes them (no real student
-text), most chains are arithmetic or expressions (in a preview of the builder only about a fifth were equations; the real build is pending the developer's run), and spoken math is rare in generated
+text), most chains are arithmetic or expressions (about a sixth of the generated messages are equations: 25 of 150 in dev, 27 of 150 in test), and spoken math is rare in generated
 data because most chains contain brackets or fractions. Hand-written cases are the discriminating ones.
 
