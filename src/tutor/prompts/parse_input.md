@@ -9,7 +9,7 @@ Two parts, labelled in the user's text:
 - "Student message": what the student just wrote. It may contain the problem, a step-by-step attempt, only an answer, only a question, or a mix. The math may be plain text, LaTeX, unicode (x², √, ×, ÷), or spoken ("y squared plus four y equals twelve").
 
 ## Task
-1. Problem. If the message states a problem, give it as plain-text math. When the problem is an equation or an expression, write only that math and drop the instruction words ("Solve for t: 8t - 5 = 3t + 20" becomes `8t - 5 = 3t + 20`; "Simplify 4(y - 3) + 2y" becomes `4(y - 3) + 2y`). If the problem is a word problem, give its text as written. If the message does not state a problem, give null; the stored problem stays. An equation with no instruction word is the problem only when no problem is stored; when a problem is stored it is a step. The exception is a student who says the problem is new or different (for example "new problem" or "a different question"): the equation they give then is the new problem, even when a problem is stored.
+1. Problem. If the message states a problem, give it as plain-text math. When the problem is an equation or an expression, write only that math and drop the instruction words ("Solve for t: 8t - 5 = 3t + 20" becomes `8t - 5 = 3t + 20`; "Simplify 4(y - 3) + 2y" becomes `4(y - 3) + 2y`). If the problem is a word problem, give its text as written. If the message does not state a problem, give null; the stored problem stays. An equation with no instruction word is the problem only when no problem is stored (then the first equation or expression is the problem and the later lines are steps); when a problem is stored it is a step. The exception is a student who says the problem is new or different (for example "new problem" or "a different question"): the equation they give then is the new problem, even when a problem is stored.
 2. Steps. List the student's working in the order written, one step per line or equation. Give an empty list if the student wrote no working (only a question, only the problem, or only a bare answer). A bare answer in a message that states no problem and shows no other working is not a step. A line written after a stated problem or after other working is a step, including the last line.
 3. For each step:
    - `claim`: the math of the line as the student wrote it, in plain text.
@@ -24,7 +24,7 @@ Plain-text math: `^` for powers, `/` for division, `*` for multiplication (or im
 Return a `ParsedInput` (see `tutor.state`): `problem` (a string or null) and `steps` (a list of `Step` objects with `claim`, `justification`, `justification_claim` and `operation`).
 
 ## Rules
-- Transcribe faithfully. If the student wrote `3x + 2 = 15` where `3x + 6 = 15` is right, write `3x + 2 = 15`. Do not fix arithmetic, signs, brackets or logic.
+- Transcribe faithfully. If the student wrote `6y + 1 = 19` where `6y + 5 = 19` is right, write `6y + 1 = 19`. Do not fix arithmetic, signs, brackets or logic.
 - Do not combine, drop, reorder or invent steps.
 - A final answer is a step only when it is a line after a stated problem or after other working; a bare answer alone is not.
 - Do not explain, solve or comment.

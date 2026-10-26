@@ -32,7 +32,7 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   the expected parse is instead known by construction: mined MATH step chains (one per problem; a preview of the builder found 535 usable ones, the real build is pending the
   developer's run), rendered in
   four layouts and four notations, with typos in words only, chatty frames and some deliberately wrong steps, plus 29
-  hand-written messages. Details and limits: `evals/datasets/README.md`.
+  hand-written messages. Details and limits: `evals/datasets/README.md`. The prompt's "new or different problem" rule was written after reading hand-written case `hand/011`, which is in the test split; do not tune the prompt further on hand cases of the test split.
 - 2026-10-25 | Eedi | A paper reports 1,857 questions; the number of distinct misconceptions and
   whether the scenario A/B misconceptions exist in it are unverified.
 
