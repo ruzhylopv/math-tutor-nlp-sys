@@ -5,7 +5,6 @@ from typing import Any
 import pytest
 from pydantic import TypeAdapter
 
-from tutor.nodes.classify import classify
 from tutor.nodes.finish_diagnosis import finish_diagnosis
 from tutor.nodes.hint import hint
 from tutor.nodes.localize import localize
@@ -19,7 +18,6 @@ Node = Callable[[TutorState], dict[str, Any]]
 
 DECLARED_WRITES: dict[str, set[str]] = {
     "parse_input": {"problem", "student_steps"},
-    "classify": {"topic", "level"},
     "verify": {"is_correct", "step_verdicts"},
     "localize": {"first_error_step", "focus_step", "error_type"},
     "retrieve": {"misconception_candidates", "misconception"},
@@ -29,7 +27,6 @@ DECLARED_WRITES: dict[str, set[str]] = {
 }
 NODES: dict[str, Node] = {
     "parse_input": parse_input,
-    "classify": classify,
     "verify": verify,
     "localize": localize,
     "retrieve": retrieve,
@@ -51,7 +48,7 @@ def test_stub_values_have_the_declared_types(name: str) -> None:
     TypeAdapter(TutorState).validate_python(result)
 
 
-@pytest.mark.parametrize("name", ["parse_input", "classify", "localize", "hint", "orchestrator"])
+@pytest.mark.parametrize("name", ["parse_input", "localize", "hint", "orchestrator"])
 def test_llm_node_prompt_has_the_required_sections(name: str) -> None:
     text = (PROMPTS / f"{name}.md").read_text(encoding="utf-8")
     for section in ("## Role", "## Inputs", "## Task", "## Output format", "## Rules"):

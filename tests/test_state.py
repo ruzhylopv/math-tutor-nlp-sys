@@ -125,6 +125,6 @@ def test_parsed_input_defaults_to_no_problem_and_no_steps() -> None:
 
 
 def test_classification_level_starts_at_one() -> None:
-    assert Classification(topic="algebra", level=1).level == 1
+    assert Classification(topic="Algebra", level=1).level == 1
     with pytest.raises(ValidationError):
-        Classification(topic="algebra", level=0)
+        Classification(topic="Algebra", level=0)

@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -56,8 +57,10 @@ def test_routing_after_verify() -> None:
 
 
 def test_a_failing_verify_takes_the_full_path_through_localize_and_retrieve(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, canned_llm: Callable[..., None]
 ) -> None:
+    canned_llm()
+
     def failing_verify(state: TutorState) -> dict[str, Any]:
         return {"is_correct": False, "step_verdicts": []}
 
@@ -73,8 +76,10 @@ def test_a_failing_verify_takes_the_full_path_through_localize_and_retrieve(
 
 
 def test_a_clean_solution_short_circuits_to_finish_diagnosis(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, canned_llm: Callable[..., None]
 ) -> None:
+    canned_llm()
+
     def clean_verify(state: TutorState) -> dict[str, Any]:
         return {
             "is_correct": True,

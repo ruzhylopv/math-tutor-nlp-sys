@@ -23,6 +23,16 @@ ErrorType = Literal[
     "reasoning_result_mismatch",
 ]
 Stage = Literal["new_message", "diagnosed", "hinted"]
+Topic = Literal[
+    "Prealgebra",
+    "Algebra",
+    "Intermediate Algebra",
+    "Geometry",
+    "Number Theory",
+    "Counting & Probability",
+    "Precalculus",
+]
+IN_SCOPE_TOPICS: frozenset[str] = frozenset({"Prealgebra", "Algebra", "Intermediate Algebra"})
 
 
 class Step(BaseModel):
@@ -54,10 +64,10 @@ class ParsedInput(BaseModel):
 
 
 class Classification(BaseModel):
-    """What `classify` returns: the topic label and the difficulty level."""
+    """What `classify` returns: the MATH subject and the MATH difficulty level (1 easiest)."""
 
-    topic: str
-    level: int = Field(ge=1)
+    topic: Topic
+    level: int = Field(ge=1, le=5)
 
 
 class Decision(BaseModel):
@@ -91,7 +101,7 @@ class TutorState(TypedDict, total=False):
     student_id: str
     problem: str
     student_steps: list[Step]
-    topic: str
+    topic: Topic
     level: int
     is_correct: bool
     step_verdicts: list[StepVerdict]
