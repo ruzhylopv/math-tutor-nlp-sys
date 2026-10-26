@@ -3,15 +3,22 @@
 Fixed `dev/` and `test/` splits per component. Iterate on dev only; test is for the final reported
 numbers. Never edit a dataset or its labels to make a result pass.
 
+**Status:** the files in `dev/` and `test/` were built before the M2 review fixes. The builder in
+`evals/builders/` is now stricter, and rebuilding is waiting for the developer's approval (the test
+split is written by a script, which the `Edit`/`Write` deny on `evals/datasets/test/**` does not
+cover). Counts, rates and versions live in `review/verify_build_report.json`; they are not repeated
+here so they cannot go stale.
+
 ## verify_steps.jsonl (M2)
 One line per pair of consecutive lines of a solution. Built by
 `uv run python -m evals.builders.build_verify --math-dir <dir with train.jsonl and test.jsonl>`
-(the `math_splits` of PRM800K, MATH as JSONL; raw files stay outside the repo).
+from the `math_splits` of PRM800K (MATH as JSONL; raw files stay outside the repo, so the build cannot
+be reproduced from the repo alone). It reads Algebra levels 1-3 only.
 
 | Field | Meaning |
 |---|---|
 | `id` | `math/<unique_id>#<n>`, `gen/<...>` (generated negative) or `hand/<nnn>` |
-| `task_type` | solve, simplify, expand or factor (a rough tag from the problem text) |
+| `task_type` | solve, simplify, expand, factor or other (a rough tag from the problem text) |
 | `problem` | the problem as written in MATH or by hand (LaTeX) |
 | `prev`, `curr` | two consecutive lines in plain text, as `tutor.tools.algebra` parses them |
 | `relation` | `equivalent`, `implies`, `narrows`, `not_valid` or `unparsable` |
@@ -19,27 +26,48 @@ One line per pair of consecutive lines of a solution. Built by
 | `source` | `math`, `generated` or `handwritten` |
 | `provenance` | where it came from; generated cases record the corruption rule and the seed |
 
-Where the labels come from:
-- `math`: `equivalent`, from the human author of the MATH solution. Kept only if SymPy agrees; the
-  rest goes to `review/verify_steps_disagreements.jsonl` (author typos, lines that hold only under a
-  condition) and is not part of any split.
+`unparsable` means "outside the checker's supported grammar", not "not mathematics": `sin(x) = 0`,
+`x^2 > 4` and `5 / 0` are labelled `unparsable` because the checker handles one variable, real
+solutions, no inequalities and no trigonometry.
+
+### Where the labels come from
+- `math`: `equivalent`, from the human author of the MATH solution, **kept only if SymPy agrees**.
+  Pairs SymPy calls not equivalent are written to `review/verify_steps_disagreements.jsonl`, and pairs
+  it cannot parse to `review/verify_steps_unparsable.jsonl`; neither is part of a split.
 - `generated`: `not_valid`, from the rule that broke a mined line. Kept only when exact arithmetic
-  finds a witness point, so a corruption that is secretly still equivalent is discarded.
+  finds a witness point, so a corruption that is secretly still equivalent is discarded. The edits are
+  single-token (sign, number, exponent, a dropped term), not student-like errors.
 - `handwritten`: written by the agent with the relation worked out by hand, then cross-checked against
-  the checker. The developer spot-checks a sample (`provenance.spot_check` is `pending`).
+  the checker. A label was changed during that cross-check (see `docs/decisions.md`), so accuracy on
+  these is an agreement figure, not held-out performance. The developer spot-checks a sample
+  (`provenance.spot_check` is `pending`). Several are near-duplicates of each other by design (the same
+  template with other numbers), and some share a problem text across dev and test.
 
-Splits: mined and generated cases by source problem with a fixed seed (no problem in both splits);
-hand-written cases stratified by relation, because they share problem texts.
+### Splits
+Mined and generated cases are split by source problem with a fixed seed, so no problem is in both
+splits; identical `(prev, curr, relation)` pairs from different problems are kept once. Hand-written
+cases are split stratified by relation (every third case of each relation goes to test).
 
-How much to trust a metric on these splits: accuracy here is high by construction. Mined positives were
-kept only where SymPy agreed with the author, generated negatives passed a witness check, and the
-hand-written labels were reconciled with the checker. Treat the splits as a regression suite.
-The independent numbers are in `review/verify_build_report.json`: how often the checker agrees with
-a human-written step (agreement rate on parseable pairs) and how often it cannot parse one.
+### How much to trust a metric on these splits
+Accuracy here is high by construction, so treat the splits as a regression suite:
+- mined positives are exactly the pairs the checker accepts, so recall on them is about 100% and a
+  parser false negative can never show up;
+- generated negatives are easy single edits; the hand-written cases are the discriminating ones;
+- most mined cases are trivial arithmetic (`3^2 -> 9`), and equation pairs are few, so the solution-set
+  path is covered mostly by hand-written cases;
+- rare relations (`implies`, `narrows`, `unparsable`) have only a handful of cases per split: report them
+  with their counts.
 
-Known limits:
-- The rare relations are few in test (implies 4, narrows 2, unparsable 5): report them with their
-  counts and do not over-read a single wrong case.
-- Mined pairs keep only identity lines (same variables on both sides); conditions, substitutions,
-  complex numbers, function notation and custom operations are filtered out.
-- One variable per equation, real solutions only, no inequalities (see the M2 plan).
+The independent numbers are in `review/verify_build_report.json`: how often the checker agrees with a
+human-written step (agreement rate on parseable pairs) and how often it cannot parse one.
+
+### Review files
+- `review/verify_spotcheck_generated.jsonl`: a seeded 20% sample of the generated negatives, for the
+  developer to read. The hand-written cases carry `spot_check: pending` in their provenance.
+
+### Known limits
+- Algebra levels 1-3 only; identity lines only (same variables on both sides, no complex numbers,
+  function notation, custom operations or conditions); one variable per equation, real solutions only.
+- Two unrelated equations that share a solution (`x + 3 = 5`, `x + 7 = 9`) could still be mined as a pair.
+- The datasets are frozen once approved. Do not rebuild after a checker change without saying so:
+  membership depends on the code under test.

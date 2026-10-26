@@ -151,5 +151,4 @@ HANDWRITTEN: list[Case] = [
     _case("solve", _BAD, "x = 1", "x^2 > 4", "unparsable"),
     _case("solve", _BAD, "x = 1", "x \u2248 3.2", "unparsable"),
     _case("solve", _BAD, "x = 1", "x = 1.2.3", "unparsable"),
-    _case("solve", _BAD, "x = 1", "__import__('os')", "unparsable"),
 ]

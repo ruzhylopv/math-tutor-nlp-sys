@@ -3,8 +3,9 @@
 The label comes from the rule that broke the line (drop a term, flip a sign, bump a number, change
 an exponent). A corruption is kept only when exact arithmetic finds a witness: a point where the new
 line provably differs from the old one (for equations, a point where the old equation holds and the
-new one fails). The witness uses evaluation, not SymPy's simplifier or solver, so a corruption that
-is secretly still equivalent is discarded instead of being mislabelled.
+new one fails). The witness evaluates both lines at that point with exact rationals and simplifies
+the resulting number; it never asks SymPy to prove two expressions equal or to solve an equation.
+A corruption that is secretly still equivalent is discarded instead of being mislabelled.
 """
 
 import random
