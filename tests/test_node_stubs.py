@@ -48,7 +48,7 @@ def test_stub_values_have_the_declared_types(name: str) -> None:
     TypeAdapter(TutorState).validate_python(result)
 
 
-@pytest.mark.parametrize("name", ["parse_input", "localize", "hint", "orchestrator"])
+@pytest.mark.parametrize("name", ["parse_input", "classify", "localize", "hint", "orchestrator"])
 def test_llm_node_prompt_has_the_required_sections(name: str) -> None:
     text = (PROMPTS / f"{name}.md").read_text(encoding="utf-8")
     for section in ("## Role", "## Inputs", "## Task", "## Output format", "## Rules"):
