@@ -42,9 +42,11 @@ class FakeLLM:
     def __init__(self, chain: FakeChain) -> None:
         self.chain = chain
         self.method: str | None = None
+        self.schema: Any = None
 
     def with_structured_output(self, schema: Any, method: str) -> FakeChain:
         self.method = method
+        self.schema = schema
         return self.chain
 
 
@@ -68,7 +70,7 @@ def test_a_valid_answer_is_returned_with_the_prompt_and_the_text(
 ) -> None:
     llm, chain = _use(monkeypatch, GOOD)
     assert call_structured("classify", Classification, "Simplify $x+x$.") == GOOD
-    assert llm.method == "json_schema"
+    assert llm.method == "json_schema" and llm.schema is Classification
     system, human = chain.calls[0]
     assert system.content == load_prompt("classify") and human.content == "Simplify $x+x$."
 
