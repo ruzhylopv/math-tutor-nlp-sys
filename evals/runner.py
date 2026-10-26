@@ -82,6 +82,7 @@ def write_result(
     prompt_path: Path | None = None,
     results_dir: Path | None = None,
     commit: str | None = None,
+    note: str | None = None,
 ) -> Path:
     """Write the result file for one eval run and return its path.
 
@@ -98,6 +99,7 @@ def write_result(
         "model_name": model_name,
         "prompt_hash": file_hash(prompt_path) if prompt_path else None,
         "git_hash": commit,
+        "note": note,
         "timestamp": now.isoformat(),
     }
     out_dir = (results_dir or RESULTS_DIR) / component

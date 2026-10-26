@@ -4,6 +4,11 @@ Each case (`prev`, `curr`, optional `original`) is run through the real node: th
 `original` when there is one (so `narrows` can be recognised), the pair is the last two steps, and
 the verdict of `curr` is compared with the label. Metrics are flat floats: overall accuracy,
 precision, recall and support per relation, accuracy per source, and confusion counts.
+
+What it does and does not cover: a single pair per case, so the multi-step logic (check lines,
+unparsable lines in a chain, predecessor choice), `is_correct` and the justification claims are
+tested only in tests/test_verify_node.py. Accuracy on these splits is high by construction; see
+evals/datasets/README.md.
 """
 
 import logging
@@ -15,6 +20,12 @@ from tutor.nodes.verify import verify
 from tutor.state import Step, TutorState
 
 COMPONENT = "verify"
+NOTE = (
+    "Accuracy is high by construction (mined positives were kept only where the checker agreed, "
+    "negatives passed a witness check, hand-written labels were reconciled with the checker): a "
+    "regression suite, not independent evidence. Single-pair cases only; is_correct is not "
+    "evaluated. See evals/datasets/README.md and review/verify_build_report.json."
+)
 RELATIONS = ("equivalent", "implies", "narrows", "not_valid", "unparsable")
 logger = logging.getLogger("eval_verify")
 
@@ -43,7 +54,8 @@ def evaluate(cases: list[dict[str, Any]]) -> dict[str, float]:
         hits = sum(1 for true, pred, _ in predictions if true == pred == relation)
         metrics[f"support/{relation}"] = float(support)
         metrics[f"recall/{relation}"] = hits / support if support else 0.0
-        metrics[f"precision/{relation}"] = hits / predicted if predicted else 0.0
+        if predicted:  # precision is undefined, not 0, for a relation that was never predicted
+            metrics[f"precision/{relation}"] = hits / predicted
     recalls = [metrics[f"recall/{r}"] for r in RELATIONS if metrics[f"support/{r}"]]
     metrics["macro_recall"] = sum(recalls) / len(recalls) if recalls else 0.0
     for source in sorted({source for _, _, source in predictions}):
@@ -69,13 +81,14 @@ def main() -> None:
         return
     cases = load_jsonl(path)
     metrics = evaluate(cases)
-    result = write_result(COMPONENT, split, len(cases), metrics)
+    result = write_result(COMPONENT, split, len(cases), metrics, note=NOTE)
     logger.info("%s (%s): n=%d accuracy=%.4f macro_recall=%.4f", COMPONENT, split, len(cases),
                 metrics["accuracy"], metrics["macro_recall"])  # fmt: skip
     for relation in RELATIONS:
-        logger.info("  %-11s support=%-4d recall=%.3f precision=%.3f", relation,
+        precision = metrics.get(f"precision/{relation}")
+        logger.info("  %-11s support=%-4d recall=%.3f precision=%s", relation,
                     metrics[f"support/{relation}"], metrics[f"recall/{relation}"],
-                    metrics[f"precision/{relation}"])  # fmt: skip
+                    "n/a" if precision is None else f"{precision:.3f}")  # fmt: skip
     for name, value in sorted(metrics.items()):
         if name.startswith("confusion/"):
             logger.info("  %s: %d", name, value)

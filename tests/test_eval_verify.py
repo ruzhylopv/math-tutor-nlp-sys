@@ -47,6 +47,12 @@ def test_the_node_verdict_is_compared_with_every_label() -> None:
     assert metrics["n/source=handwritten"] == 3.0
 
 
+def test_precision_is_left_out_for_a_relation_that_was_never_predicted() -> None:
+    metrics = _module()["evaluate"](CASES[:1])
+    assert "precision/equivalent" in metrics
+    assert "precision/implies" not in metrics and metrics["support/implies"] == 0.0
+
+
 def test_a_perfect_run_has_no_confusion_entries() -> None:
     metrics = _module()["evaluate"](CASES[:5])
     assert metrics["accuracy"] == 1.0
@@ -66,6 +72,7 @@ def test_the_script_writes_a_result_file(monkeypatch: pytest.MonkeyPatch, tmp_pa
     assert data["split"] == "dev" and data["n_examples"] == 5
     assert data["metrics"]["accuracy"] == 1.0
     assert data["model_name"] is None and data["prompt_hash"] is None
+    assert "by construction" in data["note"]
 
 
 def test_a_missing_dataset_is_reported_and_nothing_is_written(

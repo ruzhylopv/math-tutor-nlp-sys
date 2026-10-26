@@ -40,6 +40,9 @@ class StepVerdict(BaseModel):
     step_index: int = Field(ge=1)
     relation: Relation
     justification_claims_ok: bool | None = None
+    check_holds: bool | None = (
+        None  # for a check line (a closed statement): does it hold? else None
+    )
     notes: str = ""
 
 
