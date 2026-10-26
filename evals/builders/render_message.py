@@ -42,7 +42,9 @@ def _group(text: str, start: int) -> tuple[str, int] | None:
     return None
 
 
-_EXPONENT = re.compile(r"-?(?:\d+(?:\.\d+)?|[A-Za-z])")
+# The one exponent form the renderers read after `^` (besides a bracket group); the builder
+# derives its "unhandled power" filter from it, so the two cannot drift.
+EXPONENT = re.compile(r"-?(?:\d+(?:\.\d+)?|[A-Za-z])")
 
 
 def _power(text: str, start: int) -> tuple[str, int] | None:
@@ -55,7 +57,7 @@ def _power(text: str, start: int) -> tuple[str, int] | None:
         return None
     if group := _group(text, start + 1):
         return "^{" + to_latex(group[0]) + "}", group[1]
-    if token := _EXPONENT.match(text, start + 1):
+    if token := EXPONENT.match(text, start + 1):
         return "^{" + token.group(0) + "}", token.end()
     return None
 
@@ -94,8 +96,8 @@ def to_latex(text: str) -> str:
 
 def to_unicode(text: str) -> str:
     """Plain-text math with ², ³, ×, √ and the minus sign."""
-    text = re.sub(r"\^2(?!\w)", "²", text)
-    text = re.sub(r"\^3(?!\w)", "³", text)
+    text = re.sub(r"\^2(?![\w.])", "²", text)
+    text = re.sub(r"\^3(?![\w.])", "³", text)
     text = re.sub(r"\s*\*\s*", " × ", text)
     text = text.replace("sqrt(", "√(")
     return re.sub(r"(?<=[\w)])\s-\s(?=[\w(])", " − ", text)
@@ -103,8 +105,8 @@ def to_unicode(text: str) -> str:
 
 def to_spoken(text: str) -> str:
     """Operators spelled out as words; numbers and letters stay."""
-    text = re.sub(r"\^2(?!\w)", " squared", text)
-    text = re.sub(r"\^3(?!\w)", " cubed", text)
+    text = re.sub(r"\^2(?![\w.])", " squared", text)
+    text = re.sub(r"\^3(?![\w.])", " cubed", text)
     text = re.sub(r"\s*=\s*", " equals ", text)
     text = re.sub(r"(?<=[\w)])\s*\+\s*(?=[\w(])", " plus ", text)
     text = re.sub(r"(?<=[\w)])\s+-\s+(?=[\w(])", " minus ", text)

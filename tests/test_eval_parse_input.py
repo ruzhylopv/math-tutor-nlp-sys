@@ -38,6 +38,9 @@ def test_norm_and_canon() -> None:
     assert module["canon"]("2 * x") == module["canon"]("2x")
     assert module["canon"]("sqrt(5)") == "sqrt(5)"  # a function call keeps its brackets
     assert module["canon"]("x = 3") != module["canon"]("x = 4")
+    assert module["canon"]("(2x)^2") != module["canon"]("2x^2")  # only one number or letter
+    assert module["canon"]("a/(2x)") != module["canon"]("a/2x")
+    assert module["canon"]("(x)/(2)") == module["canon"]("x/2")
 
 
 def test_perfect_predictions() -> None:

@@ -141,6 +141,27 @@ def test_tidy_drops_brackets_around_one_token_only() -> None:
     assert _tidy("2(3)") == "2(3)"
     assert _tidy("( 2^5 ) ^x") == "(2^5)^x"
     assert _tidy("(x)/(2)") == "x/2"
+    assert _tidy("a/(2x)") == "a/(2x)"  # two characters in the brackets: they stay
+    assert _tidy("(2x)^2") == "(2x)^2"
+
+
+def test_the_labels_follow_from_the_rendering(tmp_path: Path) -> None:
+    _, splits = _build(tmp_path, per_split=40, problems=200)
+    plain = [
+        r
+        for records in splits.values()
+        for r in records
+        if r["source"] == "generated"
+        and "ascii" in r["features"]
+        and not {"typos", "chatty"} & set(r["features"])
+    ]
+    assert plain
+    assert any(r["expected_steps"] for r in plain) and any(r["expected_problem"] for r in plain)
+    for r in plain:
+        if r["expected_problem"]:
+            assert r["expected_problem"] in r["message"]
+        for step in r["expected_steps"]:
+            assert step in r["message"]
 
 
 def test_the_hand_written_cases_are_well_formed() -> None:

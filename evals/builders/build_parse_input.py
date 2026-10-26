@@ -41,7 +41,13 @@ from evals.builders.mine_math import (
     has_function_notation,
     task_type,
 )
-from evals.builders.render_message import LAYOUTS, NOTATIONS, notate, render_message
+from evals.builders.render_message import (
+    EXPONENT,
+    LAYOUTS,
+    NOTATIONS,
+    notate,
+    render_message,
+)
 from evals.runner import DATASETS_DIR
 
 logger = logging.getLogger("build_parse_input")
@@ -72,9 +78,7 @@ QUESTIONS = (
     "how do I know when I am done?",
 )
 _SPOKEN_UNSAFE = re.compile(r"[(/^]|sqrt|abs")  # "3x squared" is ambiguous, so no powers either
-_UNHANDLED = re.compile(
-    r"\^(?!\(|-?(?:\d+(?:\.\d+)?|[A-Za-z]))"
-)  # a power the renderers cannot read
+_UNHANDLED = re.compile(r"\^(?!\(|" + EXPONENT.pattern + ")")  # a power the renderers cannot read
 
 
 def _tidy(text: str) -> str:
@@ -86,7 +90,7 @@ def _tidy(text: str) -> str:
     previous = None
     while previous != text:
         previous = text
-        text = re.sub(r"(?<![\w)])\((\w+)\)", r"\1", text)
+        text = re.sub(r"(?<![\w)])\((\d+(?:\.\d+)?|[A-Za-z])\)", r"\1", text)
     return text
 
 

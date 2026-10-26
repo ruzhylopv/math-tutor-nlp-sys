@@ -62,7 +62,7 @@ def canon(text: str) -> str:
     previous = None
     while previous != text:
         previous = text
-        text = re.sub(r"(?<![\w)])\((\w+)\)", r"\1", text)
+        text = re.sub(r"(?<![\w)])\((\d+(?:\.\d+)?|[A-Za-z])\)", r"\1", text)
     return text
 
 

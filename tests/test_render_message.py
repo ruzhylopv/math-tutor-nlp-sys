@@ -42,6 +42,7 @@ def test_unicode() -> None:
     assert to_unicode("3 * 4") == "3 × 4"
     assert to_unicode("sqrt(x)") == "√(x)"
     assert to_unicode("a - b") == "a − b"
+    assert to_unicode("x^2.5") == "x^2.5"  # a decimal exponent is not a square
     assert to_unicode("x^20") == "x^20"  # only the small powers have a character
 
 
