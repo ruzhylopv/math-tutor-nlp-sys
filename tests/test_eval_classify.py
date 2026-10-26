@@ -34,7 +34,8 @@ def test_perfect_predictions() -> None:
 def test_macro_f1_is_the_mean_of_the_per_class_f1() -> None:
     cases = [_case("Algebra", 1), _case("Algebra", 1), _case("Geometry", 1)]
     metrics = _module()["evaluate"](cases, [("Algebra", 1), ("Geometry", 1), ("Geometry", 1)])
-    assert metrics["topic_macro_f1"] == pytest.approx(2 / 3)  # both classes: P and R are 1 and 1/2
+    # both classes: P and R are 1 and 1/2
+    assert metrics["topic_macro_f1"] == pytest.approx(2 / 3)
     assert metrics["topic_accuracy"] == pytest.approx(2 / 3)
     assert metrics["confusion/Algebra->Geometry"] == 1.0
 
@@ -44,9 +45,15 @@ def test_in_scope_accuracy_only_counts_the_scope_boundary() -> None:
     predictions = [("Prealgebra", 2), ("Geometry", 2), ("Geometry", 2)]
     metrics = _module()["evaluate"](cases, predictions)
     assert metrics["topic_accuracy"] == pytest.approx(1 / 3)
-    assert metrics["in_scope_accuracy"] == pytest.approx(
-        2 / 3
-    )  # Algebra->Prealgebra stays in scope
+    # Algebra->Prealgebra stays in scope
+    assert metrics["in_scope_accuracy"] == pytest.approx(2 / 3)
+
+
+def test_a_failed_call_on_an_out_of_scope_problem_is_not_in_scope_correct() -> None:
+    metrics = _module()["evaluate"](
+        [_case("Geometry", 2), _case("Geometry", 2)], [(None, None), ("Geometry", 2)]
+    )
+    assert metrics["in_scope_accuracy"] == 0.5
 
 
 def test_level_within_one() -> None:

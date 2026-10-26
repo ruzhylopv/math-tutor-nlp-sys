@@ -29,7 +29,8 @@ logger = logging.getLogger("eval_classify")
 NOTE = (
     "Labels are MATH's own subject and level. The eval feeds LaTeX problem text; in use classify "
     "receives parse_input's plain-text problem. Level labels are noisy at the edges, so "
-    "within-one is reported too."
+    "within-one is reported too. MATH problems are likely in the model's training data, so the "
+    "numbers may be optimistic."
 )
 
 
@@ -60,7 +61,7 @@ def evaluate(
         "topic_accuracy": sum(t == p for t, p in zip(true_topics, topics, strict=True)) / n,
         "topic_macro_f1": sum(_f1(true_topics, topics, label) for label in labels) / len(labels),
         "in_scope_accuracy": sum(
-            (t in IN_SCOPE_TOPICS) == (p in IN_SCOPE_TOPICS)
+            p != "(failed)" and (t in IN_SCOPE_TOPICS) == (p in IN_SCOPE_TOPICS)
             for t, p in zip(true_topics, topics, strict=True)
         )
         / n,

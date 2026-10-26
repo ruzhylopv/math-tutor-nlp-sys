@@ -1,9 +1,10 @@
 """Tag the subject and the difficulty level of the problem (the MATH categories).
 
 The topic is one of the MATH subjects; Prealgebra, Algebra and Intermediate Algebra are in scope,
-the others let the orchestrator tell the student the problem is out of scope. The level is MATH's
-1-5. If there is no problem, or the model fails twice, nothing is changed: a missing topic means
-unknown.
+the others are not. The node only tags: what the orchestrator does with an out-of-scope subject is
+not designed yet. The level is MATH's 1-5. If there is no problem, or the model fails twice, the
+node changes nothing, so a topic and level from an earlier problem in the same thread survive
+(a known open item, see docs/decisions.md).
 
 Reads: problem
 Writes: topic, level
