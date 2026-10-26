@@ -6,7 +6,9 @@ numbers. Never edit a dataset or its labels to make a result pass.
 **Status:** the files in `dev/` and `test/` were built before the M2 review fixes and are intentionally not
 rebuilt (developer decision, 2026-10-26). The builder in `evals/builders/` is stricter than the build that produced
 them (a preview gives dev 1,237 and test 479 cases against the committed 1,621 and 671), so it does not reproduce the
-committed files, and about a dozen identical trivial pairs appear in both splits. Counts, rates and versions of the
+committed files. Dev and test share 12 identical (prev, curr, relation) pairs; most are trivial, but some are not
+(for example `(x + y)^2 -> x^2 + y^2 + 2xy` and `xy-2x-yx+2y -> -2x+2y`). This is dev/test leakage, and the reported test
+numbers inherit it. Counts, rates and versions of the
 committed build live in `review/verify_build_report.json`.
 
 ## verify_steps.jsonl (M2)

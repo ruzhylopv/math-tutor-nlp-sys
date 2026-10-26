@@ -17,7 +17,8 @@ a prompt. The student submits a problem and their own step-by-step attempt
 
 In scope: school-level arithmetic and algebra (linear equations, brackets, quadratics, factoring,
 radical and rational equations). Out of scope: calculus, proofs, geometry diagrams, other languages.
-Target level (provisional): MATH "Algebra", levels 1-3. OPEN: confirm the grades.
+Target subjects (decided 2026-10-26): MATH Prealgebra, Algebra and Intermediate Algebra. Levels 1-3 remain the range used
+for the `verify` and `parse_input` datasets; `classify` itself does not cap the level (MATH levels 1-5).
 Input is text for now. Photos of handwritten work would need a vision/OCR model in front of `parse_input`;
 out of scope.
 

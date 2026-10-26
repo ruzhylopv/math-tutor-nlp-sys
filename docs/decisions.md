@@ -175,7 +175,6 @@ Format: decision | rejected alternative | why.
 
 ### Still OPEN after this change
 - The counterexample tool: how it chooses a value, its interface, when `hint` calls it. (The rule is decided.)
-- (Resolved 2026-10-26: `parse_input` sits before the orchestrator; see "M3 decisions" below.)
 - The checkpointer: in-memory for now; a persistent one is a new dependency and needs approval.
 - The error-type taxonomy and Eedi items above;
   the hint cap, the recurrence threshold, the target grades and the final model.
@@ -227,7 +226,7 @@ Format: decision | rejected alternative | why.
   enough for a demo; a typo creates a new profile, which is acceptable here.
 - **`parse_input` takes the problem and the step structure; `classify` only tags topic and level** | one node doing
   both | each node then has its own eval (extraction and step-split accuracy vs topic accuracy).
-- **OPEN:** `parse_input`'s position (proposal: first node of the diagnosis subgraph, so pure questions cost no LLM
+- **Resolved 2026-10-26, see "M3 decisions" below:** `parse_input`'s position (proposal: first node of the diagnosis subgraph, so pure questions cost no LLM
   call; alternative: before the orchestrator, which gives it the structure to route on but costs a call on every
   message).
 - **Consequence:** CLAUDE.md requires an eval script per node; `parse_input` gets one (problem-extraction and
@@ -383,13 +382,18 @@ The five reviews found five P1s; the stack had been merged before they could be 
 - **OPEN (settle with the item above): stale `topic` and `level`.** `classify` returns `{}` on failure or an empty
   problem, so `topic` and `level` keep the value from an earlier problem in the same thread. The orchestrator (or
   `parse_input` when `problem` changes) must clear them.
+- **OPEN (settle with the items above; a consumer question for the orchestrator): out-of-scope subjects.** `classify`
+  runs inside the diagnosis subgraph, after the orchestrator has already routed to `diagnose`, so it cannot guard
+  the scope by itself. Nothing yet says what happens when it returns Geometry, Number Theory, Precalculus or Counting &
+  Probability.
 - **`topic` is one of the 7 MATH subjects and `level` is MATH's 1-5** | our own finer taxonomy (brackets, quadratics, ...) |
   labels exist, are human-assigned and independent of our code; a finer taxonomy would need hand labels. In scope:
-  Prealgebra, Algebra, Intermediate Algebra; `classify` doubles as a scope guard.
+  Prealgebra, Algebra, Intermediate Algebra. `classify` tags the subject; what happens on an out-of-scope subject is not
+  designed yet.
 - **`parse_input` is evaluated by normalized exact match of each claim** | equivalence under SymPy | SymPy's parser
   distributes `3(x+2)` into `3x+6`, so an LLM that "repairs" a student's mistake would go unnoticed.
 - **An invalid model output twice in a row gives an empty result, not an exception** | raising | the orchestrator then asks
   the student to resend; a free model failing once must not crash a session.
 - **The committed `verify` datasets are not rebuilt** | rebuilding with the stricter miner (preview: dev 1,237, test 479) |
-  the developer decided it was not needed. Known consequence: about a dozen identical trivial pairs appear in both
-  splits, and the miner in `evals/builders/` no longer reproduces the committed files.
+  the developer decided it was not needed. Known consequence: 12 identical (prev, curr, relation) pairs appear in both
+  splits (some non-trivial, so reported test numbers inherit the leakage), and the miner in `evals/builders/` no longer reproduces the committed files.

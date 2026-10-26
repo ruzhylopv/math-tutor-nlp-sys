@@ -9,7 +9,7 @@ output. Roadmap: `docs/plans/design/2026-10-25-roadmap.md`.
   orchestrator). Every message passes through it, so a pure question also costs one LLM call. The diagnosis
   subgraph now starts at `classify`.
 - `topic` is one of the MATH subjects, `level` is MATH's 1-5. The in-scope subjects are Prealgebra, Algebra and
-  Intermediate Algebra; the others let `classify` act as a scope guard.
+  Intermediate Algebra; `classify` tags the subject; what happens on an out-of-scope subject is not designed yet (open, below).
 - No limit on dataset size; retries and a cache keep a long eval run alive under rate limits.
 - The committed `verify` datasets are not rebuilt.
 - Text input only.
@@ -26,7 +26,8 @@ output. Roadmap: `docs/plans/design/2026-10-25-roadmap.md`.
 - LLM calls go through one function in `src/tutor/tools/`, which tests mock, so no node touches the network.
 
 ## Stack
-0. `chore/m3-plan`: this plan, the decisions, the architecture and graph docs, the datasets README status.
+0. `chore/m3-plan`: this plan, the decisions, the architecture docs (`docs/graph.mmd` is regenerated in layer 4),
+   the datasets README status.
 1. `feat/llm-tools`: the prompt loader and `tools/structured.py` (one structured call, one retry, a small cache
    for evals), with tests that mock the client.
 2. `feat/classify`: prompt, node, tests, eval script and the MATH-label dataset.
@@ -55,6 +56,8 @@ output. Roadmap: `docs/plans/design/2026-10-25-roadmap.md`.
   and `hint` does not depend on them after a question; (c) reset only when the message has steps, or when no
   diagnosis is outstanding. Proposal, awaiting the developer: (a). The approved reset stays as it is. See
   `docs/decisions.md`, "M3 decisions".
+- OPEN (settle with the above): what happens on an out-of-scope subject (a question for the orchestrator;
+  `classify` runs only after the orchestrator has routed to `diagnose`).
 - OPEN (settle with the above): `classify` returns `{}` on failure, so `topic` and `level` go stale across problems
   in a thread; the orchestrator (or `parse_input` when `problem` changes) must clear them.
 
