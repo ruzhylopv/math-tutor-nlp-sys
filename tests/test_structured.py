@@ -158,6 +158,16 @@ def test_setup_errors_and_bugs_propagate_without_a_retry(
     assert len(chain.calls) == 1
 
 
+def test_a_rate_limit_logs_its_status_code(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    error = _status_error(openai.RateLimitError, 429)
+    _use(monkeypatch, error, error)
+    with caplog.at_level(logging.WARNING):
+        assert call_structured("classify", Classification, "x") is None
+    assert "RateLimitError" in caplog.text and "status 429" in caplog.text
+
+
 def test_logs_hold_neither_the_student_text_nor_secrets(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -248,7 +258,8 @@ def test_nothing_is_written_without_a_cache_dir(
 
 # --- the prompt loader ------------------------------------------------------------------------
 def test_a_prompt_is_loaded_by_name() -> None:
-    assert "## Role" in load_prompt("classify")
+    path = Path(__file__).parents[1] / "src" / "tutor" / "prompts" / "classify.md"
+    assert load_prompt("classify") == path.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("name", ["../config", "a/b", "classify.md", "", "x y", "classify\n"])

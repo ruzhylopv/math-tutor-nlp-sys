@@ -43,12 +43,15 @@ _RETRYABLE = (
     openai.InternalServerError,
     openai.LengthFinishReasonError,
     openai.ContentFilterFinishReasonError,
-    ValueError,  # pydantic ValidationError, langchain OutputParserException, bad JSON
+    # Besides pydantic's ValidationError and langchain's OutputParserException (both subclasses),
+    # a bare ValueError is needed: empty or invalid provider content arrives as a plain ValueError.
+    ValueError,
     OpenAIRefusalError,  # a refusal is invalid output (plain Exception subclass)
     TypeError,  # HTTP 200 with a malformed body, raised inside the SDK parsing
     AttributeError,  # same: e.g. an HTML body parsed as a string
     IndexError,  # same: an empty `choices` list
-    OSError,  # builtin TimeoutError / ConnectionError
+    TimeoutError,  # builtin; the SDK wraps transport errors as APIConnectionError
+    ConnectionError,
 )
 
 
