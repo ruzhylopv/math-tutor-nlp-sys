@@ -180,3 +180,55 @@ def test_the_script_runs_the_node_and_writes_a_result(
     assert data["model_name"] == "some/model" and data["prompt_hash"]
     assert data["n_examples"] == 3 and data["metrics"]["case_accuracy"] == pytest.approx(2 / 3)
     assert data["metrics"]["failure_rate"] == pytest.approx(1 / 3)
+
+
+def _kinds_case(case_id: str, kind: str, source: str = "generated") -> dict[str, Any]:
+    return {**_case(None, [], (kind,), source), "id": case_id}
+
+
+def test_the_sample_takes_cases_in_turn_from_each_kind() -> None:
+    cases = [_kinds_case(f"a{i}", "full") for i in range(10)]
+    cases += [_kinds_case(f"b{i}", "question_only") for i in range(10)]
+    cases += [_kinds_case(f"h{i}", "full", "handwritten") for i in range(10)]
+    sample = _module()["stratified_sample"](cases, 6)
+    kinds = [("hand" if c["source"] == "handwritten" else c["features"][0]) for c in sample]
+    assert sorted(kinds) == ["full", "full", "hand", "hand", "question_only", "question_only"]
+
+
+def test_the_sample_is_deterministic_and_sorted_by_id() -> None:
+    cases = [_kinds_case(f"c{i}", "full") for i in range(20)]
+    first = _module()["stratified_sample"](cases, 5)
+    second = _module()["stratified_sample"](list(reversed(cases)), 5)
+    assert [c["id"] for c in first] == [c["id"] for c in second]
+    assert [c["id"] for c in first] == sorted(c["id"] for c in first)
+
+
+def test_a_limit_above_the_size_returns_everything() -> None:
+    cases = [_kinds_case(f"c{i}", "full") for i in range(4)]
+    assert len(_module()["stratified_sample"](cases, 50)) == 4
+
+
+def test_the_script_runs_a_limited_subset_and_says_so(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    (tmp_path / "datasets" / "dev").mkdir(parents=True)
+    cases = [{**_kinds_case(f"c{i}", "full"), "message": f"m{i}"} for i in range(6)]
+    (tmp_path / "datasets" / "dev" / "parse_input.jsonl").write_text(
+        "".join(json.dumps(c) + "\n" for c in cases), encoding="utf-8"
+    )
+
+    def fake(prompt: str, schema: type[BaseModel], text: str, retries: int = 1) -> Any:
+        return ParsedInput()
+
+    monkeypatch.setattr(structured, "call_structured", fake)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    monkeypatch.setenv("MODEL_NAME", "some/model")
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setattr(runner, "DATASETS_DIR", tmp_path / "datasets")
+    monkeypatch.setattr(runner, "RESULTS_DIR", tmp_path / "results")
+    monkeypatch.setattr(sys, "argv", ["eval_parse_input.py", "--limit", "2"])
+    runpy.run_path(str(SCRIPT), run_name="__main__")
+    (result,) = (tmp_path / "results" / "parse_input").glob("*.json")
+    data = json.loads(result.read_text(encoding="utf-8"))
+    assert data["n_examples"] == 2 and "SUBSET: 2 of 6" in data["note"]

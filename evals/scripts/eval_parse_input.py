@@ -9,6 +9,9 @@ out). `sympy_parse_rate` is the share of predicted claims the checker can read a
 the same over the expected claims: the dataset has correct transcriptions the checker cannot read
 (`x = 2 or x = 3`), so read the first against the second.
 
+Use `--limit N` for a quick run on N messages taken in turn from each kind (the result file
+says so).
+
 A case is right when the new problem is the expected one (or both are absent) and the claims match
 in number, order and text. Two match rules are reported:
 - strict: (problem and steps) equal after removing spaces and a trailing full stop;
@@ -16,6 +19,7 @@ in number, order and text. Two match rules are reported:
 Both compare text, never algebra, so a "fixed" step cannot pass as a faithful one.
 """
 
+import hashlib
 import logging
 import os
 import re
@@ -29,7 +33,7 @@ from evals.runner import (
     EVALS_DIR,
     dataset_path,
     load_jsonl,
-    parse_split,
+    parse_split_and_limit,
     setup_logging,
     write_result,
 )
@@ -178,9 +182,29 @@ def evaluate(cases: list[dict[str, Any]], predictions: list[Prediction]) -> dict
     return metrics
 
 
+def stratified_sample(cases: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    """`limit` cases, taken in turn from each kind of message (hand-written ones are a kind).
+
+    Deterministic: inside a kind cases are ordered by a hash of their id, so the same subset is
+    chosen on every run and the cache stays valid. A limit above the size returns everything.
+    """
+    groups: dict[str, list[dict[str, Any]]] = {}
+    ordered = sorted(cases, key=lambda case: hashlib.sha256(case["id"].encode()).hexdigest())
+    for case in ordered:
+        kind = "handwritten" if case["source"] == "handwritten" else case["features"][0]
+        groups.setdefault(kind, []).append(case)
+    queues = [groups[kind] for kind in sorted(groups)]
+    chosen: list[dict[str, Any]] = []
+    while len(chosen) < limit and any(queues):
+        for queue in queues:
+            if queue and len(chosen) < limit:
+                chosen.append(queue.pop(0))
+    return sorted(chosen, key=lambda case: str(case["id"]))
+
+
 def main() -> None:
     setup_logging()
-    split = parse_split(__doc__)
+    split, limit = parse_split_and_limit(__doc__)
     path = dataset_path(COMPONENT, split)
     if not path.exists():
         logger.info("Dataset %s is missing. No labels are invented; add the dataset first.", path)
@@ -188,6 +212,10 @@ def main() -> None:
     os.environ.setdefault("LLM_CACHE_DIR", str(EVALS_DIR / ".llm_cache"))
     config = load_config()
     cases = load_jsonl(path)
+    note = NOTE
+    if limit is not None and limit < len(cases):
+        note += f" SUBSET: {limit} of {len(cases)} messages, taken in turn from each kind."
+        cases = stratified_sample(cases, limit)
     metrics = evaluate(cases, [predict(case) for case in cases])
     result = write_result(
         COMPONENT,
@@ -196,7 +224,7 @@ def main() -> None:
         metrics,
         model_name=config.model_name,
         prompt_path=PROMPT,
-        note=NOTE,
+        note=note,
     )
     logger.info("parse_input (%s): n=%d", split, len(cases))
     for name in (
