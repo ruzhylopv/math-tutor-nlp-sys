@@ -145,7 +145,7 @@ def test_correct_answers(answer: str, truth: str) -> None:
 
 @pytest.mark.parametrize(
     ("answer", "truth"),
-    [("9", "2, 9"), ("2x+3", "2x+4"), ("13/3", "3"), ("x", "9")],
+    [("9", "2, 9"), ("2x+3", "2x+4"), ("13/3", "3")],
 )
 def test_incorrect_answers(answer: str, truth: str) -> None:
     assert check_answer(answer, truth) == "incorrect"

@@ -77,8 +77,14 @@ HANDWRITTEN: list[Case] = [
     _case("solve", "Solve $2x = 6$.", "2x = 6", "2x(x - 1) = 6(x - 1)", "implies"),
     _case("solve", "Solve $\\sqrt{x+2} = x$.", "sqrt(x + 2) = x", "x + 2 = x^2", "implies"),
     _case("solve", "Solve $2x + 1 = 5$.", "2x + 1 = 5", "(2x + 1)(x - 4) = 5(x - 4)", "implies"),
+    # Relabelled from `implies` on 2026-10-26: this equation has no solutions, and "solving" a
+    # contradiction is not valid (review finding; the checker's empty-set rule).
     _case(
-        "solve", "Solve $\\frac{x}{x-3} = \\frac{3}{x-3}$.", "x/(x-3) = 3/(x-3)", "x = 3", "implies"
+        "solve",
+        "Solve $\\frac{x}{x-3} = \\frac{3}{x-3}$.",
+        "x/(x-3) = 3/(x-3)",
+        "x = 3",
+        "not_valid",
     ),
     # --- narrows (rejecting an extraneous root of the original problem) ---------------------
     _case("solve", _B, "x = 9 or x = 2", "x = 9", "narrows", "sqrt(x+7) = x-5"),
