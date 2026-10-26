@@ -93,16 +93,16 @@ One line per student message. Built by
 | `stored_problem` | the problem already in the session, or null |
 | `expected_problem` | the new problem the message states, or null (the stored one stays) |
 | `expected_steps` | the claims, in order, as plain-text math (a wrong step stays wrong) |
-| `features` | the kind (`full`, `steps_only`, `problem_only`, `answer_only`, `question_only`), the layout, the notation, and `chatty`, `typos`, `wrong_step` |
+| `features` | the kind (`full`, `steps_only`, `problem_only`, `answer_only`, `question_only`; hand-written ones also `smalltalk`), the layout, the notation, and `chatty`, `typos`, `wrong_step` |
 | `source` | `generated` or `handwritten` |
 
 The labels come from the rendering direction: a step chain is mined from a MATH solution (Algebra, Prealgebra,
 Intermediate Algebra, levels 1-3; one chain per problem; first line = problem, the rest = steps), one step is sometimes
 made wrong by `corrupt.py`, and the chain is written as a message (`render_message.py`). 150 generated messages per split,
 split by problem hash; 20 (dev) and 9 (test) hand-written ones. `review/parse_input_spotcheck.jsonl` is a seeded sample of
-24 generated messages for the developer to read; hand-written cases carry `spot_check: pending`.
+24 generated messages from the dev split only (the test split stays unread while the prompt is tuned); hand-written cases carry `spot_check: pending`.
 
 How much to trust a metric: the messages are synthetic and only as messy as the renderer makes them (no real student
-text), most chains are arithmetic or expressions (only about a fifth are equations), and spoken math is rare in generated
+text), most chains are arithmetic or expressions (in a preview of the builder only about a fifth were equations; the real build is pending the developer's run), and spoken math is rare in generated
 data because most chains contain brackets or fractions. Hand-written cases are the discriminating ones.
 

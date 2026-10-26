@@ -420,3 +420,16 @@ The five reviews found five P1s; the stack had been merged before they could be 
 - **Datasets for `classify` and `parse_input` are written by the developer's own run of the builders**: the test split is
   protected, and the auto-mode classifier blocks an agent's script that writes it.
 
+- **The eval cache: key = model + prompt + schema + user text, opt-in via `LLM_CACHE_DIR`, evals only** | `functools.lru_cache`
+  (does not survive across eval runs) and no cache at all | a long eval on a free, rate-limited model must be restartable.
+  Consequence: a stale-but-valid answer stays cached until the directory is deleted.
+- **`call_structured` returns None after the retry instead of raising** | raising | it retries only transient and
+  invalid-output errors (connection, timeout, 429, 5xx, ValueError, OSError); auth, permission, bad-request and
+  programming errors propagate, so a wrong key does not look like N silent failures. `method="json_schema"` and a 60 s
+  timeout are fixed because the developer's model passed it 3/3.
+- **`classify`: `topic` is a closed Literal of the 7 MATH subjects; `level` is MATH's 1-5, chosen by the model from a scale
+  defined in the prompt** | free-text topic; a rubric-free level guess | a closed set can be scored and routed on; the
+  rubric makes the level reproducible. The eval also reports within-one, because level labels are noisy. The eval feeds
+  LaTeX problem text while in use `classify` receives `parse_input`'s plain text (a known gap, noted in the result file).
+- **`classify` returning `{}` on failure leaves a stale `topic` and `level` in a thread** | clearing them in `classify` |
+  open, see the OPEN items in "M3 decisions" above.

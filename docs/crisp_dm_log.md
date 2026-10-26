@@ -29,7 +29,8 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   2,076; Intermediate Algebra 2,198; Geometry 1,350; Number Theory 1,409; Precalculus 1,291; Counting & Probability 1,245)
   and `level` 1-5, in the PRM800K `math_splits` files. `classify` uses them as labels; no finer topic taxonomy.
 - 2026-10-26 | parse_input messages | No dataset of messy student algebra messages with a known parse was found or checked;
-  the expected parse is instead known by construction: mined MATH step chains (540 usable, one per problem), rendered in
+  the expected parse is instead known by construction: mined MATH step chains (one per problem; a preview of the builder found 540 usable ones, the real build is pending the
+  developer's run), rendered in
   four layouts and four notations, with typos in words only, chatty frames and some deliberately wrong steps, plus 29
   hand-written messages. Details and limits: `evals/datasets/README.md`.
 - 2026-10-25 | Eedi | A paper reports 1,857 questions; the number of distinct misconceptions and
@@ -41,8 +42,8 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   identity pairs), rule-based corruptions with a witness guard, and 76 hand-written cases. Dev 1621, test 671, review 9.
   Format and limits: `evals/datasets/README.md`.
 - 2026-10-26 | classify | Built the dev and test sets (420 problems each, 60 per MATH subject) from MATH's own labels.
-- 2026-10-26 | parse_input | Built the dev (170) and test (159) sets with `evals/builders/build_parse_input.py` (preview in
-  the scratchpad was checked by reading a sample; the real build is written by the developer's run).
+- 2026-10-26 | parse_input | Wrote `evals/builders/build_parse_input.py`. Preview of the builder: dev 170 and test 159 messages (checked by reading
+  a sample); the real build is pending the developer's run, so these numbers may change.
 
 ## Modeling
 - Planned build order: verify, classify, localize, retrieve, hint, orchestrator + graph, checkpointer
