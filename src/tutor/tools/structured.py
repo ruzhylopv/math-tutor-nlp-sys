@@ -6,9 +6,14 @@ function, and unit tests mock it, so no node touches the network.
 
 Only transient or invalid-output failures are retried (see `_RETRYABLE`): connection errors and
 timeouts, 429, 5xx, a truncated or filtered answer, and output that does not parse (a ValueError,
-which covers pydantic's ValidationError and langchain's OutputParserException). Setup errors are
-raised, not swallowed: a missing key (ConfigError), a wrong or revoked key (401, 403), a bad request
-(400) and programming errors, so a broken eval fails at once instead of giving N silent Nones.
+which covers pydantic's ValidationError and langchain's OutputParserException) and a model refusal
+(OpenAIRefusalError). A provider that answers HTTP 200 with a bad body (an `{"error": ...}` object,
+an HTML page, an empty `choices` list) makes the SDK raise TypeError, AttributeError or IndexError;
+these are provider failures, so they are retried too. The price is that a programming bug of those
+three types in the call would also be retried once and then give None with the class name logged;
+that is accepted, because the node tests mock this function. Setup errors are raised, not
+swallowed: a missing key (ConfigError), a wrong or revoked key (401, 403) and a bad request (400),
+so a broken eval fails at once instead of giving N silent Nones.
 
 For evals, set LLM_CACHE_DIR: each answer is stored under a hash of the model, the prompt, the
 schema and the user text, so a rerun costs nothing and a changed prompt invalidates itself.
@@ -21,6 +26,7 @@ from pathlib import Path
 
 import openai
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai.chat_models.base import OpenAIRefusalError
 from pydantic import BaseModel
 
 from tutor.config import load_config
@@ -38,6 +44,10 @@ _RETRYABLE = (
     openai.LengthFinishReasonError,
     openai.ContentFilterFinishReasonError,
     ValueError,  # pydantic ValidationError, langchain OutputParserException, bad JSON
+    OpenAIRefusalError,  # a refusal is invalid output (plain Exception subclass)
+    TypeError,  # HTTP 200 with a malformed body, raised inside the SDK parsing
+    AttributeError,  # same: e.g. an HTML body parsed as a string
+    IndexError,  # same: an empty `choices` list
     OSError,  # builtin TimeoutError / ConnectionError
 )
 

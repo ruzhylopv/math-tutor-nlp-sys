@@ -5,7 +5,10 @@ from typing import Any
 import httpx
 import openai
 import pytest
-from pydantic import BaseModel
+from langchain_core.exceptions import OutputParserException
+from langchain_openai.chat_models.base import OpenAIRefusalError
+from openai.types.chat import ChatCompletion
+from pydantic import BaseModel, ValidationError
 
 from tutor.config import ConfigError
 from tutor.prompts import load_prompt
@@ -17,12 +20,23 @@ GOOD = Classification(topic="Algebra", level=2)
 _REQUEST = httpx.Request("POST", "https://example.invalid/v1/chat/completions")
 
 
+_COMPLETION = ChatCompletion(id="c", object="chat.completion", created=0, model="m", choices=[])
+
+
 class Other(BaseModel):
     answer: str
 
 
 def _status_error(cls: type[openai.APIStatusError], status: int) -> openai.APIStatusError:
     return cls("boom", response=httpx.Response(status, request=_REQUEST), body=None)
+
+
+def _validation_error() -> ValidationError:
+    try:
+        Classification.model_validate_json("x")
+    except ValidationError as exc:
+        return exc
+    raise AssertionError("expected a ValidationError")
 
 
 class FakeChain:
@@ -105,6 +119,15 @@ def test_no_retries_means_one_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
         openai.APITimeoutError(request=_REQUEST),
         _status_error(openai.RateLimitError, 429),
         _status_error(openai.InternalServerError, 500),
+        openai.LengthFinishReasonError(completion=_COMPLETION),
+        openai.ContentFilterFinishReasonError(),
+        _validation_error(),
+        OutputParserException("bad output"),
+        OpenAIRefusalError("I cannot help with that"),
+        # HTTP 200 with a malformed body: the SDK fails while parsing it
+        TypeError("'NoneType' object is not iterable"),
+        AttributeError("'str' object has no attribute 'choices'"),
+        IndexError("list index out of range"),
     ],
     ids=lambda e: type(e).__name__,
 )
@@ -122,7 +145,7 @@ def test_transient_provider_errors_are_retried_once_then_give_none(
         _status_error(openai.AuthenticationError, 401),
         _status_error(openai.PermissionDeniedError, 403),
         _status_error(openai.BadRequestError, 400),
-        TypeError("a bug"),
+        RuntimeError("a bug"),
     ],
     ids=lambda e: type(e).__name__,
 )
