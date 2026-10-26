@@ -57,6 +57,7 @@ does not depend on them after a question; (c) reset only when the message contai
 found), or when no diagnosis is outstanding. Proposal, awaiting the developer: (a). Related OPEN hazard:
 `classify` returns `{}` on failure or an empty problem, so `topic` and `level` keep the value of an earlier
 problem in the same thread; the orchestrator (or `parse_input` when `problem` changes) must clear them.
+A third OPEN item: what the orchestrator does when `classify` tags an out-of-scope subject is not yet decided.
 See "M3 decisions" in `docs/decisions.md`.
 
 ### Diagnosis subgraph

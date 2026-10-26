@@ -80,14 +80,14 @@ Format: decision | rejected alternative | why.
   inside the orchestrator node | testable without the graph and reusable in the hint eval.
 - **Learner DB: SQLite with `attempts` and `misconceptions_seen`** | a document store; no persistence |
   small, relational, no server.
-- **Target level (provisional): MATH Algebra, levels 1-3** | all MATH subjects | keeps scope small.
+- **Target level (provisional): MATH Algebra, levels 1-3** | all MATH subjects | keeps scope small. Superseded 2026-10-26, see M3 decisions.
 
 ## OPEN items (not decided)
 - (Resolved 2026-10-25: retry once, then a canned fallback; see "Design gaps" below.)
 - (Resolved 2026-10-25: `localize` writes `focus_step`; `student_id` is a name from a login-style UI field. See "State additions" below.)
 - How Eedi's multiple-choice records map to the retrieval query (problem + wrong step); verify its
   fields and Kaggle terms before use.
-- The target grades, and the final free OpenRouter model.
+- The target grades (resolved 2026-10-26), and the final free OpenRouter model.
 
 ## OPEN: error-type taxonomy and its data (added after the PR #11 review)
 Status: not decided. The four error types come from the planning handoff and have not been checked
@@ -177,7 +177,7 @@ Format: decision | rejected alternative | why.
 - The counterexample tool: how it chooses a value, its interface, when `hint` calls it. (The rule is decided.)
 - The checkpointer: in-memory for now; a persistent one is a new dependency and needs approval.
 - The error-type taxonomy and Eedi items above;
-  the hint cap, the recurrence threshold, the target grades and the final model.
+  the hint cap, the recurrence threshold, the target grades (resolved 2026-10-26) and the final model.
 
 ### Found in the design-gaps review (not decided; to settle before the nodes they touch)
 - **`stage` writers: settled** (see "finish_diagnosis" below). The UI and the scenario runner must still set
@@ -226,9 +226,8 @@ Format: decision | rejected alternative | why.
   enough for a demo; a typo creates a new profile, which is acceptable here.
 - **`parse_input` takes the problem and the step structure; `classify` only tags topic and level** | one node doing
   both | each node then has its own eval (extraction and step-split accuracy vs topic accuracy).
-- **Resolved 2026-10-26, see "M3 decisions" below:** `parse_input`'s position (proposal: first node of the diagnosis subgraph, so pure questions cost no LLM
-  call; alternative: before the orchestrator, which gives it the structure to route on but costs a call on every
-  message).
+- **Resolved 2026-10-26:** `parse_input` runs before the orchestrator (alternative rejected: first node of the
+  diagnosis subgraph, to save a call on pure questions). See "M3 decisions" below.
 - **Consequence:** CLAUDE.md requires an eval script per node; `parse_input` gets one (problem-extraction and
   step-split accuracy).
 

@@ -20,7 +20,7 @@ output. Roadmap: `docs/plans/design/2026-10-25-roadmap.md`.
 - Faithfulness first: the node transcribes, it never repairs the student's math. The metric is a normalized exact
   match of each claim, not equivalence (SymPy's parser would distribute `3(x+2)` into `3x+6` and hide the difference).
 - If the model returns something invalid twice, `parse_input` returns no steps and no problem (the orchestrator
-  then asks the student to resend); `classify` returns the out-of-scope default and records the failure. Neither
+  then asks the student to resend); `classify` returns `{}` (changes nothing) and logs a warning; neither node
   raises.
 - Prompts are loaded from `src/tutor/prompts/*.md`; no example is copied from an eval dataset.
 - LLM calls go through one function in `src/tutor/tools/`, which tests mock, so no node touches the network.
