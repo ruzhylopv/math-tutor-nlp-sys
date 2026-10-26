@@ -21,6 +21,10 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   DataShop (24-label scheme), MathEDU, MR-GSM8K, ErrorRadar, MathCCS (links in
   `docs/architecture.md`). Nothing downloaded or verified. Next: check formats and licences, map their
   labels onto our four error types, count what does not fit. Open items: `docs/decisions.md`.
+- 2026-10-26 | PRM800K and MATH | Inspected the small PRM800K files (phase2_test, phase1_test, math_splits/test) and the
+  MATH dataset card; sizes, schema and the Algebra levels 1-3 yield are in `docs/plans/nodes/2026-10-26-m2-verify.md`.
+  PRM800K is a good fit for the final-answer check and for localize (M4), a poor fit for step relations. The
+  `phase2_train` file (435 MB) is not downloaded yet.
 - 2026-10-25 | Eedi | A paper reports 1,857 questions; the number of distinct misconceptions and
   whether the scenario A/B misconceptions exist in it are unverified.
 
