@@ -49,7 +49,7 @@ _NAMESPACE = {
 }
 _FUNCTIONS = frozenset({"sqrt", "abs"})
 _UNSUPPORTED_FUNCTIONS = {"sin", "cos", "tan", "cot", "sec", "csc", "log", "ln", "exp"}
-_ALLOWED_CHARS = re.compile(r"[0-9A-Za-z+\-*/^().\s]*")
+ALLOWED_CHARS = re.compile(r"[0-9A-Za-z+\-*/^().\s]*")
 _BAD_DOT = re.compile(r"\.(?!\d)|(?<!\d)\.|\d+\.\d+\.")  # a dot needs digits on both sides, once
 _PYTHON_NUMBER = re.compile(r"\d[eE][+-]?\d|\b0[xXbBoO]")  # 3e+2 and 0x10 are Python, not math here
 _PLUS_MINUS = re.compile(r"\+-|±")
@@ -165,7 +165,7 @@ def _parse_expression(text: str) -> sp.Expr:
         raise UnparsableError("empty")
     if len(stripped) > _MAX_LENGTH:
         raise UnparsableError("too long")
-    if not _ALLOWED_CHARS.fullmatch(stripped) or _BAD_DOT.search(stripped):
+    if not ALLOWED_CHARS.fullmatch(stripped) or _BAD_DOT.search(stripped):
         raise UnparsableError("characters outside the allowed set")
     if _PYTHON_NUMBER.search(stripped):
         raise UnparsableError("Python number syntax")

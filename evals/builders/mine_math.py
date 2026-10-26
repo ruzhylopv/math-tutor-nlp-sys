@@ -12,11 +12,11 @@ from typing import Literal
 from evals.builders.latex import latex_to_text
 
 ChainKind = Literal["expression", "equation"]
-TaskType = Literal["solve", "simplify", "expand", "factor"]
+TaskType = Literal["solve", "simplify", "expand", "factor", "other"]
 
 _ALIGN = re.compile(r"\\begin\{(align\*?|aligned)\}(.*?)\\end\{\1\}", re.DOTALL)
-_LINE_BREAK = re.compile(r"\\\\(\[[^\]]*\])?")
-_INLINE = re.compile(r"(?<!\\)\$(.+?)(?<!\\)\$", re.DOTALL)
+_LINE_BREAK = re.compile(r"\\\\(?:\[[^\]]*\])?")  # \\ or \\[2mm]; no capture, so split drops it
+_INLINE = re.compile(r"\$\$(.+?)\$\$|(?<!\\)\$(.+?)(?<!\\)\$", re.DOTALL)  # $$..$$ first
 
 
 @dataclass(frozen=True)
@@ -31,7 +31,7 @@ class StepPair:
     prev: str
     curr: str
     kind: ChainKind
-    origin: str
+    origin: Literal["align", "inline"]
 
 
 def task_type(problem: str) -> TaskType:
@@ -41,12 +41,15 @@ def task_type(problem: str) -> TaskType:
         return "expand"
     if "factor" in lowered:
         return "factor"
-    if "solve" in lowered or ("find" in lowered and "=" in lowered):
+    if any(word in lowered for word in ("simplify", "evaluate", "compute", "calculate")):
+        return "simplify"
+    solve_words = ("solve", "determine", "such that", "for what", "find all")
+    if any(word in lowered for word in solve_words) or ("find" in lowered and "=" in problem):
         return "solve"
-    return "simplify"
+    return "other"  # no variable-bearing chain is mined from these (see _is_identity_chain)
 
 
-def _convert_all(pieces: list[str]) -> list[str | None]:
+def _convert(pieces: list[str]) -> list[str | None]:
     return [latex_to_text(piece) for piece in pieces]
 
 
@@ -63,17 +66,22 @@ def _split_runs(items: list[str | None]) -> list[list[str]]:
 
 def _align_chains(block: str) -> list[Chain]:
     lines = [line.strip() for line in _LINE_BREAK.split(block) if line and line.strip()]
-    lines = [line for line in lines if not line.startswith("[")]
     continuation = any(re.match(r"&\s*=", line) for line in lines)
     chains: list[Chain] = []
     if continuation:
         current: list[str | None] = []
         for line in lines:
+            if line.count("&") > 1 and not re.match(r"&\s*=[^&]*$", line):
+                chains.extend(
+                    Chain("expression", tuple(run), "align") for run in _split_runs(current)
+                )
+                current = []  # several columns on one line: not one chain
+                continue
             if re.match(r"&\s*=", line):
-                current.extend(_convert_all(re.sub(r"^&\s*=", "", line).split("=")))
+                current.extend(_convert(re.sub(r"^&\s*=", "", line).split("=")))
                 continue
             chains.extend(Chain("expression", tuple(run), "align") for run in _split_runs(current))
-            current = _convert_all(line.replace("&", " ").split("="))
+            current = _convert(line.replace("&", " ").split("="))
         chains.extend(Chain("expression", tuple(run), "align") for run in _split_runs(current))
         return chains
     statements: list[str | None] = []
@@ -94,9 +102,9 @@ def extract_chains(solution: str) -> list[Chain]:
         chains.extend(_align_chains(match.group(2)))
     remainder = _ALIGN.sub(" ", solution)
     for match in _INLINE.finditer(remainder):
-        segment = match.group(1)
+        segment = match.group(1) or match.group(2)
         if segment.count("=") >= 2 and "\\text" not in segment:
-            pieces = _convert_all(segment.split("="))
+            pieces = _convert(segment.split("="))
             chains.extend(Chain("expression", tuple(run), "inline") for run in _split_runs(pieces))
     return chains
 
@@ -114,37 +122,47 @@ def _is_identity_chain(chain: Chain, task: TaskType) -> bool:
     simplify, expand and factor problems; chains of plain numbers always are. Complex numbers are
     out of scope.
     """
-    if chain.kind != "expression":
-        return True
     if any(_COMPLEX.search(item) or _UPPERCASE.search(item) for item in chain.items):
         return False
+    if chain.kind != "expression":
+        return True
     has_variables = any(re.search(r"[A-Za-z]", item.replace("sqrt", "")) for item in chain.items)
     return not has_variables or task in ("simplify", "expand", "factor")
 
 
 def _variables(text: str) -> frozenset[str]:
-    return frozenset(re.findall(r"[A-Za-z]", text.replace("sqrt", "").replace("abs", "")))
+    return frozenset(re.findall(r"[A-Za-z]", re.sub(r"\b(sqrt|abs)\b", "", text)))
 
 
 def has_function_notation(problem: str) -> bool:
     """True if the problem uses f(x)-style functions or defines a custom operation.
 
-    Lines in such solutions follow the problem's own definitions, not algebraic identities.
+    Lines in such solutions follow the problem's own definitions, not algebraic identities. The
+    rule is deliberately broad: any problem mentioning "defined", "operation" or an asterisk is
+    skipped, and so is any f(, g( or h( in the text. Skipping too much costs data, not trust.
     """
     lowered = problem.lower()
     custom = "defined" in lowered or "operation" in lowered or "*" in problem
     return custom or bool(_FUNCTION_NOTATION.search(problem.replace("$", " ")))
 
 
-def pairs_from_chains(chains: list[Chain], task: TaskType = "simplify") -> list[StepPair]:
-    """Consecutive items of each identity chain, skipping identical neighbours."""
+def pairs_from_chains(chains: list[Chain], task: TaskType) -> list[StepPair]:
+    """Consecutive items of each identity chain, skipping identical neighbours.
+
+    Pairs keep the same variables on both sides, and equation pairs need at least one variable.
+    Two unrelated true statements (`2^2 = 4`, `3^2 = 9`) are therefore not paired. Equation lines
+    that merely share a solution (`x+3 = 5`, `x+7 = 9`) still could be; the SymPy filter in the
+    builder cannot catch those, and they are rare.
+    """
     pairs: list[StepPair] = []
     for chain in chains:
         if not _is_identity_chain(chain, task):
             continue
         for prev, curr in zip(chain.items, chain.items[1:], strict=False):
-            if chain.kind == "expression" and _variables(prev) != _variables(curr):
+            if _variables(prev) != _variables(curr):
                 continue  # a substitution or a condition (x = 7, "= 0"), not an identity
+            if chain.kind == "equation" and not _variables(prev):
+                continue  # two closed statements are not a derivation
             if prev.replace(" ", "") != curr.replace(" ", ""):
                 pairs.append(StepPair(prev, curr, chain.kind, chain.origin))
     return pairs

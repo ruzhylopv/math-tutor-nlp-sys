@@ -91,7 +91,11 @@ def test_complex_numbers_and_uppercase_names_are_skipped() -> None:
         ("Expand $(x+1)(x+2)$.", "expand"),
         ("Factor $x^2-1$.", "factor"),
         ("Solve $x+1=3$.", "solve"),
-        ("What is the value of $x+1$ when $x=2$?", "simplify"),
+        ("Evaluate $2^3 + 1$.", "simplify"),
+        ("Determine all $x$ such that $2x = 4$.", "solve"),
+        ("For what value of $k$ does $x^2 + k = 0$ have a root?", "solve"),
+        ("Find $x$ if $2x + 3 = 7$.", "solve"),
+        ("What is the value of $x+1$ when $x=2$?", "other"),  # was "simplify": a weak default
     ],
 )
 def test_task_type(problem: str, expected: str) -> None:
