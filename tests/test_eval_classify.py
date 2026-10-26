@@ -70,6 +70,7 @@ def test_a_failed_call_is_wrong_everywhere_and_counted() -> None:
     assert metrics["failure_rate"] == 0.5 and metrics["topic_accuracy"] == 0.5
     assert metrics["level_accuracy"] == 0.5 and metrics["level_within_one"] == 0.5
     assert metrics["confusion/Algebra->(failed)"] == 1.0
+    assert metrics["recall/Algebra"] == 0.5
 
 
 def test_the_script_runs_the_node_and_writes_a_result_with_the_model_and_the_prompt_hash(

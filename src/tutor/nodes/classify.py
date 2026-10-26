@@ -8,7 +8,8 @@ node changes nothing, so a topic and level from an earlier problem in the same t
 
 Reads: problem
 Writes: topic, level
-Eval metric: topic accuracy / macro-F1; level accuracy and within-one
+Eval metric: topic accuracy / macro-F1; level accuracy and within-one;
+    in_scope_accuracy; failure_rate
 """
 
 import logging

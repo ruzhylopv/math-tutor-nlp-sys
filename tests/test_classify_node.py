@@ -1,3 +1,4 @@
+import copy
 from collections.abc import Callable
 from typing import Any
 
@@ -37,6 +38,14 @@ def test_no_problem_means_no_call_and_no_change(state: TutorState) -> None:
 def test_a_failing_model_changes_nothing(canned_llm: Callable[..., None]) -> None:
     canned_llm(Classification=None)
     assert classify({"problem": "Solve 3x = 9."}) == {}
+
+
+def test_the_input_state_is_not_mutated(canned_llm: Callable[..., None]) -> None:
+    canned_llm()
+    state: TutorState = {"problem": "Solve 3x = 9.", "topic": "Geometry", "level": 5}
+    before = copy.deepcopy(state)
+    classify(state)
+    assert state == before
 
 
 def test_only_the_declared_fields_are_returned(canned_llm: Callable[..., None]) -> None:

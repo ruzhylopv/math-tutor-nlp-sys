@@ -2,8 +2,9 @@
 
 Data: evals/datasets/<split>/classify.jsonl. Each problem is run through the real node, and so
 through the real model (needs the key in .env). Answers are cached under evals/.llm_cache, so a
-rerun with the same prompt costs nothing and a changed prompt asks again. A failed call counts as a
-wrong answer and in `failure_rate`.
+rerun with the same prompt costs nothing and a changed prompt asks again. Successful answers are
+cached; a failed call is asked again on a rerun. A failed call counts as a wrong answer and in
+`failure_rate`.
 """
 
 import logging
