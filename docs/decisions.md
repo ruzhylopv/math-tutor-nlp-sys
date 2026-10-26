@@ -191,8 +191,8 @@ Format: decision | rejected alternative | why.
   steps. Either the orchestrator `Decision` is the only path to `ask`, or add an edge after `classify`.
 - **Leakage-check inputs.** The check needs the correct final answer and the key intermediate expression; no
   state field holds them. Recompute from `problem` with SymPy, or add a reference-solution field written by `verify`.
-- **What "valid" means in `verify`** (equivalent or implies; unparsable is not valid), and how substitute / check
-  steps are handled (scenario B T4: "x = 9" after "x = 9 or x = 2" is not a consequence of the previous step).
+- **What "valid" means in `verify`**: (Resolved 2026-10-26: equivalent, implies, or narrows to the original problem's
+  solution set; unparsable is not valid. Scenario B T4 is the `narrows` case; see "M2 data decisions" below.)
 - **Non-arithmetic wrong justifications** give `justification_claims_ok = None`, so `verify` short-circuits and
   behaviour 5 holds only for justifications SymPy can check, until the `justification_claim` extraction is settled.
 - **`misconceptions_seen` entries** hold ids only, but `record_attempt` stores `error_type` and `focus_step` too.
@@ -323,3 +323,44 @@ Format: decision | rejected alternative | why.
   (conservative: never praise an unchecked step). Rejecting a root with `not equal` (`3 != -3`) is not parsed.
 - **`is_correct` for an expression task is equivalence to the problem expression**; a partly simplified answer still
   counts as correct because the node does not know the task type.
+
+## 2026-10-26 | M2 review fixes (stack of fix/ branches after PRs #29-#33 had merged)
+The five reviews found five P1s; the stack had been merged before they could be fixed, so the fixes are new PRs.
+- **Any SymPy failure, and a 5 second wall-clock guard, mean "unparsable"** | letting exceptions escape; a worker
+  process with a timeout | SymPy raises many exception types and can hang on small inputs. The guard uses SIGALRM, so it
+  works in the main thread on Unix only; elsewhere there is no guard (revisit for the Streamlit app, M7).
+- **Input limits before SymPy evaluates**: 200 characters, no stacked powers (`9^9^9`; `2^(3^2)` is lost too), exponents up
+  to 1000 on a number or a single variable and 50 on a bracketed base | a timeout alone | the interrupt cannot stop a huge
+  integer power quickly. Python number syntax (`3e+2`, `0x10`) and non-real values are rejected.
+- **Variables are real** | complex symbols | the plan says reals; `sqrt(x^2)` must equal `abs(x)`.
+- **Nested `abs` is not handled** | trusting `solveset` | it returns a wrong set for `abs(abs(x)-1) = 2`. Each root
+  `solveset` returns is also substituted back.
+- **Decimals are parsed as exact rationals** | a float tolerance; `nsimplify` | tolerance would make 0.1+0.2 vs 0.31
+  depend on a threshold.
+- **`+-` and `±` expand into two equations joined by "or"** | reading `+-` as `+(-x)` (what Python does) | the architecture
+  writes scenario B this way; the old reading silently dropped one root.
+- **An equation with no solutions followed by any equation is `not_valid`** | `implies` (set logic) | a student who
+  "solves" a contradiction must not be told the step is fine. This relabelled the hand-written case
+  `x/(x-3) = 3/(x-3)` -> `x = 3` from `implies` to `not_valid`; the case is in the test split, so the change needs the
+  developer's review. Other label changes during M2: `x ++ 3` was mislabelled `unparsable` (a unary plus is valid), and the
+  sandbox case `__import__('os')` left the dataset (it is a unit test).
+- **A check line (a closed statement) has relation `equivalent` and its truth in `StepVerdict.check_holds`** | calling a false
+  check `not_valid` | the check that rejects an extraneous root (scenario B turn 4) is correct work. Risk: a wrong arithmetic
+  claim written as a check line is not flagged by `verify`; `localize` (M4) must read `check_holds`.
+- **The answer check says `unparsable` for leftover letters against a numeric truth, treats `1,000` as ambiguous, and compares
+  the variable name when both sides give one.** `check_answer` changed on purpose: the test expecting `("x", "9")` to be
+  `incorrect` now expects `unparsable`. "No solution" and "all reals" answers are not recognised (limit).
+- **The step rule and the answer rule differ on purpose**: a bare `3` answers `x + 1 = 4` but is not a valid step after it.
+- **Miner**: `$$..$$`, `\\[2mm]`, multi-column lines, equation pairs with different variables or no variables, uppercase names and
+  complex numbers in equation chains, and the `task_type` default (`other`, not `simplify`) were fixed; two unrelated equations
+  that share a solution can still be paired (rare, documented). **Converter**: `\cdots` and `\rightarrow` were being cut to
+  `\cdot` and `\right`; `1\,000` and characters the checker cannot read (`|`, `,`, `<`, `_`) are dropped.
+- **Datasets**: identical pairs across problems are kept once, the unparsable pairs get their own review file, a seeded 20%
+  sample of the generated negatives is written for the developer, and the report records the SymPy version. **The committed dev
+  and test files are NOT rebuilt yet**: the test split is written by a script, which the `Edit`/`Write` deny does not cover, and
+  the developer has not approved it. Rejected alternative: editing the files by hand. After approval the datasets are frozen.
+- **The 100% dev accuracy was an artifact**: dev accuracy fell to 0.9975 once the checker changed, and the eval result file now
+  carries a note saying so.
+- **`verify` needs a plain-text problem statement**; a prose problem makes step 1 `unparsable` and `is_correct` False until M3's
+  `parse_input` supplies one (listed in the roadmap). `is_correct` cannot say "could not judge" (a tri-state is an option).
+

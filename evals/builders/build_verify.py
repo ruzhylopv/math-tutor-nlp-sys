@@ -7,12 +7,18 @@ unique_id). Raw downloads stay outside the repo; only the small derived files ar
 
     evals/datasets/dev/verify_steps.jsonl
     evals/datasets/test/verify_steps.jsonl
-    evals/datasets/review/verify_steps_disagreements.jsonl
+    evals/datasets/review/verify_steps_disagreements.jsonl   (the checker says "not equivalent")
+    evals/datasets/review/verify_steps_unparsable.jsonl      (the checker cannot parse the pair)
+    evals/datasets/review/verify_spotcheck_generated.jsonl   (a seeded 20% sample for the developer)
+    evals/datasets/review/verify_build_report.json
 
 Split: mined and generated cases by source problem, with a fixed seed, so no problem is in both
-dev and test; hand-written cases stratified by relation. A mined pair
-is kept as `equivalent` only if SymPy agrees; pairs SymPy calls anything else go to the review file
-(author typo, condition-dependent line, or checker bug) instead of being dropped silently.
+dev and test; hand-written cases stratified by relation. Identical (prev, curr, relation) pairs from
+different problems are kept once, so no pair is in both splits. A mined pair is kept as
+`equivalent` only if SymPy agrees; the others are written to the two review files, not dropped.
+
+The datasets are frozen once the developer has approved them: rebuilding after any change to the
+checker silently changes dev and test, because membership depends on the code under test.
 """
 
 import argparse
@@ -21,6 +27,8 @@ import json
 import logging
 import random
 from collections import Counter
+from dataclasses import dataclass
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
@@ -69,13 +77,19 @@ def _record(
     }
 
 
-Mined = tuple[list[tuple[str, Record]], list[Record], Counter[str]]
+@dataclass
+class Mined:
+    kept: list[tuple[str, Record]]  # (split key, record): positives and generated negatives
+    review: list[Record]  # the checker says "not equivalent"
+    unparsable: list[Record]  # the checker cannot parse the pair
+    counts: Counter[str]
 
 
 def mine_records(rows: list[Record], seed: int) -> Mined:
     """Positives and generated negatives (with their split key), review cases, and counts."""
     kept: list[tuple[str, Record]] = []
     review: list[Record] = []
+    unparsable: list[Record] = []
     counts: Counter[str] = Counter()
     for row in rows:
         if row["subject"] != "Algebra" or row["level"] not in (1, 2, 3):
@@ -89,13 +103,14 @@ def mine_records(rows: list[Record], seed: int) -> Mined:
             base = f"math/{key}#{index}"
             provenance = {"unique_id": key, "origin": pair.origin, "kind": pair.kind}
             relation = step_relation(pair.prev, pair.curr)
-            if relation == "unparsable":
-                counts["mined pairs dropped (unparsable)"] += 1
-                continue
             positive = _record(
                 base, task, problem, pair.prev, pair.curr, "equivalent",
                 source="math", provenance=provenance,
             )  # fmt: skip
+            if relation == "unparsable":
+                counts["mined pairs dropped (unparsable)"] += 1
+                unparsable.append(positive)
+                continue
             if relation != "equivalent":
                 counts["mined pairs sent to review"] += 1
                 review.append({**positive, "checker_says": relation})
@@ -113,7 +128,7 @@ def mine_records(rows: list[Record], seed: int) -> Mined:
                 provenance={**provenance, "rule": corruption.rule, "seed": seed},
             )  # fmt: skip
             kept.append((key, negative))
-    return kept, review, counts
+    return Mined(kept, review, unparsable, counts)
 
 
 def handwritten_records() -> list[tuple[str, Record]]:
@@ -146,6 +161,34 @@ def write_jsonl(path: Path, records: list[Record]) -> None:
     )
 
 
+def drop_duplicates(
+    kept: list[tuple[str, Record]], counts: Counter[str]
+) -> list[tuple[str, Record]]:
+    """Keep each (prev, curr, relation) once, so one pair cannot be in both splits."""
+    seen: set[tuple[str, str, str]] = set()
+    unique: list[tuple[str, Record]] = []
+    for key, record in sorted(kept, key=lambda item: item[1]["id"]):
+        signature = (record["prev"], record["curr"], record["relation"])
+        if signature in seen:
+            counts["duplicate pairs dropped"] += 1
+            continue
+        seen.add(signature)
+        unique.append((key, record))
+    return unique
+
+
+def spot_check_sample(records: list[Record], seed: int) -> list[Record]:
+    """About 20% of the generated negatives, chosen by a seeded hash, for the developer to read."""
+    chosen = []
+    for record in records:
+        if record["source"] != "generated":
+            continue
+        digest = hashlib.sha256(f"spot:{seed}:{record['id']}".encode()).hexdigest()
+        if int(digest, 16) % 5 == 0:
+            chosen.append(record)
+    return chosen
+
+
 def write_report(path: Path, counts: Counter[str], seed: int) -> None:
     """The agreement numbers that exist before the checker's verdict filters the positives.
 
@@ -165,23 +208,38 @@ def write_report(path: Path, counts: Counter[str], seed: int) -> None:
         "unparsable": unparsable,
         "agreement_rate_on_parseable": agreed / parseable if parseable else None,
         "parse_rate": parseable / (parseable + unparsable) if parseable + unparsable else None,
+        "duplicate_pairs_dropped": counts["duplicate pairs dropped"],
+        "kept": {
+            key: value
+            for key, value in sorted(counts.items())
+            if key.startswith(("dev: ", "test: "))
+        },
+        "sympy_version": version("sympy"),
+        "math_source": "openai/prm800k math_splits (main branch), downloaded 2026-10-26",
         "note": "mined labels come from MATH solution authors; see evals/datasets/README.md",
     }
     path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
 
 def build(math_dir: Path, out_dir: Path, seed: int) -> Counter[str]:
-    kept, review, counts = mine_records(load_math(math_dir), seed)
+    mined = mine_records(load_math(math_dir), seed)
+    counts = mined.counts
     by_split: dict[str, list[Record]] = {"dev": [], "test": []}
-    for key, record in kept:
+    for key, record in drop_duplicates(mined.kept, counts):
         by_split[split_of(key, seed)].append(record)
     for split, record in handwritten_records():
         by_split[split].append(record)
     for split, records in by_split.items():
         write_jsonl(out_dir / split / "verify_steps.jsonl", records)
         counts.update(f"{split}: {r['source']}/{r['relation']}" for r in records)
-    write_jsonl(out_dir / "review" / "verify_steps_disagreements.jsonl", review)
-    write_report(out_dir / "review" / "verify_build_report.json", counts, seed)
+    review_dir = out_dir / "review"
+    write_jsonl(review_dir / "verify_steps_disagreements.jsonl", mined.review)
+    write_jsonl(review_dir / "verify_steps_unparsable.jsonl", mined.unparsable)
+    write_jsonl(
+        review_dir / "verify_spotcheck_generated.jsonl",
+        spot_check_sample(by_split["dev"] + by_split["test"], seed),
+    )
+    write_report(review_dir / "verify_build_report.json", counts, seed)
     return counts
 
 

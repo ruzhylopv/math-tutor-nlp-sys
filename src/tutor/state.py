@@ -13,6 +13,8 @@ from pydantic import BaseModel, Field
 Operation = Literal[
     "expand", "rearrange", "factor", "zero-product", "substitute", "square", "other"
 ]
+# narrows: the line shrinks the solution set to exactly the original problem's own solution set
+# (rejecting an extraneous root). Any other narrowing is not_valid.
 Relation = Literal["equivalent", "implies", "narrows", "not_valid", "unparsable"]
 Action = Literal["ask", "diagnose", "hint", "reply"]
 ErrorType = Literal[
@@ -38,6 +40,9 @@ class StepVerdict(BaseModel):
     step_index: int = Field(ge=1)
     relation: Relation
     justification_claims_ok: bool | None = None
+    check_holds: bool | None = (
+        None  # for a check line (a closed statement): does it hold? else None
+    )
     notes: str = ""
 
 

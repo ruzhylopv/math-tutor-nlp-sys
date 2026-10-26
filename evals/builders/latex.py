@@ -6,9 +6,12 @@ of guessing. The output is what `tutor.tools.algebra` parses: `^`, `*`, `/`, `sq
 
 import re
 
+from tutor.tools.algebra import ALLOWED_CHARS
+
 _SPACING = re.compile(r"\\[,;:! ]|\\quad|\\qquad|~")
-_DROP = ("\\left", "\\right", "\\displaystyle")
-_OPERATORS = {"\\cdot": "*", "\\times": "*", "\\div": "/"}
+_DROP = re.compile(r"\\(left|right|displaystyle)(?![A-Za-z])")  # not \rightarrow, \leftarrow
+_OPERATORS = {r"\cdot": "*", r"\times": "*", r"\div": "/"}
+_DIGIT_SPACE = re.compile(r"\d\s*(\\[,;:! ]|\\quad|\\qquad|~)\s*\d")  # 1\,000
 _FRACTIONS = ("\\dfrac", "\\tfrac", "\\frac")
 
 
@@ -27,11 +30,12 @@ def _group(text: str, start: int) -> tuple[str, int] | None:
 def latex_to_text(source: str) -> str | None:
     """Convert one math fragment, or return None if it is outside the supported subset."""
     text = source.strip().strip("$").strip()
-    for noise in _DROP:
-        text = text.replace(noise, "")
+    if _DIGIT_SPACE.search(text):
+        return None  # 1\,000 would be read as a product of 1 and 000
+    text = _DROP.sub("", text)
     text = _SPACING.sub(" ", text).replace("&", " ")
     for latex, plain in _OPERATORS.items():
-        text = text.replace(latex, f" {plain} ")
+        text = re.sub(re.escape(latex) + r"(?![A-Za-z])", f" {plain} ", text)  # not \cdots
     text = text.replace("\\boxed", "")
     out: list[str] = []
     index = 0
@@ -60,7 +64,7 @@ def latex_to_text(source: str) -> str | None:
                     return None
                 out.append(f"(({top})/({bottom}))")
                 index = denominator[1]
-            elif name == "\\sqrt" or name == "sqrt":
+            elif name == "\\sqrt":
                 radicand = _group(text, index)
                 if radicand is None:
                     return None
@@ -86,4 +90,6 @@ def latex_to_text(source: str) -> str | None:
             out.append(char)
             index += 1
     result = re.sub(r"\s+", " ", "".join(out)).strip().rstrip(".,;:").strip()
-    return result or None
+    if not result or not ALLOWED_CHARS.fullmatch(result):
+        return None  # |x|, 1,000, a_1, 5 > 3: characters the checker cannot read
+    return result

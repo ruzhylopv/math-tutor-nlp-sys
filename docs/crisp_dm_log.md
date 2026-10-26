@@ -44,6 +44,12 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 
 ## Evaluation
 <!-- Format: YYYY-MM-DD | <component> | <split> | <key metric>=<value> (change) | <git-hash> | note -->
+- 2026-10-26 | verify | dev | accuracy=0.9975 (was 1.000; same committed dev data, fixed checker and node) | 6f3c644 | The 4
+  cases that changed are `2^(3^2)`: stacked powers are rejected on purpose now (denial of service); the failed check
+  line `hand/058` is mapped through `check_holds`. Still high by construction (see the next line). A preview rebuild
+  with the stricter miner (not committed, awaiting approval) gives dev 1,237 and test 479 cases and an agreement of
+  838 of 842 parseable pairs (99.5%) with a parse rate of 92%; no independent number exists for the generated and
+  hand-written relations.
 - 2026-10-26 | verify | dev | accuracy=1.000 (baseline; n=1621) | 631144b | High by construction, a regression suite
   and not independent evidence: mined positives were kept only where SymPy agreed with the MATH author, generated
   negatives passed a witness check, hand-written labels were reconciled with the checker. Independent numbers

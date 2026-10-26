@@ -70,8 +70,8 @@ def test_a_kept_corruption_is_never_equivalent(seed: int) -> None:
 def test_equation_corruptions_are_not_valid(seed: int) -> None:
     pair = StepPair("3x + 6 = 15", "3x = 9", "equation", "align")
     corruption = corrupt_pair(pair, random.Random(seed))
-    if corruption is not None:
-        assert step_relation(pair.prev, corruption.text) == "not_valid"
+    assert corruption is not None  # every seed finds a witnessed error for this simple equation
+    assert step_relation(pair.prev, corruption.text) == "not_valid"
 
 
 def test_corruption_is_reproducible() -> None:

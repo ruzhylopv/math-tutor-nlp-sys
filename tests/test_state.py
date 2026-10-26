@@ -40,6 +40,10 @@ def test_step_verdict_is_one_based() -> None:
         StepVerdict(step_index=0, relation="equivalent")
 
 
+def test_step_verdict_check_result_defaults_to_none() -> None:
+    assert StepVerdict(step_index=1, relation="equivalent").check_holds is None
+
+
 def test_step_verdict_rejects_unknown_relation() -> None:
     with pytest.raises(ValidationError):
         StepVerdict(step_index=1, relation="maybe")  # type: ignore[arg-type]
