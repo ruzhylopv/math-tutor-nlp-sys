@@ -66,7 +66,6 @@ def test_a_failing_verify_takes_the_full_path_through_localize_and_retrieve(
 
     monkeypatch.setattr(graph_module, "verify", failing_verify)
     assert _visited({"problem": "3(x + 2) = 15"}) == [
-        "parse_input",
         "classify",
         "verify",
         "localize",
@@ -88,7 +87,6 @@ def test_a_clean_solution_short_circuits_to_finish_diagnosis(
 
     monkeypatch.setattr(graph_module, "verify", clean_verify)
     assert _visited({"problem": "x + 1 = 2"}) == [
-        "parse_input",
         "classify",
         "verify",
         "finish_diagnosis",

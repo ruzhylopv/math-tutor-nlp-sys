@@ -23,16 +23,14 @@ def route_after_verify(state: TutorState) -> Literal["finish_diagnosis", "locali
 
 
 def build_diagnosis_graph() -> CompiledStateGraph[TutorState, None, TutorState, TutorState]:
-    """parse_input -> classify -> verify -> (localize -> retrieve ->) finish_diagnosis."""
+    """classify -> verify -> (localize -> retrieve ->) finish_diagnosis."""
     graph = StateGraph(TutorState)
-    graph.add_node("parse_input", parse_input)
     graph.add_node("classify", classify)
     graph.add_node("verify", verify)
     graph.add_node("localize", localize)
     graph.add_node("retrieve", retrieve)
     graph.add_node("finish_diagnosis", finish_diagnosis)
-    graph.add_edge(START, "parse_input")
-    graph.add_edge("parse_input", "classify")
+    graph.add_edge(START, "classify")
     graph.add_edge("classify", "verify")
     graph.add_conditional_edges("verify", route_after_verify)
     graph.add_edge("localize", "retrieve")
@@ -56,12 +54,18 @@ def route_from_orchestrator(state: TutorState) -> Literal["diagnosis", "hint", "
 
 
 def build_main_graph() -> CompiledStateGraph[TutorState, None, TutorState, TutorState]:
-    """orchestrator <-> diagnosis / hint. Both always return to the orchestrator."""
+    """parse_input -> orchestrator <-> diagnosis / hint. Both always return to the orchestrator.
+
+    `parse_input` runs once per student message, before the orchestrator; the orchestrator's loop
+    (diagnosis or hint, then back) does not run it again.
+    """
     graph = StateGraph(TutorState)
+    graph.add_node("parse_input", parse_input)
     graph.add_node("orchestrator", orchestrator)
     graph.add_node("diagnosis", build_diagnosis_graph())
     graph.add_node("hint", hint)
-    graph.add_edge(START, "orchestrator")
+    graph.add_edge(START, "parse_input")
+    graph.add_edge("parse_input", "orchestrator")
     graph.add_conditional_edges("orchestrator", route_from_orchestrator)
     graph.add_edge("diagnosis", "orchestrator")
     graph.add_edge("hint", "orchestrator")
