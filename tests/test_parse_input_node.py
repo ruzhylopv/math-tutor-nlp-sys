@@ -103,6 +103,25 @@ def test_a_message_given_as_content_blocks_is_read(monkeypatch: pytest.MonkeyPat
     assert seen[0].endswith("x = 3 and more")
 
 
+def test_empty_content_parts_are_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[str] = []
+
+    def fake(prompt: str, schema: type[BaseModel], text: str, retries: int = 1) -> Any:
+        seen.append(text)
+        return ParsedInput()
+
+    monkeypatch.setattr(structured, "call_structured", fake)
+    blocks: list[str | dict[str, Any]] = [
+        {"type": "text", "text": ""},
+        {"type": "image_url"},
+        "x = 3",
+        "",
+        {"type": "text", "text": "and more"},
+    ]
+    parse_input({"messages": [HumanMessage(content=blocks)]})
+    assert seen[0].endswith("Student message:\nx = 3 and more")
+
+
 @pytest.mark.parametrize(
     "state", [{}, {"messages": []}, {"messages": [AIMessage("only the tutor")]}]
 )

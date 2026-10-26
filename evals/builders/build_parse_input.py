@@ -14,7 +14,7 @@ only, an answer only, a question only.
     evals/datasets/dev/parse_input.jsonl
     evals/datasets/test/parse_input.jsonl
     evals/datasets/review/parse_input_build_report.json
-    evals/datasets/review/parse_input_spotcheck.jsonl
+    evals/datasets/review/parse_input_spotcheck.jsonl   (24 generated messages from dev only)
 
 Problems go to dev or test by a hash of the MATH problem, so no problem is in both.
 """
@@ -71,7 +71,10 @@ QUESTIONS = (
     "is it ok to move a term to the other side?",
     "how do I know when I am done?",
 )
-_SPOKEN_UNSAFE = re.compile(r"[(/]|sqrt|abs")
+_SPOKEN_UNSAFE = re.compile(r"[(/^]|sqrt|abs")  # "3x squared" is ambiguous, so no powers either
+_UNHANDLED = re.compile(
+    r"\^(?!\(|-?(?:\d+(?:\.\d+)?|[A-Za-z]))"
+)  # a power the renderers cannot read
 
 
 def _tidy(text: str) -> str:
@@ -106,6 +109,7 @@ def candidate_chains(rows: list[Record], seed: int) -> list[tuple[str, str, Chai
             ok = _is_identity_chain(chain, task) and 3 <= len(items) <= MAX_STEPS + 1
             ok = ok and all(item.isascii() and len(item) <= MAX_ITEM_LENGTH for item in items)
             ok = ok and len(set(items)) == len(items)
+            ok = ok and not any(_UNHANDLED.search(item) for item in items)
             ok = ok and (chain.kind != "equation" or bool(_variables(items[0])))
             if ok:
                 usable.append(Chain(chain.kind, items, chain.origin))
@@ -238,8 +242,8 @@ def _summary(records: list[Record]) -> dict[str, Any]:
 
 
 def _spot_check(splits: dict[str, list[Record]], seed: int) -> list[Record]:
-    """A seeded sample of 24 generated messages for the developer to read."""
-    generated = [r for records in splits.values() for r in records if r["source"] == "generated"]
+    """A seeded sample of 24 generated dev messages (never test) for the developer to read."""
+    generated = [r for r in splits["dev"] if r["source"] == "generated"]
     generated.sort(key=lambda record: _hash(record["id"], seed))
     return generated[:24]
 

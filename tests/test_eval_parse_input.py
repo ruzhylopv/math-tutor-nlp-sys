@@ -87,10 +87,43 @@ def test_parse_rate_counts_claims_the_checker_cannot_read() -> None:
     assert metrics["sympy_parse_rate"] == 0.5
 
 
-def test_failures_are_counted_and_the_case_is_judged_on_what_came_back() -> None:
+def test_a_failed_call_is_wrong_even_when_nothing_was_expected() -> None:
     cases = [_case("x = 1", ["x = 1"]), _case(None, [])]
     metrics = _module()["evaluate"](cases, [(None, [], True), (None, [], True)])
-    assert metrics["failure_rate"] == 1.0 and metrics["case_accuracy"] == 0.5
+    assert metrics["failure_rate"] == 1.0
+    for name in (
+        "case_accuracy",
+        "case_accuracy_strict",
+        "case_accuracy_answered",
+        "problem_accuracy",
+        "steps_accuracy",
+        "steps_accuracy_strict",
+        "no_working_accuracy",
+        "step_count_accuracy",
+    ):
+        assert metrics[name] == 0.0, name
+
+
+def test_case_accuracy_answered_leaves_the_failed_cases_out() -> None:
+    cases = [_case("x = 1", ["x = 1"]), _case(None, []), _case(None, [])]
+    predictions = [("x = 1", ["x = 1"], False), (None, [], False), (None, [], True)]
+    metrics = _module()["evaluate"](cases, predictions)
+    assert metrics["case_accuracy"] == pytest.approx(2 / 3)
+    assert metrics["case_accuracy_answered"] == 1.0
+    assert metrics["no_working_accuracy"] == 0.5
+
+
+def test_strict_case_accuracy_is_strict_about_the_problem_too() -> None:
+    cases = [_case("x + 1 = (2)", ["x = 1"])]
+    metrics = _module()["evaluate"](cases, [("x + 1 = 2", ["x = 1"], False)])
+    assert metrics["problem_accuracy"] == 1.0 and metrics["steps_accuracy_strict"] == 1.0
+    assert metrics["case_accuracy"] == 1.0 and metrics["case_accuracy_strict"] == 0.0
+
+
+def test_gold_parse_rate_is_the_same_rate_over_the_expected_claims() -> None:
+    cases = [_case(None, ["x = 2", "hello world"])]
+    metrics = _module()["evaluate"](cases, [(None, ["x = 2", "x = 3"], False)])
+    assert metrics["gold_parse_rate"] == 0.5 and metrics["sympy_parse_rate"] == 1.0
 
 
 def test_metrics_by_feature_and_source() -> None:

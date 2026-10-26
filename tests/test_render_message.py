@@ -22,6 +22,11 @@ from evals.builders.render_message import (
         ("3 * 4", "3 \\cdot 4"),
         ("(a + b)(a - b)", "(a + b)(a - b)"),
         ("x^-2", "x^{-2}"),
+        ("x^2y", "x^{2}y"),
+        ("a^2b^2", "a^{2}b^{2}"),
+        ("3^2x", "3^{2}x"),
+        ("x^2.5", "x^{2.5}"),
+        ("(a)/(b)^2", "\\frac{a}{b^{2}}"),
     ],
 )
 def test_latex(plain: str, latex: str) -> None:
@@ -113,6 +118,12 @@ def test_typos_never_change_math_tokens() -> None:
     for seed in range(30):
         message = _render(typos=True, chatty=True, rng=random.Random(seed))
         assert "x = 2" in message and "2x = 4" in message
+
+
+def test_typos_never_change_the_spoken_operators() -> None:
+    for seed in range(100):
+        message = _render(notation="spoken", typos=True, chatty=True, rng=random.Random(seed))
+        assert "2x equals 4" in message and "x equals 2" in message
 
 
 def test_the_same_seed_gives_the_same_message() -> None:

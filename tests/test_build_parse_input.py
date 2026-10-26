@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from evals.builders.build_parse_input import KINDS, _tidy, build
+from evals.builders.build_parse_input import _SPOKEN_UNSAFE, _UNHANDLED, KINDS, _tidy, build
 from evals.builders.handwritten_messages import HANDWRITTEN
 
 
@@ -111,7 +111,23 @@ def test_the_report_and_the_spot_check_are_written(tmp_path: Path) -> None:
     out, _ = _build(tmp_path)
     report = json.loads((out / "review" / "parse_input_build_report.json").read_text("utf-8"))
     assert report["per_split"] == 20 and report["dev"]["n"] > 20
-    assert 0 < len(_read(out / "review" / "parse_input_spotcheck.jsonl")) <= 24
+    sample = _read(out / "review" / "parse_input_spotcheck.jsonl")
+    assert 0 < len(sample) <= 24
+
+
+def test_the_spot_check_never_shows_a_test_message(tmp_path: Path) -> None:
+    out, splits = _build(tmp_path)
+    sample = {r["id"] for r in _read(out / "review" / "parse_input_spotcheck.jsonl")}
+    assert sample and sample.isdisjoint(r["id"] for r in splits["test"])
+    assert sample <= {r["id"] for r in splits["dev"]}
+
+
+def test_spoken_notation_is_not_used_for_powers_and_unhandled_powers_are_skipped() -> None:
+    assert _SPOKEN_UNSAFE.search("3x^2 + 1")
+    assert not _SPOKEN_UNSAFE.search("2x + 1 = 11")
+    assert _UNHANDLED.search("x^ + 1") and _UNHANDLED.search("x^*2")
+    for fine in ("x^2", "x^-2", "x^(a+1)", "x^y", "x^2.5", "x^2y"):
+        assert not _UNHANDLED.search(fine)
 
 
 def test_too_few_chains_is_an_error(tmp_path: Path) -> None:

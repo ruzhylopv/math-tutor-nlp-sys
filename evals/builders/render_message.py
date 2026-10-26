@@ -42,6 +42,24 @@ def _group(text: str, start: int) -> tuple[str, int] | None:
     return None
 
 
+_EXPONENT = re.compile(r"-?(?:\d+(?:\.\d+)?|[A-Za-z])")
+
+
+def _power(text: str, start: int) -> tuple[str, int] | None:
+    """The LaTeX power for the `^` at text[start] and the index after it, or None.
+
+    The exponent is a bracket group, a signed number or a single letter, nothing more, so
+    `x^2y` is `x^{2}y` and never `x^{2y}`.
+    """
+    if text[start : start + 1] != "^":
+        return None
+    if group := _group(text, start + 1):
+        return "^{" + to_latex(group[0]) + "}", group[1]
+    if token := _EXPONENT.match(text, start + 1):
+        return "^{" + token.group(0) + "}", token.end()
+    return None
+
+
 def to_latex(text: str) -> str:
     """Plain-text math as LaTeX (fractions, roots, powers, products)."""
     out: list[str] = []
@@ -55,22 +73,16 @@ def to_latex(text: str) -> str:
             after = group[1]
             denominator = _group(text, after + 1) if text[after : after + 1] == "/" else None
             if denominator:
-                frac = "\\frac{" + to_latex(group[0]) + "}{" + to_latex(denominator[0]) + "}"
-                out.append(frac)
-                index = denominator[1]
+                bottom, index = to_latex(denominator[0]), denominator[1]
+                if power := _power(text, index):  # a/(b^2), not (a/b)^2
+                    bottom, index = bottom + power[0], power[1]
+                out.append("\\frac{" + to_latex(group[0]) + "}{" + bottom + "}")
             else:
                 out.append("(" + to_latex(group[0]) + ")")
                 index = after
-        elif char == "^":
-            group = _group(text, index + 1)
-            if group:
-                out.append("^{" + to_latex(group[0]) + "}")
-                index = group[1]
-            else:
-                token = re.match(r"-?\w+", text[index + 1 :])
-                token_text = token.group(0) if token else ""
-                out.append("^{" + token_text + "}")
-                index += 1 + len(token_text)
+        elif power := _power(text, index):
+            out.append(power[0])
+            index = power[1]
         elif char == "*":
             out.append(" \\cdot ")
             index += 1
@@ -156,10 +168,13 @@ def render_message(
     return _typos_in_words(text, rng) if typos else text
 
 
+_NO_TYPOS = {"x", "y", "z", "equals", "minus", "plus", "times", "squared", "cubed"}
+
+
 def _typos_in_words(text: str, rng: random.Random) -> str:
-    """Typos in the plain words of a message; any token with a digit or a math symbol is left."""
+    """Typos in the plain words of a message; digits, math symbols and spoken operators are left."""
     out = []
     for token in re.split(r"(\s+)", text):
-        plain = token.isalpha() and token.lower() not in {"x", "y", "z"}
+        plain = token.isalpha() and token.lower() not in _NO_TYPOS
         out.append(typo(token, rng) if plain and rng.random() < 0.5 else token)
     return "".join(out)

@@ -4,9 +4,14 @@ Data: evals/datasets/<split>/parse_input.jsonl. Each message is run through the 
 through the real model (needs the key in .env). Answers are cached under evals/.llm_cache, so a
 rerun with the same prompt costs nothing and a changed prompt asks again.
 
+A failed model call counts as wrong in every accuracy (`case_accuracy_answered` leaves those cases
+out). `sympy_parse_rate` is the share of predicted claims the checker can read and `gold_parse_rate`
+the same over the expected claims: the dataset has correct transcriptions the checker cannot read
+(`x = 2 or x = 3`), so read the first against the second.
+
 A case is right when the new problem is the expected one (or both are absent) and the claims match
 in number, order and text. Two match rules are reported:
-- strict: equal after removing spaces and a trailing full stop;
+- strict: (problem and steps) equal after removing spaces and a trailing full stop;
 - canonical: also ignoring `*`, and brackets around a single number or letter (`x = (19)`).
 Both compare text, never algebra, so a "fixed" step cannot pass as a faithful one.
 """
@@ -107,10 +112,25 @@ def _share(flags: list[bool]) -> float:
 def evaluate(cases: list[dict[str, Any]], predictions: list[Prediction]) -> dict[str, float]:
     """All metrics for gold cases and the node's predictions."""
     pairs = list(zip(cases, predictions, strict=True))
-    problem_ok = [_same(c["expected_problem"], p[0], canon) for c, p in pairs]
-    strict_ok = [_claims_same(c["expected_steps"], p[1], norm) for c, p in pairs]
-    canon_ok = [_claims_same(c["expected_steps"], p[1], canon) for c, p in pairs]
+    failed = [p[2] for _, p in pairs]  # a failed call is wrong, even when nothing was expected
+    problem_ok = [
+        not f and _same(c["expected_problem"], p[0], canon)
+        for (c, p), f in zip(pairs, failed, strict=True)
+    ]
+    problem_strict_ok = [
+        not f and _same(c["expected_problem"], p[0], norm)
+        for (c, p), f in zip(pairs, failed, strict=True)
+    ]
+    strict_ok = [
+        not f and _claims_same(c["expected_steps"], p[1], norm)
+        for (c, p), f in zip(pairs, failed, strict=True)
+    ]
+    canon_ok = [
+        not f and _claims_same(c["expected_steps"], p[1], canon)
+        for (c, p), f in zip(pairs, failed, strict=True)
+    ]
     case_ok = [a and b for a, b in zip(problem_ok, canon_ok, strict=True)]
+    case_strict_ok = [a and b for a, b in zip(problem_strict_ok, strict_ok, strict=True)]
     expected_total = sum(len(c["expected_steps"]) for c in cases)
     position_hits = {
         name: sum(
@@ -124,9 +144,10 @@ def evaluate(cases: list[dict[str, Any]], predictions: list[Prediction]) -> dict
     claims = [claim for _, p in pairs for claim in p[1]]
     metrics: dict[str, float] = {
         "case_accuracy": _share(case_ok),
-        "case_accuracy_strict": _share(
-            [a and b for a, b in zip(problem_ok, strict_ok, strict=True)]
+        "case_accuracy_answered": _share(
+            [ok for ok, f in zip(case_ok, failed, strict=True) if not f]
         ),
+        "case_accuracy_strict": _share(case_strict_ok),
         "problem_accuracy": _share(problem_ok),
         "steps_accuracy": _share(canon_ok),
         "steps_accuracy_strict": _share(strict_ok),
@@ -134,13 +155,16 @@ def evaluate(cases: list[dict[str, Any]], predictions: list[Prediction]) -> dict
         "claim_recall_canonical": position_hits["canonical"] / expected_total
         if expected_total
         else 0.0,
-        "step_count_accuracy": _share([len(c["expected_steps"]) == len(p[1]) for c, p in pairs]),
+        "step_count_accuracy": _share(
+            [not p[2] and len(c["expected_steps"]) == len(p[1]) for c, p in pairs]
+        ),
         "invented_steps_rate": _share([len(p[1]) > len(c["expected_steps"]) for c, p in pairs]),
         "dropped_steps_rate": _share([len(p[1]) < len(c["expected_steps"]) for c, p in pairs]),
         "sympy_parse_rate": _share([_parses(claim) for claim in claims]),
-        "failure_rate": _share([p[2] for _, p in pairs]),
+        "gold_parse_rate": _share([_parses(claim) for c in cases for claim in c["expected_steps"]]),
+        "failure_rate": _share(failed),
     }
-    no_working = [p[1] == [] for c, p in pairs if not c["expected_steps"]]
+    no_working = [not p[2] and p[1] == [] for c, p in pairs if not c["expected_steps"]]
     metrics["no_working_accuracy"] = _share(no_working)
     metrics["n/no_working"] = float(len(no_working))
     for feature in sorted({f for c in cases for f in c["features"]}):
@@ -177,6 +201,7 @@ def main() -> None:
     logger.info("parse_input (%s): n=%d", split, len(cases))
     for name in (
         "case_accuracy",
+        "case_accuracy_answered",
         "case_accuracy_strict",
         "problem_accuracy",
         "steps_accuracy",
@@ -185,6 +210,7 @@ def main() -> None:
         "invented_steps_rate",
         "dropped_steps_rate",
         "sympy_parse_rate",
+        "gold_parse_rate",
         "failure_rate",
     ):
         logger.info("  %-24s %.3f", name, metrics[name])

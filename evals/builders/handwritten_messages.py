@@ -194,6 +194,6 @@ HANDWRITTEN: list[Case] = [
         None,
         [],
         stored="2x + 3 = 11",
-        features=("question_only",),
+        features=("smalltalk",),
     ),
 ]
