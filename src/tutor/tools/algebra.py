@@ -221,3 +221,62 @@ def check_answer(answer: str, ground_truth: str) -> AnswerVerdict:
         )
         return "correct" if same else "incorrect"
     return "incorrect"
+
+
+def parses(text: str) -> bool:
+    """True if the text is a statement this module can handle."""
+    try:
+        parse_statement(text)
+    except UnparsableError:
+        return False
+    return True
+
+
+def is_equation(text: str) -> bool:
+    """True for an equation (or equations joined by "or") that is not a closed statement."""
+    try:
+        statement = parse_statement(text)
+    except UnparsableError:
+        return False
+    return isinstance(statement, Equations) and not statement.is_closed()
+
+
+def is_closed_statement(text: str) -> bool:
+    """True for a statement without variables, such as a check like "sqrt(9+7) = 9-5"."""
+    try:
+        statement = parse_statement(text)
+    except UnparsableError:
+        return False
+    return isinstance(statement, Equations) and statement.is_closed()
+
+
+def claim_truth(text: str) -> bool | None:
+    """Whether a closed claim such as "-2 + -9 = 11" is true; None if it is not a closed claim."""
+    try:
+        statement = parse_statement(text)
+    except UnparsableError:
+        return None
+    if isinstance(statement, Equations) and statement.is_closed():
+        return statement.is_true()
+    return None
+
+
+def final_answer_matches(problem: str, final_line: str) -> bool | None:
+    """Whether the student's last line answers the problem; None if that cannot be judged.
+
+    For an equation the answer must be exactly its real solution set ("x = 9", "9" or "2, 9").
+    For an expression the last line must be equivalent to it; whether it is fully simplified
+    cannot be told from the text alone.
+    """
+    try:
+        original = parse_statement(problem)
+        if isinstance(original, Equations):
+            truth = _solutions(original)
+            values = _answer_values(final_line)
+            if not isinstance(values, list):
+                return False
+            return _same_set(truth, sp.FiniteSet(*values))
+        final = parse_statement(final_line)
+    except UnparsableError:
+        return None
+    return isinstance(final, Expression) and _equal(original.value, final.value)
