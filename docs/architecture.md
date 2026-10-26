@@ -45,6 +45,18 @@ to the orchestrator (see "Orchestrator modes").
 `parse_input` runs on every student message, before the orchestrator, so the orchestrator routes on a
 structure (is there a problem, are there steps) and not only on raw text. For a message without working
 it resets `student_steps` to empty; for a message without a problem it keeps the stored `problem`.
+OPEN (M5, before `hint` and the orchestrator are built): this reset conflicts with the hint path. `hint`
+reads the wrong step, and `focus_step`, `first_error_step` and `step_verdicts` index into `student_steps`; a
+question after a diagnosis (scenario B T2, required behaviour 2) goes to `hint` with no new diagnosis, and
+after the reset those fields point at nothing. The same happens when the model fails twice, and the
+`is_clean_solution` path then sees verdicts for steps that no longer exist. Options: (a) at diagnosis time
+store the wrong step's claim in a field `parse_input` does not reset, and `hint` reads that; (b) the reset
+also clears `first_error_step`, `focus_step`, `step_verdicts`, `error_type` and `misconception`, and `hint`
+does not depend on them after a question; (c) reset only when the message contains a new attempt (steps
+found), or when no diagnosis is outstanding. Proposal, awaiting the developer: (a). Related OPEN hazard:
+`classify` returns `{}` on failure or an empty problem, so `topic` and `level` keep the value of an earlier
+problem in the same thread; the orchestrator (or `parse_input` when `problem` changes) must clear them.
+See "M3 decisions" in `docs/decisions.md`.
 
 ### Diagnosis subgraph
 Fixed order, compiled separately so evals can call it without the chat layer.

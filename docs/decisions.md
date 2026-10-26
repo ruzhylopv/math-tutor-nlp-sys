@@ -369,6 +369,20 @@ The five reviews found five P1s; the stack had been merged before they could be 
   (proposed earlier) | the orchestrator then routes on a structure (problem, steps) and not only on raw text. Cost: one
   LLM call per message, including pure questions. `parse_input` resets `student_steps` for a message without working, so
   stale steps are never mistaken for a new attempt.
+- **OPEN (settle in M5, before `hint` and the orchestrator are built): the `student_steps` reset conflicts with the
+  hint path.** `hint` reads the wrong step; `focus_step` and `first_error_step` index into `student_steps` and
+  `step_verdicts` is written against them. A question after a diagnosis (scenario B T2, required behaviour 2) is routed
+  to `hint` with no new diagnosis; after the reset `hint` has no step to talk about and the indices point at nothing.
+  The `diagnose` -> `is_clean_solution` path on a message without steps sees verdicts for steps that no longer exist,
+  and the same reset happens when the model fails twice. Options: (a) at diagnosis time store the wrong step's claim
+  in a field `parse_input` does not reset, and `hint` reads that; (b) the reset also clears `first_error_step`,
+  `focus_step`, `step_verdicts`, `error_type` and `misconception`, and `hint` does not depend on them after a question;
+  (c) `parse_input` resets only when the message contains a new attempt (steps found), or when no diagnosis is
+  outstanding. Proposal, awaiting the developer: (a), because `hint` keeps what it needs without making the reset
+  depend on diagnosis state. Rejected for now: changing the approved reset before the developer has chosen.
+- **OPEN (settle with the item above): stale `topic` and `level`.** `classify` returns `{}` on failure or an empty
+  problem, so `topic` and `level` keep the value from an earlier problem in the same thread. The orchestrator (or
+  `parse_input` when `problem` changes) must clear them.
 - **`topic` is one of the 7 MATH subjects and `level` is MATH's 1-5** | our own finer taxonomy (brackets, quadratics, ...) |
   labels exist, are human-assigned and independent of our code; a finer taxonomy would need hand labels. In scope:
   Prealgebra, Algebra, Intermediate Algebra; `classify` doubles as a scope guard.

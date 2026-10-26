@@ -49,6 +49,14 @@ output. Roadmap: `docs/plans/design/2026-10-25-roadmap.md`.
   LaTeX, spelled-out math, typos): to be decided with the developer before layer 3.
 - The size and the split of the `parse_input` dataset.
 - The model name, to be recorded with the first eval result.
+- OPEN (M5, developer decision): the `student_steps` reset conflicts with the hint path (`hint`, `focus_step`,
+  `first_error_step` and `step_verdicts` depend on the steps the reset clears). Options: (a) store the wrong step's
+  claim at diagnosis time in a field `parse_input` does not reset; (b) the reset also clears the diagnosis fields
+  and `hint` does not depend on them after a question; (c) reset only when the message has steps, or when no
+  diagnosis is outstanding. Proposal, awaiting the developer: (a). The approved reset stays as it is. See
+  `docs/decisions.md`, "M3 decisions".
+- OPEN (settle with the above): `classify` returns `{}` on failure, so `topic` and `level` go stale across problems
+  in a thread; the orchestrator (or `parse_input` when `problem` changes) must clear them.
 
 ## Risks
 - The model "fixes" a student's mistake while transcribing: the eval targets exactly this.
