@@ -191,8 +191,8 @@ Format: decision | rejected alternative | why.
   steps. Either the orchestrator `Decision` is the only path to `ask`, or add an edge after `classify`.
 - **Leakage-check inputs.** The check needs the correct final answer and the key intermediate expression; no
   state field holds them. Recompute from `problem` with SymPy, or add a reference-solution field written by `verify`.
-- **What "valid" means in `verify`** (equivalent or implies; unparsable is not valid), and how substitute / check
-  steps are handled (scenario B T4: "x = 9" after "x = 9 or x = 2" is not a consequence of the previous step).
+- **What "valid" means in `verify`**: (Resolved 2026-10-26: equivalent, implies, or narrows to the original problem's
+  solution set; unparsable is not valid. Scenario B T4 is the `narrows` case; see "M2 data decisions" below.)
 - **Non-arithmetic wrong justifications** give `justification_claims_ok = None`, so `verify` short-circuits and
   behaviour 5 holds only for justifications SymPy can check, until the `justification_claim` extraction is settled.
 - **`misconceptions_seen` entries** hold ids only, but `record_attempt` stores `error_type` and `focus_step` too.

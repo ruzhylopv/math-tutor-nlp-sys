@@ -32,7 +32,7 @@ def test_implication_counts_as_valid() -> None:
     assert is_clean_solution(_state(StepVerdict(step_index=1, relation="implies")))
 
 
-def test_narrowing_to_the_original_solution_set_counts_as_valid() -> None:
+def test_narrows_counts_as_valid() -> None:
     narrowing = StepVerdict(step_index=3, relation="narrows")
     assert is_clean_solution(_state(StepVerdict(step_index=1, relation="implies"), narrowing))
 

@@ -81,6 +81,15 @@ Hard rule: the LLM never does arithmetic or verifies algebra. SymPy does. `local
 first (the first `not_valid` verdict gives the step and error type); the LLM only interprets and
 checks justifications.
 
+### Step relations (`verify`)
+Each line is judged against the previous one (step 1 against the problem statement):
+- `equivalent`: the same expression, or an equation with the same solution set.
+- `implies`: a non-reversible step; the new equation's solutions include the old ones (for example squaring).
+- `narrows`: the new line shrinks the solution set to exactly the original problem's solution set, which is how an
+  extraneous root is rejected. Any other narrowing (losing a solution) is `not_valid`.
+- `not_valid`: not a consequence of the previous line.
+- `unparsable`: outside the checker's grammar (see `docs/plans/nodes/2026-10-26-m2-verify.md`).
+
 ### Orchestrator modes
 One node, three modes, chosen from the `stage` field (`new_message`, `diagnosed`, `hinted`). The UI sets
 `new_message` at the start of each run; `finish_diagnosis` (the last node of the diagnosis subgraph) sets `diagnosed` and `hint`

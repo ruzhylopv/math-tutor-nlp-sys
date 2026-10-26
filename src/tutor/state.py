@@ -13,6 +13,8 @@ from pydantic import BaseModel, Field
 Operation = Literal[
     "expand", "rearrange", "factor", "zero-product", "substitute", "square", "other"
 ]
+# narrows: the line shrinks the solution set to exactly the original problem's own solution set
+# (rejecting an extraneous root). Any other narrowing is not_valid.
 Relation = Literal["equivalent", "implies", "narrows", "not_valid", "unparsable"]
 Action = Literal["ask", "diagnose", "hint", "reply"]
 ErrorType = Literal[
