@@ -9,7 +9,6 @@ from tutor.nodes.finish_diagnosis import finish_diagnosis
 from tutor.nodes.hint import hint
 from tutor.nodes.localize import localize
 from tutor.nodes.orchestrator import orchestrator
-from tutor.nodes.parse_input import parse_input
 from tutor.nodes.retrieve import retrieve
 from tutor.nodes.verify import verify
 from tutor.state import TutorState
@@ -17,7 +16,6 @@ from tutor.state import TutorState
 Node = Callable[[TutorState], dict[str, Any]]
 
 DECLARED_WRITES: dict[str, set[str]] = {
-    "parse_input": {"problem", "student_steps"},
     "verify": {"is_correct", "step_verdicts"},
     "localize": {"first_error_step", "focus_step", "error_type"},
     "retrieve": {"misconception_candidates", "misconception"},
@@ -26,7 +24,6 @@ DECLARED_WRITES: dict[str, set[str]] = {
     "orchestrator": {"next_action", "reply_text"},
 }
 NODES: dict[str, Node] = {
-    "parse_input": parse_input,
     "verify": verify,
     "localize": localize,
     "retrieve": retrieve,
