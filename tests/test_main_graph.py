@@ -1,7 +1,7 @@
 import runpy
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 from langgraph.graph import END, START
@@ -38,8 +38,7 @@ def test_main_graph_has_the_designed_nodes_and_edges() -> None:
         ("hint", "orchestrator"),
     } <= edges
     # parse_input runs once per message: nothing in the loop leads back to it
-    for loop_node in ("orchestrator", "diagnosis", "hint"):
-        assert (loop_node, "parse_input") not in edges
+    assert {edge.source for edge in drawn.edges if edge.target == "parse_input"} == {START}
 
 
 def test_with_the_stubs_a_run_replies_and_ends() -> None:
@@ -103,7 +102,7 @@ def test_parse_input_runs_first_and_the_orchestrator_sees_its_result(
 
 
 def _script_loop(
-    monkeypatch: pytest.MonkeyPatch, route_after_diagnosis: str
+    monkeypatch: pytest.MonkeyPatch, route_after_diagnosis: Literal["hint", "reply"]
 ) -> dict[str, list[str]]:
     """Script parse_input, diagnosis and the orchestrator; record how often each one ran."""
     calls: dict[str, list[str]] = {
