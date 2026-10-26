@@ -2,8 +2,13 @@
 
 `call_structured` sends a prompt (loaded from src/tutor/prompts/) and the user's text, asks for a
 pydantic schema, retries once, and returns None if the output is still invalid. Nodes call only this
-function, and unit tests mock it, so no node touches the network. A missing API key is a setup error
-and is raised, not swallowed.
+function, and unit tests mock it, so no node touches the network.
+
+Only transient or invalid-output failures are retried (see `_RETRYABLE`): connection errors and
+timeouts, 429, 5xx, a truncated or filtered answer, and output that does not parse (a ValueError,
+which covers pydantic's ValidationError and langchain's OutputParserException). Setup errors are
+raised, not swallowed: a missing key (ConfigError), a wrong or revoked key (401, 403), a bad request
+(400) and programming errors, so a broken eval fails at once instead of giving N silent Nones.
 
 For evals, set LLM_CACHE_DIR: each answer is stored under a hash of the model, the prompt, the
 schema and the user text, so a rerun costs nothing and a changed prompt invalidates itself.
@@ -14,6 +19,7 @@ import json
 import logging
 from pathlib import Path
 
+import openai
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel
 
@@ -22,6 +28,18 @@ from tutor.llm import get_llm
 from tutor.prompts import load_prompt
 
 logger = logging.getLogger("tutor.structured")
+
+# The openai SDK already retries connection errors, 429 and 5xx twice with backoff
+# (default max_retries=2), so our single retry is mainly for invalid output.
+_RETRYABLE = (
+    openai.APIConnectionError,  # includes APITimeoutError
+    openai.RateLimitError,
+    openai.InternalServerError,
+    openai.LengthFinishReasonError,
+    openai.ContentFilterFinishReasonError,
+    ValueError,  # pydantic ValidationError, langchain OutputParserException, bad JSON
+    OSError,  # builtin TimeoutError / ConnectionError
+)
 
 
 def _cache_path(
@@ -52,8 +70,14 @@ def call_structured[T: BaseModel](
     for attempt in range(1, retries + 2):
         try:
             result = chain.invoke(messages)
-        except Exception as exc:  # provider, network or parsing failure: retry, then give up
-            logger.warning("%s attempt %d failed: %s", prompt_name, attempt, type(exc).__name__)
+        except _RETRYABLE as exc:  # anything else (401, 403, 400, a bug) propagates
+            logger.warning(
+                "%s attempt %d failed: %s (status %s)",
+                prompt_name,
+                attempt,
+                type(exc).__name__,
+                getattr(exc, "status_code", None),
+            )
             continue
         if isinstance(result, schema):
             if cache is not None:

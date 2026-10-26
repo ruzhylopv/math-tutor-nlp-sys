@@ -1,7 +1,11 @@
+import logging
 from pathlib import Path
 from typing import Any
 
+import httpx
+import openai
 import pytest
+from pydantic import BaseModel
 
 from tutor.config import ConfigError
 from tutor.prompts import load_prompt
@@ -10,6 +14,15 @@ from tutor.tools import structured
 from tutor.tools.structured import call_structured
 
 GOOD = Classification(topic="Algebra", level=2)
+_REQUEST = httpx.Request("POST", "https://example.invalid/v1/chat/completions")
+
+
+class Other(BaseModel):
+    answer: str
+
+
+def _status_error(cls: type[openai.APIStatusError], status: int) -> openai.APIStatusError:
+    return cls("boom", response=httpx.Response(status, request=_REQUEST), body=None)
 
 
 class FakeChain:
@@ -83,6 +96,55 @@ def test_no_retries_means_one_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(chain.calls) == 1
 
 
+@pytest.mark.parametrize(
+    "error",
+    [
+        openai.APIConnectionError(request=_REQUEST),
+        openai.APITimeoutError(request=_REQUEST),
+        _status_error(openai.RateLimitError, 429),
+        _status_error(openai.InternalServerError, 500),
+    ],
+    ids=lambda e: type(e).__name__,
+)
+def test_transient_provider_errors_are_retried_once_then_give_none(
+    monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    _, chain = _use(monkeypatch, error, error)
+    assert call_structured("classify", Classification, "x") is None
+    assert len(chain.calls) == 2
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        _status_error(openai.AuthenticationError, 401),
+        _status_error(openai.PermissionDeniedError, 403),
+        _status_error(openai.BadRequestError, 400),
+        TypeError("a bug"),
+    ],
+    ids=lambda e: type(e).__name__,
+)
+def test_setup_errors_and_bugs_propagate_without_a_retry(
+    monkeypatch: pytest.MonkeyPatch, error: Exception
+) -> None:
+    _, chain = _use(monkeypatch, error, GOOD)
+    with pytest.raises(type(error)):
+        call_structured("classify", Classification, "x")
+    assert len(chain.calls) == 1
+
+
+def test_logs_hold_neither_the_student_text_nor_secrets(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    text = "my private solution 7q9z"
+    _use(monkeypatch, ValueError("secret-key " + text), ValueError("secret-key " + text))
+    with caplog.at_level(logging.DEBUG):
+        assert call_structured("classify", Classification, text) is None
+    assert "attempt" in caplog.text  # something was logged
+    assert text not in caplog.text
+    assert "secret-key" not in caplog.text
+
+
 def test_a_missing_key_is_a_setup_error_and_is_raised(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENROUTER_API_KEY")
     with pytest.raises(ConfigError):
@@ -110,13 +172,36 @@ def test_another_text_or_another_prompt_is_a_new_question(
     assert len(chain.calls) == 3
 
 
-def test_a_corrupt_cache_entry_is_ignored(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_another_model_is_a_new_question(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path))
+    _, chain = _use(monkeypatch, GOOD, GOOD)
+    call_structured("classify", Classification, "x")
+    monkeypatch.setenv("MODEL_NAME", "another/model")
+    call_structured("classify", Classification, "x")
+    assert len(chain.calls) == 2
+
+
+def test_another_schema_is_a_new_question(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path))
+    other = Other(answer="a")
+    _, chain = _use(monkeypatch, GOOD, other)
+    assert call_structured("classify", Classification, "x") == GOOD
+    assert call_structured("classify", Other, "x") == other
+    assert len(chain.calls) == 2
+
+
+@pytest.mark.parametrize("content", ["not json", '{"topic": "Algebra"}'])
+def test_a_corrupt_cache_entry_is_ignored_and_rewritten(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, content: str
+) -> None:
     monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path))
     _, chain = _use(monkeypatch, GOOD, GOOD)
     call_structured("classify", Classification, "x")
     (entry,) = tmp_path.glob("*.json")
-    entry.write_text("not json", encoding="utf-8")
+    entry.write_text(content, encoding="utf-8")
     assert call_structured("classify", Classification, "x") == GOOD
+    assert len(chain.calls) == 2
+    assert call_structured("classify", Classification, "x") == GOOD  # now a cache hit
     assert len(chain.calls) == 2
 
 
