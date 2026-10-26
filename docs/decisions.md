@@ -305,3 +305,21 @@ Format: decision | rejected alternative | why.
 - **PRM800K and MATH are MIT-licensed repositories.** PRM800K states no separate data licence. Raw files stay outside
   the repo; only small derived datasets are committed.
 
+## 2026-10-26 | M2 implementation notes
+- **Mined pairs are identity lines only**: no complex numbers, uppercase names, function notation or custom
+  operations, and both lines must use the same variables. Conditions and substitutions (`xy = 6`, "= 0") hold only
+  under a hypothesis and would mislabel as `equivalent`. Cost: a legitimate simplification to a number is skipped.
+- **The checker parses decimals exactly and rejects `1.2.3`**; both bugs were found by the mined data and the
+  hand-written cases, not by the hand-built unit tests.
+- **`evals/builders/`, not `evals/build/`**: `.gitignore` ignores `build/`, which silently dropped the first commit.
+- **Hand-written cases are split stratified by relation, not by problem** | by problem | they share problem texts, so
+  a split by problem left the rare relations nearly empty in test.
+- **Mined positives are filtered by the checker's agreement** | keeping the disagreements as hard cases | the
+  disagreements are author typos and condition-dependent lines, not checker faults; they go to a review file and the
+  agreement rate is reported separately. Consequence: accuracy on the splits is high by construction.
+- **The node is evaluated through its real interface**: a case runs as `problem = original or prev` and the last step
+  is `curr`, so `narrows` is recognised and closed check lines behave as in use.
+- **`verify` needs a plain-text problem statement** (parse_input's job, M3); a prose problem makes step 1 `unparsable`
+  (conservative: never praise an unchecked step). Rejecting a root with `not equal` (`3 != -3`) is not parsed.
+- **`is_correct` for an expression task is equivalence to the problem expression**; a partly simplified answer still
+  counts as correct because the node does not know the task type.
