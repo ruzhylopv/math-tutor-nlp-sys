@@ -105,6 +105,7 @@ def test_an_expression_that_becomes_an_equation_is_not_valid() -> None:
         "sin(x)",
         "x = 9 or 5",
         "1.",
+        "1.2.3",
         "x[0]",
     ],
 )
