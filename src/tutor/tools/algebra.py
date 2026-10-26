@@ -16,6 +16,7 @@ from sympy.parsing.sympy_parser import (
     convert_xor,
     implicit_multiplication_application,
     parse_expr,
+    rationalize,
     standard_transformations,
 )
 
@@ -23,7 +24,13 @@ from tutor.state import Relation
 
 AnswerVerdict = Literal["correct", "incorrect", "unparsable"]
 
-_TRANSFORMATIONS = (*standard_transformations, implicit_multiplication_application, convert_xor)
+# rationalize turns 2.28 into 57/25, so decimal arithmetic is exact and 2.28 * 5 equals 11.4
+_TRANSFORMATIONS = (
+    *standard_transformations,
+    rationalize,
+    implicit_multiplication_application,
+    convert_xor,
+)
 _NAMESPACE = {
     "Symbol": sp.Symbol,
     "Function": sp.Function,

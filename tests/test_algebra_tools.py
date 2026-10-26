@@ -31,6 +31,14 @@ def test_expressions_that_are_not_equivalent(prev: str, curr: str) -> None:
     assert step_relation(prev, curr) == "not_valid"
 
 
+def test_decimals_are_exact() -> None:
+    # found by the mined MATH data: 2.28 * 5 is 11.399999999999999 in binary floating point
+    assert step_relation("2.28 * 5", "11.4") == "equivalent"
+    assert step_relation("10^0.5 * 10^0.5", "10") == "equivalent"
+    assert step_relation("0.1 + 0.2", "0.3") == "equivalent"
+    assert step_relation("0.1 + 0.2", "0.31") == "not_valid"
+
+
 # --- equations ---------------------------------------------------------------------------
 @pytest.mark.parametrize(
     ("prev", "curr"),
