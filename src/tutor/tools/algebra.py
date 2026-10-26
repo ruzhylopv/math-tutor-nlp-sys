@@ -4,9 +4,10 @@ All math verification goes through here; no LLM is involved.
 Rules: docs/plans/nodes/2026-10-26-m2-verify.md.
 
 Limits (by design for M2): one variable per equation, real solutions only, no inequalities, no
-branching solutions, no nested abs, no stacked or huge powers, inputs up to 200 characters. Any
-line this module cannot handle, and any SymPy failure or timeout, is reported as `unparsable`
-(or `None` / `False` for the helpers): "cannot judge" is never turned into a verdict.
+branching solutions, no nested abs, no stacked powers, exponents up to 1000 (50 on a bracketed
+base), inputs up to 200 characters. Any line this module cannot handle, and any SymPy failure
+or timeout, is reported as `unparsable` (or `None` / `False` for the helpers): "cannot judge" is
+never turned into a verdict.
 """
 
 import re
@@ -57,7 +58,8 @@ _WORDS = re.compile(r"[A-Za-z]+")
 _PLAIN_NUMBER = re.compile(r"\d+(\.\d+)?")
 _MAX_VARIABLE_RUN = 3  # "xyz" is x*y*z; longer letter runs are not math
 _MAX_LENGTH = 200
-_MAX_EXPONENT = 50
+_MAX_EXPONENT = 1000  # a number or a single variable to a power: cheap
+_MAX_GROUP_EXPONENT = 50  # (x+1)^n is expanded by simplify: keep n small
 _TIMEOUT_SECONDS = 5.0
 _UNPARSABLE_RELATION: Relation = "unparsable"
 _UNPARSABLE_ANSWER: AnswerVerdict = "unparsable"
@@ -134,8 +136,13 @@ Statement = Expression | Equations
 
 
 def _check_powers(text: str) -> None:
-    """Reject stacked powers (9^9^9) and exponents above _MAX_EXPONENT before SymPy evaluates."""
+    """Reject stacked powers (9^9^9) and huge exponents before SymPy evaluates them.
+
+    A bracketed base is capped lower than a number or a single variable, because simplify expands
+    it. In `2^3x^3` the exponent is just `3` (implicit multiplication follows), not `3x`.
+    """
     for match in re.finditer(r"\^", text):
+        base_is_group = text[: match.start()].rstrip().endswith(")")
         rest = text[match.end() :].lstrip()
         if rest[:1] in ("+", "-"):
             rest = rest[1:].lstrip()
@@ -150,12 +157,13 @@ def _check_powers(text: str) -> None:
                 raise UnparsableError("unbalanced brackets")
             inner, after = rest[1:end], rest[end + 1 :].lstrip()
         else:
-            operand = re.match(r"[0-9A-Za-z.]*", rest)
+            operand = re.match(r"\d+(?:\.\d+)?|[A-Za-z]", rest)
             inner = operand.group(0) if operand else ""
             after = rest[len(inner) :].lstrip()
         if "^" in inner or after.startswith("^"):
             raise UnparsableError("stacked powers are not handled")
-        if _PLAIN_NUMBER.fullmatch(inner.strip()) and float(inner) > _MAX_EXPONENT:
+        cap = _MAX_GROUP_EXPONENT if base_is_group else _MAX_EXPONENT
+        if _PLAIN_NUMBER.fullmatch(inner.strip()) and float(inner) > cap:
             raise UnparsableError("exponent too large")
 
 

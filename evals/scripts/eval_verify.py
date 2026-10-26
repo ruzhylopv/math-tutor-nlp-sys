@@ -2,8 +2,10 @@
 
 Each case (`prev`, `curr`, optional `original`) is run through the real node: the problem is the
 `original` when there is one (so `narrows` can be recognised), the pair is the last two steps, and
-the verdict of `curr` is compared with the label. Metrics are flat floats: overall accuracy,
-precision, recall and support per relation, accuracy per source, and confusion counts.
+the verdict of `curr` is compared with the label. A check line (a closed statement) has relation
+`equivalent` in the node, so a failed check is reported as `not_valid` here, as the dataset labels
+it. Metrics are flat floats: overall accuracy, precision, recall and support per relation, accuracy
+per source, and confusion counts.
 
 What it does and does not cover: a single pair per case, so the multi-step logic (check lines,
 unparsable lines in a chain, predecessor choice), `is_correct` and the justification claims are
@@ -41,6 +43,8 @@ def predict(case: dict[str, Any]) -> str:
     else:
         state = {"problem": case["prev"], "student_steps": [Step(claim=case["curr"])]}
         verdict = verify(state)["step_verdicts"][0]
+    if verdict.check_holds is False:
+        return "not_valid"  # the dataset labels a false closed statement not_valid
     return str(verdict.relation)
 
 

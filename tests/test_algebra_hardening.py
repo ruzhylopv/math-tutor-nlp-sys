@@ -38,6 +38,24 @@ def test_expensive_input_is_rejected_quickly(text: str) -> None:
     assert time.monotonic() - start < 1.0
 
 
+@pytest.mark.parametrize(
+    ("prev", "curr"),
+    [
+        ("2^3x^3", "8x^3"),  # implicit multiplication ends the exponent: (2^3) * (x^3)
+        ("7z^96 + 28z^97", "7z^96(1 + 4z)"),  # a monomial with a big exponent is cheap
+        ("2^64", "18446744073709551616"),
+        ("(x+1)^50", "(x+1)^50"),
+    ],
+)
+def test_cheap_large_powers_are_allowed(prev: str, curr: str) -> None:
+    assert step_relation(prev, curr) == "equivalent"
+
+
+def test_a_bracketed_base_has_a_lower_exponent_cap() -> None:
+    assert step_relation("(x+1)^51", "(x+1)^51") == "unparsable"
+    assert step_relation("x^1001", "x^1001") == "unparsable"
+
+
 def test_reasonable_powers_still_work() -> None:
     assert step_relation("(x+1)^2", "x^2 + 2x + 1") == "equivalent"
     assert step_relation("(x^2)^3", "x^6") == "equivalent"

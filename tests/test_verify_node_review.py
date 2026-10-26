@@ -1,4 +1,4 @@
-"""Regression tests for the node problems found by the M2 review (scenario B, check lines, chains)."""
+"""Regression tests for the node problems found by the M2 review: scenario B, checks, chains."""
 
 from tutor.nodes.verify import verify
 from tutor.state import Step, StepVerdict, TutorState
