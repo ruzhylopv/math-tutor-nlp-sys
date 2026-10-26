@@ -1,0 +1,43 @@
+{
+  "seed": 0,
+  "per_subject": 60,
+  "source": "openai/prm800k math_splits (main branch)",
+  "dev": {
+    "n": 420,
+    "by_subject": {
+      "Algebra": 60,
+      "Counting & Probability": 60,
+      "Geometry": 60,
+      "Intermediate Algebra": 60,
+      "Number Theory": 60,
+      "Prealgebra": 60,
+      "Precalculus": 60
+    },
+    "by_level": {
+      "1": 36,
+      "2": 81,
+      "3": 75,
+      "4": 105,
+      "5": 123
+    }
+  },
+  "test": {
+    "n": 420,
+    "by_subject": {
+      "Algebra": 60,
+      "Counting & Probability": 60,
+      "Geometry": 60,
+      "Intermediate Algebra": 60,
+      "Number Theory": 60,
+      "Prealgebra": 60,
+      "Precalculus": 60
+    },
+    "by_level": {
+      "1": 32,
+      "2": 75,
+      "3": 89,
+      "4": 101,
+      "5": 123
+    }
+  }
+}
