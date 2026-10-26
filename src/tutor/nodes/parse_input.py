@@ -28,9 +28,10 @@ def _latest_student_message(state: TutorState) -> str:
             content = message.content
             if isinstance(content, str):
                 return content.strip()
-            return " ".join(
+            parts = (
                 part if isinstance(part, str) else str(part.get("text", "")) for part in content
-            ).strip()
+            )
+            return " ".join(part for part in parts if part).strip()
     return ""
 
 
