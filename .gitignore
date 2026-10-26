@@ -11,6 +11,9 @@ dist/
 # uv / virtualenv
 .venv/
 
+# LLM answers cached by the eval scripts
+evals/.llm_cache/
+
 # Secrets
 .env
 
