@@ -28,6 +28,10 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 - 2026-10-26 | MATH labels for classify | MATH has 12,500 problems with human-assigned `subject` (Algebra 2,931; Prealgebra
   2,076; Intermediate Algebra 2,198; Geometry 1,350; Number Theory 1,409; Precalculus 1,291; Counting & Probability 1,245)
   and `level` 1-5, in the PRM800K `math_splits` files. `classify` uses them as labels; no finer topic taxonomy.
+- 2026-10-26 | parse_input messages | No dataset of messy student algebra messages with a known parse was found or checked;
+  the expected parse is instead known by construction: mined MATH step chains (540 usable, one per problem), rendered in
+  four layouts and four notations, with typos in words only, chatty frames and some deliberately wrong steps, plus 29
+  hand-written messages. Details and limits: `evals/datasets/README.md`.
 - 2026-10-25 | Eedi | A paper reports 1,857 questions; the number of distinct misconceptions and
   whether the scenario A/B misconceptions exist in it are unverified.
 
@@ -36,6 +40,9 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 - 2026-10-26 | verify_steps | Built `evals/datasets/{dev,test}/verify_steps.jsonl` from MATH Algebra levels 1-3 (mined
   identity pairs), rule-based corruptions with a witness guard, and 76 hand-written cases. Dev 1621, test 671, review 9.
   Format and limits: `evals/datasets/README.md`.
+- 2026-10-26 | classify | Built the dev and test sets (420 problems each, 60 per MATH subject) from MATH's own labels.
+- 2026-10-26 | parse_input | Built the dev (170) and test (159) sets with `evals/builders/build_parse_input.py` (preview in
+  the scratchpad was checked by reading a sample; the real build is written by the developer's run).
 
 ## Modeling
 - Planned build order: verify, classify, localize, retrieve, hint, orchestrator + graph, checkpointer
@@ -44,6 +51,11 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   nodes, the diagnosis subgraph and the main graph compile and pass 83 unit tests; `docs/graph.mmd` is the
   Mermaid export. No model has been called yet: `scripts/check_llm.py` is the next step to run by hand once
   `MODEL_NAME` is chosen. Plan: `docs/plans/design/2026-10-25-m1-skeleton.md`.
+- 2026-10-26 | M3 input layer | `classify` (7 MATH subjects, levels 1-5, in-scope = Prealgebra, Algebra, Intermediate
+  Algebra) and `parse_input` (problem and steps from the raw message, faithful transcription) implemented behind
+  `tools/structured.call_structured` (one retry, eval cache); prompts have no dataset examples. Model for the evals:
+  `nvidia/nemotron-3.5-super-vl:free`. No real-model run yet; unit tests mock the model. Plan:
+  `docs/plans/nodes/2026-10-26-m3-input-layer.md`.
 
 ## Evaluation
 <!-- Format: YYYY-MM-DD | <component> | <split> | <key metric>=<value> (change) | <git-hash> | note -->

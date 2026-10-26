@@ -396,3 +396,27 @@ The five reviews found five P1s; the stack had been merged before they could be 
 - **The committed `verify` datasets are not rebuilt** | rebuilding with the stricter miner (preview: dev 1,237, test 479) |
   the developer decided it was not needed. Known consequence: 12 identical (prev, curr, relation) pairs appear in both
   splits (some non-trivial, so reported test numbers inherit the leakage), and the miner in `evals/builders/` no longer reproduces the committed files.
+
+## 2026-10-26 | M3 implementation notes
+- **`classify` returns no update when the model fails twice** (topic and level stay unset) | the "out-of-scope default" the
+  plan proposed | a default label would be indistinguishable from a real answer in the state and in the eval; the failure is
+  logged and counted in `failure_rate`. The orchestrator must treat a missing `topic` as "not classified" (wiring layer).
+- **LLM calls go through `tools/structured.call_structured`** | each node calling the client | one place for the retry, the
+  eval cache and the mock point. Nodes call it as `structured.call_structured` (module attribute), so tests patch one name.
+- **`parse_input` data is rendered from known structure** | asking a model to write student messages, or collecting real ones |
+  the expected problem and steps are known before the message exists (mined MATH chains, some steps made wrong by
+  `corrupt.py`), so labels do not depend on a model or on our checker. Cost: the messages are synthetic and only as messy
+  as the renderer (layouts, LaTeX, unicode, spoken math, typos in words, chatty frames); hand-written messages (29) cover
+  what the renderer cannot. Real student messages are not tested; reported as a limit with the numbers.
+- **One chain per MATH problem, subjects Algebra, Prealgebra, Intermediate Algebra, levels 1-3** | all chains | avoids many
+  near-identical messages from one solution. 150 generated messages per split plus the hand-written ones.
+- **A message that only gives an answer has no steps** | treating the answer as a one-line attempt | it follows the prompt
+  ("do not add a step for the final answer unless the student wrote it as a line"); an answer-only message is still read by
+  the orchestrator from the raw message. Open: whether `verify` should get the bare answer as a step.
+- **Two match rules for claims, both on text**: strict (no spaces, trailing stop) and canonical (also `*` and brackets around
+  one token ignored) | SymPy equivalence | see the M3 decisions above. The canonical rule exists because mined text carries
+  converter artefacts (`x = (19)`), which a model may reasonably drop.
+- **Model for M3 evals: `nvidia/nemotron-3.5-super-vl:free`** (set by the developer in `.env`; recorded in every result file).
+- **Datasets for `classify` and `parse_input` are written by the developer's own run of the builders**: the test split is
+  protected, and the auto-mode classifier blocks an agent's script that writes it.
+
