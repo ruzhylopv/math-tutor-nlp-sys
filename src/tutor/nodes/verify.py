@@ -1,4 +1,6 @@
-"""Check the final answer and each step with SymPy (equivalent / implies / not_valid / unparsable).
+"""Check the final answer and each step with SymPy.
+
+Step relations: equivalent / implies / narrows / not_valid / unparsable.
 
 Reads: problem, student_steps
 Writes: is_correct, step_verdicts
