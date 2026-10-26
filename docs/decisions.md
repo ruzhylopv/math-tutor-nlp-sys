@@ -281,3 +281,24 @@ Format: decision | rejected alternative | why.
 - **Open for later milestones:** `Classification.topic` is free text; M3 decides whether it becomes a `Literal` or a
   catalogue-backed set. A visited-nodes test on the main graph needs `stream(..., subgraphs=True)`, because the default
   updates stream shows top-level nodes only.
+
+## 2026-10-26 | M2 data decisions
+- **Task types: solve, simplify, expand and factor** | solve-for-x only | the cleanest MATH chains are simplify and
+  expand tasks, and all four fit the tutor's scope.
+- **Positives are mined from MATH solutions** | writing them all by hand | realistic formatting, and the labels come
+  from the human solution authors, so they are independent of SymPy. Costs a LaTeX-to-plain-text converter.
+- **Wrong steps are produced by the agent, labelled by rule, with provenance, a numeric guard and a developer
+  spot-check** | hand-written by the developer; labels from SymPy (circular) | an explicit exception to the
+  `run-eval` skill's "do not create labels yourself", approved by the developer.
+- **SymPy only; no LLM-only variant or ablation** | an LLM-only localization comparison | the project's claim is that
+  verification is enforced by the system, and the extra variant is not wanted.
+- **Linear chains only; a solution with sub-computations is split into separate chains** | branching support | much
+  simpler. Known limitation: a student's sub-computations can give a false `not_valid` on the line that does not
+  follow the previous one.
+- **A new relation `narrows`**, valid only when the result equals the original problem's solution set | reusing
+  `equivalent` or `implies` | rejecting an extraneous root shrinks the solution set, which is neither.
+- **Final-answer data from PRM800K**, with candidate labels from its grader, our SymPy check run alongside, and the
+  developer adjudicating the disagreements | labels from SymPy alone (circular) | independent labels at low cost.
+- **PRM800K and MATH are MIT-licensed repositories.** PRM800K states no separate data licence. Raw files stay outside
+  the repo; only small derived datasets are committed.
+
