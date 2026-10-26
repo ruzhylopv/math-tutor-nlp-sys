@@ -93,7 +93,7 @@ One line per student message. Built by
 | `stored_problem` | the problem already in the session, or null |
 | `expected_problem` | the new problem the message states, or null (the stored one stays) |
 | `expected_steps` | the claims, in order, as plain-text math (a wrong step stays wrong) |
-| `features` | the kind (`full`, `steps_only`, `problem_only`, `answer_only`, `question_only`; hand-written ones also `smalltalk`), the layout, the notation, and `chatty`, `typos`, `wrong_step` |
+| `features` | generated messages: the kind (`full`, `steps_only`, `problem_only`, `answer_only`, `question_only`), the layout, the notation, and `chatty`, `typos`, `wrong_step`. Hand-written messages use free-form descriptive tags (in use: `answer_only`, `chatty`, `connectors`, `greeting`, `justifications`, `latex`, `new_problem`, `numbered`, `one_line`, `problem_only`, `question_only`, `smalltalk`, `spoken`, `steps_only`, `typos`, `unicode`, `word_problem`, `wrong_step`) |
 | `source` | `generated` or `handwritten` |
 
 The labels come from the rendering direction: a step chain is mined from a MATH solution (Algebra, Prealgebra,

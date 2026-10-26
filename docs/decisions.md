@@ -411,7 +411,8 @@ The five reviews found five P1s; the stack had been merged before they could be 
 - **One chain per MATH problem, subjects Algebra, Prealgebra, Intermediate Algebra, levels 1-3** | all chains | avoids many
   near-identical messages from one solution. 150 generated messages per split plus the hand-written ones.
 - **A message that only gives an answer has no steps** | treating the answer as a one-line attempt | it follows the prompt
-  ("do not add a step for the final answer unless the student wrote it as a line"); an answer-only message is still read by
+  ("A bare answer in a message that states no problem and shows no other working is not a step. A line written after a stated
+  problem or after other working is a step, including the last line."); an answer-only message is still read by
   the orchestrator from the raw message. Open: whether `verify` should get the bare answer as a step.
 - **Two match rules for claims, both on text**: strict (no spaces, trailing stop) and canonical (also `*` and brackets around
   one token ignored) | SymPy equivalence | see the M3 decisions above. The canonical rule exists because mined text carries
