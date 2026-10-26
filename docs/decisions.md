@@ -299,6 +299,9 @@ Format: decision | rejected alternative | why.
   `equivalent` or `implies` | rejecting an extraneous root shrinks the solution set, which is neither.
 - **Final-answer data from PRM800K**, with candidate labels from its grader, our SymPy check run alongside, and the
   developer adjudicating the disagreements | labels from SymPy alone (circular) | independent labels at low cost.
+- **PRM800K's -1 rating is not used as a `not_valid` label.** It means "everything else" (inaccurate, weird,
+  off-topic or not checkable in 30 seconds), not "algebraically invalid" | using -1 as ground truth | it would label
+  valid-but-odd steps as errors. 0 and +1 ("no inaccuracies") may serve as extra valid-step evidence.
 - **PRM800K and MATH are MIT-licensed repositories.** PRM800K states no separate data licence. Raw files stay outside
   the repo; only small derived datasets are committed.
 
