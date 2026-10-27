@@ -541,3 +541,12 @@ Plan: `docs/plans/nodes/2026-10-27-m5-hint.md`. Settles the first OPEN item of "
 - **`parse_input` clears `topic` and `level` when the extracted problem differs from the stored one** | clearing in
   `classify` on failure | it fixes the cause (the problem changed) and covers the paths where `classify` does not run.
   `topic` and `level` are now `... | None`. Out-of-scope subjects stay an M6 decision.
+
+## 2026-10-27 | M5 layer 2: abstention in `retrieve`
+Plan: `docs/plans/nodes/2026-10-27-m5-hint.md`. Reverses "No score threshold" of M4b for the threshold only.
+- **`MIN_SCORE = 0.85`: below it `misconception` is None, candidates are kept** | no threshold (a confidently wrong
+  top-1 would mislead `hint`); a higher one (0.90 gives answered 0.87, precision 0.982) | the dev queries are near-copies
+  of catalogue examples, so right matches mostly score 1.0 and the 33 wrong top-1s sit at 0.75-0.96; no value separates
+  them cleanly. 0.85 keeps 91% answered at 96% precision. Cost: the number is not measured on off-catalogue steps; revisit
+  when real student steps exist. `hint` with no misconception writes a generic Socratic hint.
+- **Still no LLM re-ranking.**

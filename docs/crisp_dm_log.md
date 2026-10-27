@@ -126,5 +126,12 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   hand-written queries, and the test split is no longer untouched (its aggregate scores were seen once and a reviewer
   looked at its misses); test not run. Result file: `evals/results/retrieve/20261027T155456Z_859537a.json`.
 
+- **M5 layer 2, `retrieve` abstention (2026-10-27)**: `MIN_SCORE = 0.85`; below it `misconception` is None (the
+  candidates stay). Dev (324): answered 0.914, precision of the answered 0.959; recall is unchanged (0.898 / 0.978).
+  Dev top-1 scores: every one is at least 0.71 and most right ones are 1.0, so the dev set cannot show where wrong
+  matches separate; 0.85 is a coverage-biased guess, not a measured optimum (t=0.90 would give 0.87 / 0.982). Real
+  off-catalogue steps are missing from the data, so quote these numbers as optimistic. Result file:
+  `evals/results/retrieve/20261027T161743Z_3cd8c9f.json`.
+
 ## Deployment
 - Planned: runnable Streamlit app and a demo video using scenarios A and B.

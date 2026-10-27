@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from tutor.nodes.retrieve import TOP_K, focus_lines, retrieve
+from tutor.nodes.retrieve import MIN_SCORE, TOP_K, focus_lines, retrieve
 from tutor.state import Misconception, Step, TutorState
 from tutor.tools import retrieval
 
@@ -95,3 +95,19 @@ def test_only_the_declared_fields_are_returned_and_the_state_is_not_changed(
     before = copy.deepcopy(state)
     assert set(retrieve(state)) == {"misconception_candidates", "misconception"}
     assert state == before
+
+
+def test_a_best_match_below_the_threshold_is_kept_as_a_candidate_but_not_trusted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    weak = [_match("M001", MIN_SCORE - 0.01), _match("M002", 0.1)]
+    monkeypatch.setattr(retrieval, "search", lambda previous, written, k=5: weak)
+    result = retrieve(_state())
+    assert result["misconception"] is None
+    assert result["misconception_candidates"] == weak
+
+
+def test_a_best_match_exactly_at_the_threshold_is_trusted(monkeypatch: pytest.MonkeyPatch) -> None:
+    exact = [_match("M001", MIN_SCORE)]
+    monkeypatch.setattr(retrieval, "search", lambda previous, written, k=5: exact)
+    assert retrieve(_state())["misconception"] == exact[0]

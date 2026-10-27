@@ -98,3 +98,18 @@ def test_the_script_writes_a_result_without_a_model_or_a_key(
     data = json.loads(result.read_text(encoding="utf-8"))
     assert data["n_examples"] == 2 and data["model_name"] is None
     assert data["metrics"]["recall@1"] == 0.5 and "all-MiniLM" in data["note"]
+
+
+def test_abstention_counts_answers_and_their_precision() -> None:
+    cases = [_case("A"), _case("B"), _case("C"), _case("D")]
+    metrics = _module()["abstention"](cases, ["A", "x", None, "D"])
+    assert metrics == {
+        "answered_rate": 0.75,
+        "answered_precision": 2 / 3,
+        "recall@1_if_forced": 0.5,
+    }
+
+
+def test_abstention_when_nothing_is_answered() -> None:
+    metrics = _module()["abstention"]([_case("A")], [None])
+    assert metrics["answered_rate"] == 0.0 and metrics["answered_precision"] == 0.0
