@@ -7,7 +7,7 @@ import pytest
 from pydantic import BaseModel
 
 from tutor.state import Classification, ParsedInput
-from tutor.tools import structured
+from tutor.tools import embedding, structured
 
 
 @pytest.fixture(autouse=True)
@@ -18,6 +18,16 @@ def _refuse_real_llm_calls(monkeypatch: pytest.MonkeyPatch) -> None:
         raise AssertionError(f"a unit test called the LLM ({prompt_name}); mock call_structured")
 
     monkeypatch.setattr(structured, "call_structured", refuse)
+
+
+@pytest.fixture(autouse=True)
+def _refuse_real_embedding_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The embedding model is a download and a PyTorch load; a unit test must patch it."""
+
+    def refuse(name: str) -> None:
+        raise AssertionError(f"a unit test loaded the embedding model ({name}); patch embed")
+
+    monkeypatch.setattr(embedding, "_model", refuse)
 
 
 @pytest.fixture

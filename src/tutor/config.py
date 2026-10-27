@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 class ConfigError(RuntimeError):
@@ -32,3 +33,12 @@ def load_config() -> Config:
         learner_db_path=os.environ.get("LEARNER_DB_PATH") or None,
         llm_cache_dir=os.environ.get("LLM_CACHE_DIR") or None,
     )
+
+
+def embedding_model_name() -> str:
+    """The sentence-transformers model `retrieve` uses (EMBEDDING_MODEL, else the default).
+
+    It needs no API key, so it is read apart from `load_config`.
+    """
+    load_dotenv()
+    return os.environ.get("EMBEDDING_MODEL") or DEFAULT_EMBEDDING_MODEL

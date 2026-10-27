@@ -55,6 +55,12 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   so that label is a design choice (a step that is not a valid consequence of the previous one), not independent ground
   truth; (3) the generated chains were selected with `verify`, so their accuracy is high by construction. Details and
   limits: `evals/datasets/README.md`.
+- 2026-10-27 | retrieve catalogue and queries | The Eedi catalogue could not be downloaded, so the catalogue is hand-written (119
+  school-algebra misconceptions in 13 categories, `src/tutor/data/misconceptions.json`) and the eval queries come from 99
+  mechanical wrong rules (SymPy-confirmed), the same rules wrapped in a larger expression, and 38 hand-written queries.
+  Dev 324 and test 300 queries (204 + 100 + 20 and 192 + 90 + 18). The plain generated queries are near-copies of the
+  catalogue examples (89 of 99 rules); the wrapped and hand-written ones are the honest numbers. Three reasoning-level
+  entries have no query. Details and limits: `evals/datasets/README.md`.
 
 ## Modeling
 - Planned build order: verify, classify, localize, retrieve, hint, orchestrator + graph, checkpointer
@@ -109,6 +115,16 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   probed with `verify` first; the lost-solution label was revised, see above). Dev has few hand-written cases per type (4
   mismatch, 2 omission, 3 other, 1 control). Test split not run. Result file:
   `evals/results/localize/20261027T141132Z_178cc20.json`.
+- 2026-10-27 | retrieve | dev | recall@1=0.898, recall@5=0.978, map@5=0.931 (baseline; n=324; random 0.008 / 0.042) | 859537a | Mean of
+  string similarity and embedding cosine (MiniLM) on the shape of what changed (the lines trimmed of what they share,
+  variables to `v`, numbers to `n`). Per source (recall@1 / recall@5): handwritten (20) 0.900 / 0.950, generated_wrapped
+  (100) 0.820 / 0.980, generated (204) 0.936 / 0.980. The plain generated number is close to a lookup (89 of 99
+  rules give the example's own shape); quote the other two. Lowest recall@1 by category: absolute_value 0.32 (19),
+  squaring_extraneous 0.50 (12), solving_equations 0.84 (44), quadratics 0.85 (26). The first design (embed the
+  description plus example, query with topic, error type and raw lines) scored recall@1 0.16 on dev and was replaced after
+  dev-only experiments (`docs/decisions.md`). Caveats: circular (one author for catalogue and queries), 20
+  hand-written queries, and the test split is no longer untouched (its aggregate scores were seen once and a reviewer
+  looked at its misses); test not run. Result file: `evals/results/retrieve/20261027T155456Z_859537a.json`.
 
 ## Deployment
 - Planned: runnable Streamlit app and a demo video using scenarios A and B.
