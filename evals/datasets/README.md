@@ -203,3 +203,11 @@ queries are kept; the rest (up to 60 cases in all) are generated queries taken i
 `generated_wrapped` and `generated`. Levels are dealt in turn, so each has a quarter of the cases. The eval gives
 `hint` the gold misconception, so it measures the hint and not `retrieve`. The wrong steps are single-rule rewrites,
 easier than real student work. `test/hint.jsonl` is protected: the developer runs the builder for it.
+
+## orchestrator.jsonl (M6, not built yet)
+Hand-labelled routing turns for `eval_orchestrator.py --part routing`. One line per new student message with the
+state the orchestrator sees: `message`, `problem` (stored problem or null), `n_steps` (steps `parse_input` found),
+`diagnosed` (a diagnosis already exists), and `expected_action` (`ask`, `diagnose`, `hint` or `reply`).
+`review/orchestrator_candidates.jsonl` holds 32 drafted turns with `expected_action` left null: the developer labels
+them (and drops or adds turns) and saves the result as `dev/orchestrator.jsonl`; the test split is built the same way
+later. No labels are filled in by an agent.

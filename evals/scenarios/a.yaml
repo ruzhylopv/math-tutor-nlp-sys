@@ -1,0 +1,24 @@
+# Scenario A: bracket expansion. The student has made the bracket mistake twice before (M010),
+# so the third occurrence offers practice. Source: docs/architecture.md, "Acceptance scenarios".
+name: A
+description: "3(x + 2) = 15, answer only, then the bracket mistake, then a correct solution"
+student_id: scenario-a
+past_attempts:
+  - {topic: Algebra, misconceptions: [M010]}
+  - {topic: Algebra, misconceptions: [M010]}
+turns:
+  - student: "3(x + 2) = 15. I got x = 13/3"
+    expect:
+      visited: [parse_input, orchestrator]
+      not_visited: [diagnosis, hint]
+      reply_contains: ["step"]
+  - student: "3x + 2 = 15; 3x = 13; x = 13/3"
+    expect:
+      visited: [parse_input, diagnosis, hint]
+      hint_level: 1
+      misconception: M010
+  - student: "3x + 6 = 15; 3x = 9; x = 3"
+    expect:
+      visited: [parse_input, diagnosis]
+      not_visited: [hint]
+      reply_contains: ["Correct", "practice"]
