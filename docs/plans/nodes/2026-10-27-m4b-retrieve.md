@@ -18,18 +18,19 @@ M4a (`localize`) is merged; this node reads its `focus_step` and `error_type`.
 - **Catalogue entry**: `id`, `description` (in the student's voice: "believes that (a+b)^2 = a^2+b^2"), `category`,
   `topic` (a MATH subject in scope), `correct_rule`, and `example` (a wrong step as text, "(a+b)^2 -> a^2 + b^2"),
   because an embedding model reads the structure of a wrong rewrite better from an example than from prose alone. The
-  text that is embedded is the description plus the example. The `example` field adds to the circularity: the agent
+  text that was first planned to be embedded is the description plus the example (changed, see below). The `example` field adds to the circularity: the agent
   writes the catalogue and the wrong rules from the same mental list, so a rule-generated rewrite can match its
   entry's example almost by construction. File: `src/tutor/data/misconceptions.json`, loaded by `tools/catalogue.py`.
   The catalogue embeddings are computed once and cached (in memory for the process), not per query.
 - **State models**: `Misconception` in `state.py` stays as it is (id, description, topic, score). The catalogue entry
   is a separate model, `CatalogueEntry`, in `state.py`, with its loader in `tools/catalogue.py`; `hint` can look an
   entry up by id from the loader when it needs the correct rule.
-- **Query** (built by the node, plain text): topic, error type, the previous line (or the problem for step 1) and the
-  line the student wrote at `focus_step`. The query is the raw math strings only, as text (rejected: wrapping them in a
-  template sentence or LaTeX; there is no evidence it helps). Top 5 go to `misconception_candidates` with their cosine
-  score; the top 1 goes to `misconception`. v1 always returns the top 5 and sets the top 1 as `misconception`; there is
-  no score threshold (abstention is an open item).
+- **What is compared (changed during implementation, see `docs/decisions.md`, M4b results)**: the shape of the
+  rewrite from the line before the focus step to the line the student wrote, with variables replaced by `v` and
+  numbers by `n`. A catalogue entry is scored by the shape of its `example`. The score is the mean of the string
+  similarity and the embedding cosine of the two shapes. Top 5 go to `misconception_candidates` with their score; the
+  top 1 goes to `misconception`. The first plan (embed the description plus the example, query with topic, error type
+  and the raw lines) scored far worse on dev. v1 always returns the top 5 and sets the top 1 as `misconception`; there is no score threshold (abstention is an open item).
 - `retrieve` returns no candidates and no misconception when `error_type` is None or `other` (nothing to retrieve for),
   or when `focus_step` is None. Every other error type gets retrieval with the same focus line. For
   `omission_extraneous_root` and `reasoning_result_mismatch` the focus line may not carry the misconception (the

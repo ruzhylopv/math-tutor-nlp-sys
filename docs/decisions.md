@@ -480,3 +480,23 @@ This entry supersedes the 2026-10-26 FAISS / Eedi entries above.
   description alone | an embedding model reads a wrong rewrite's structure better from an example than from prose.
 - **No score threshold and no LLM re-ranking in v1** | abstaining below a threshold; a structured-output re-rank of the
   top 5 | both are decided from the dev eval (open items in the plan).
+
+## 2026-10-27 | M4b results that changed the design (dev split only)
+First design: embed each entry's description plus example with MiniLM, and query with the topic, the error type and
+the raw lines. On the dev preview (225 queries; random would be Recall@1 0.008) it gave Recall@1 0.16 and Recall@5 0.44.
+Experiments on dev only (Recall@1 / Recall@5, generated and hand-written queries):
+- raw example vs raw pair (no topic, no error type): 0.34 / 0.71 and 0.33 / 0.57. Topic and error type words hurt.
+- adding the entry description to the score made it worse; `bge-small-en-v1.5` was no better than MiniLM.
+- shape only (variables to `v`, numbers to `n`; correct version): embedding 0.94 / 1.00 and 0.71 / 0.86; plain
+  string similarity (`difflib`) 0.92 / 0.98 and 0.81 / 0.90; their mean 0.94 / 1.00 and 0.81 / 0.90.
+- an earlier abstraction that accidentally mapped numbers and variables to the same symbol gave a similar mean
+  (0.89 / 1.00 and 0.86 / 0.95); the differences are within noise (21 hand-written queries; one query is 5 points).
+- **Decision: compare shapes, with the mean of string similarity and embedding cosine** | embedding the description and
+  the raw lines (the plan) | far worse on dev. **Honest reading**: string similarity alone is nearly as good, so the
+  embedding model adds little on this data (a small gain on the hand-written queries); and the result is partly
+  circular, because the same author wrote the catalogue examples and the rules in the same shapes. Real students'
+  rewrites are messier. The embedding stack is kept (approved, and it is the part that may help with paraphrased or
+  worded input later); it can be dropped if the full eval shows it adds nothing.
+- **Process note**: while building the preview I printed the test split's aggregate scores once, before tuning. I did
+  not look at any test example and made every choice above on dev only, but the test numbers are no longer untouched.
+
