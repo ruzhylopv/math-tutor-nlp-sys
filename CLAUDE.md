@@ -34,9 +34,11 @@ Every change reaches `main` through a reviewed PR. The developer reviews and mer
   one concern per layer, dependencies in lower layers.
 - Pushing is allowed for feature branches only. Never push `main`, never force-push, never merge
   a PR (`gh pr merge`, `gh stack merge` are denied).
-- After opening a PR, run the `review-loop` skill: reviewer subagent, then fixer subagent, at most
-  2 passes. Findings are graded P0 (blocker), P1 (critical), P2 (should fix), P3 (nit). P0 and P1
-  must be resolved or escalated in the PR; P3 is reported, not fixed.
+- After opening a PR, run the `review-loop` skill: one review (in parallel for a stack), then a
+  fixer only if something blocks. Findings are graded P0 (blocker), P1 (critical), P2 (should fix),
+  P3 (nit). Only P0 and P1 are fixed, or escalated in the PR. P2, P3 and the reviewer's "Possible
+  over-engineering signs" (each with a simpler alternative and its drawbacks) are listed in the PR
+  comment for the developer to decide. No second review pass.
 - When the developer requests changes on a PR (or submits a comment review starting with `/address-review`), the `address-review` workflow (GitHub Actions) runs the
   `address-review` skill on that PR's branch. It is limited to the developer's account and never merges.
 - The plan gate (rule 1) still applies. A plan is approved in chat before any code is written.

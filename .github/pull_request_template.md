@@ -24,4 +24,4 @@
 <!-- "Standalone", or "n of m, parent PR: #<number>". -->
 
 ## Review loop
-<!-- Filled in by the review-loop skill: passes run, findings fixed per tier (P0-P3), anything escalated. -->
+<!-- Filled in by the review-loop skill: counts per tier, what was fixed (P0/P1 only), a pointer to the review comment (which lists P2, P3 and the possible over-engineering signs), anything escalated. -->
