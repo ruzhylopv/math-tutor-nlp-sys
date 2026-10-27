@@ -27,7 +27,7 @@ def _rules() -> dict[str, Rule]:
         "M004": lambda a, b, c, d, x, y: (f"(-{a})^2", f"-{a * a}"),
         "M005": lambda a, b, c, d, x, y: (f"-({x} + {a})", f"-{x} + {a}"),
         "M006": lambda a, b, c, d, x, y: (f"(-{a * b})/(-{b})", f"-{a}"),
-        "M007": lambda a, b, c, d, x, y: (f"-{a + b + 2} + {b}", f"{a + 2}"),
+        "M007": lambda a, b, c, d, x, y: (f"{b} + (-{a + b + 2})", f"{a + 2}"),
         "M008": lambda a, b, c, d, x, y: (f"{a} - {a + b}", f"{b}"),
         "M009": lambda a, b, c, d, x, y: (f"-{x} = {c}", f"{x} = {c}"),
         # --- distribution
@@ -70,9 +70,9 @@ def _rules() -> dict[str, Rule]:
         "M042": lambda a, b, c, d, x, y: (f"{x}^{a * b}/{x}^{b}", f"{x}^{a}"),
         "M043": lambda a, b, c, d, x, y: (f"({a}{x})^{b}", f"{a}{x}^{b}"),
         "M044": lambda a, b, c, d, x, y: (f"{a}^(-{b})", f"-{a**b}"),
-        "M045": lambda a, b, c, d, x, y: (f"{a}^0", "0"),
+        "M045": lambda a, b, c, d, x, y: (f"{x}^0", "0"),
         "M046": lambda a, b, c, d, x, y: (f"{x}^(1/2)", f"{x}/2"),
-        "M047": lambda a, b, c, d, x, y: (f"{a}^{b} * {a}^{c}", f"{a * a}^{b + c}"),
+        "M047": lambda a, b, c, d, x, y: (f"{a}^{b} * {a}^{c}", f"{2 * a}^{b + c}"),
         "M048": lambda a, b, c, d, x, y: (f"({x}^{a} {y})^{b}", f"{x}^{a} {y}^{b}"),
         # --- solving equations
         "M049": lambda a, b, c, d, x, y: (f"{a}{x} + {b} = {a * c}", f"{x} + {b} = {c}"),
@@ -96,7 +96,10 @@ def _rules() -> dict[str, Rule]:
             f"sqrt({x} + {a + b}) = {x} - {b}",
             f"{x} + {a + b} = {x}^2 - {b * b}",
         ),
-        "M065": lambda a, b, c, d, x, y: (f"sqrt({x}) = {x} - {a}", f"{x} = {x}^2 - {a}"),
+        "M065": lambda a, b, c, d, x, y: (
+            f"sqrt({x} + {a + b}) = {x} - {b}",
+            f"sqrt({x} + {a + b}) = ({x} - {b})^2",
+        ),
         "M066": lambda a, b, c, d, x, y: (
             f"sqrt({x}) + {a} = {a + b}",
             f"{x} + {a} = {(a + b) ** 2}",
@@ -122,7 +125,7 @@ def _rules() -> dict[str, Rule]:
         "M078": lambda a, b, c, d, x, y: (f"{x}^2 + {2 * a}{x} = {c}", f"({x} + {a})^2 = {c}"),
         "M079": lambda a, b, c, d, x, y: (
             f"{x}^2 + {2 * a}{x} = {c}",
-            f"({x} + {2 * a})^2 = {c + 4 * a * a}",
+            f"({x} + {2 * a})^2 = {c} + {4 * a * a}",
         ),
         "M080": lambda a, b, c, d, x, y: (f"{x}^2 + {a}{x} = {c}", f"{x}^2 + {a}{x} + {c} = 0"),
         # --- factoring
@@ -152,12 +155,12 @@ def _rules() -> dict[str, Rule]:
         "M091": lambda a, b, c, d, x, y: (f"sqrt({a}) * sqrt({b})", f"sqrt({a + b})"),
         "M092": lambda a, b, c, d, x, y: (f"sqrt({x}^2)", f"{x}"),
         "M094": lambda a, b, c, d, x, y: (f"sqrt({4 * a * a})", f"{2 * a * a}"),
-        "M095": lambda a, b, c, d, x, y: (f"1/sqrt({a})", f"sqrt({a})/1"),
+        "M095": lambda a, b, c, d, x, y: (f"1/sqrt({a})", f"sqrt({a})/sqrt({a})"),
         "M096": lambda a, b, c, d, x, y: (f"sqrt({25 * a})", f"5*sqrt({5 * a})"),
         "M097": lambda a, b, c, d, x, y: (f"sqrt({x}) = {a}", f"{x} = {a}"),
         "M098": lambda a, b, c, d, x, y: (
             f"{a}*sqrt({b}) * {c}*sqrt({d})",
-            f"{a * c}*sqrt({b + d})",
+            f"{a + c}*sqrt({b * d})",
         ),
         # --- absolute value
         "M099": lambda a, b, c, d, x, y: (f"abs({x} - {a}) = {b}", f"{x} - {a} = {b}"),
@@ -188,14 +191,46 @@ LETTERS = ("x", "y", "n", "t", "k")
 MAX_DRAWS = 40
 
 
+def _numbers(rng: random.Random) -> tuple[int, int, int, int, str, str]:
+    a, b, c, d = (rng.randint(2, 9) for _ in range(4))
+    while b == a:  # two equal numbers give degenerate lines such as (x - 3)(x - 3)
+        b = rng.randint(2, 9)
+    x = rng.choice(LETTERS)
+    y = rng.choice([letter for letter in LETTERS if letter != x])
+    return a, b, c, d, x, y
+
+
 def draw(rule_id: str, rng: random.Random) -> Pair | None:
     """One (previous line, wrong line) for a rule, or None if no draw gave a really wrong line."""
     rule = RULES[rule_id]
     for _ in range(MAX_DRAWS):
-        a, b, c, d = (rng.randint(2, 9) for _ in range(4))
-        x = rng.choice(LETTERS)
-        y = rng.choice([letter for letter in LETTERS if letter != x])
-        previous, wrong = rule(a, b, c, d, x, y)
+        previous, wrong = rule(*_numbers(rng))
         if step_relation(previous, wrong) == "not_valid":
             return previous, wrong
+    return None
+
+
+def _wrap(line: str, extra: int, how: int) -> str | None:
+    """The line inside a larger expression, or None for lines that cannot be wrapped."""
+    if " or " in line or "+-" in line or line.count("=") > 1:
+        return None
+    if "=" in line:
+        left, right = line.split("=")
+        return f"{left.strip()} + {extra} = {right.strip()} + {extra}"
+    return f"{extra} + ({line})" if how == 0 else f"{extra}({line})"
+
+
+def draw_wrapped(rule_id: str, rng: random.Random) -> Pair | None:
+    """Like `draw`, but both lines sit inside the same larger expression (an added term on both
+    sides of an equation, or a term added to or a factor multiplying an expression), so the shape no
+    longer equals the catalogue example's. None if the rule's lines cannot be wrapped."""
+    rule = RULES[rule_id]
+    for _ in range(MAX_DRAWS):
+        previous, wrong = rule(*_numbers(rng))
+        extra, how = rng.randint(2, 9), rng.randint(0, 1)
+        wrapped_previous, wrapped_wrong = _wrap(previous, extra, how), _wrap(wrong, extra, how)
+        if wrapped_previous is None or wrapped_wrong is None:
+            return None
+        if step_relation(wrapped_previous, wrapped_wrong) == "not_valid":
+            return wrapped_previous, wrapped_wrong
     return None

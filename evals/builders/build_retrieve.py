@@ -4,7 +4,9 @@ Run: `uv run python -m evals.builders.build_retrieve` (no outside data is needed
 
 Generated queries: for every catalogue entry with a mechanical wrong rule
 (`misconception_rules.py`), a few draws of (correct line, wrong line); SymPy confirmed each
-wrong line is really wrong, so the true misconception is known by construction. Hand-written
+wrong line is really wrong, so the true misconception is known by construction. A second set
+wraps both lines in the same larger expression (`generated_wrapped`), so their shape is no
+longer the catalogue example's. Hand-written
 queries (`handwritten_queries.py`) cover the other entries. Every query is the state
 `retrieve` reads: the correct line as `problem`, the wrong line as step 1 (or the hand-written
 steps), `focus_step`, `error_type` and the entry's `topic`. Entries go to dev or test by a
@@ -20,13 +22,15 @@ import json
 import logging
 import random
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from evals.builders.build_verify import write_jsonl
-from evals.builders.handwritten_queries import HANDWRITTEN
-from evals.builders.misconception_rules import RULES, draw
+from evals.builders.handwritten_queries import HANDWRITTEN, UNREACHABLE
+from evals.builders.misconception_rules import RULES, draw, draw_wrapped
 from evals.runner import DATASETS_DIR
+from tutor.state import CatalogueEntry
 from tutor.tools.catalogue import load_catalogue
 
 logger = logging.getLogger("build_retrieve")
@@ -39,35 +43,54 @@ def _split(entry_id: str) -> str:
     return "dev" if int(entry_id[1:]) % 2 else "test"
 
 
-def build(out_dir: Path, per_rule: int, seed: int) -> dict[str, list[Record]]:
+def _generated(
+    entry: CatalogueEntry,
+    draw_fn: Callable[[str, random.Random], tuple[str, str] | None],
+    source: str,
+    seed_tag: str,
+    count: int,
+    seed: int,
+) -> list[Record]:
+    """Up to `count` distinct (correct line, wrong line) queries for a rule."""
+    records: list[Record] = []
+    seen: set[tuple[str, str]] = set()
+    for index in range(count * 3):
+        if len(records) >= count:
+            break
+        pair = draw_fn(entry.id, random.Random(f"{seed}:{seed_tag}{entry.id}:{index}"))
+        if pair is None or pair in seen:
+            continue
+        seen.add(pair)
+        records.append(
+            {
+                "id": f"{'gen' if source == 'generated' else 'wrap'}/{entry.id}#{index}",
+                "problem": pair[0],
+                "steps": [{"claim": pair[1], "justification": ""}],
+                "focus_step": 1,
+                "error_type": "algebraic_transformation",
+                "topic": entry.topic,
+                "expected": entry.id,
+                "category": entry.category,
+                "source": source,
+                "provenance": {"rule": entry.id, "seed": seed},
+            }
+        )
+    return records
+
+
+def build(
+    out_dir: Path, per_rule: int, wrapped_per_rule: int, seed: int
+) -> dict[str, list[Record]]:
     catalogue = {entry.id: entry for entry in load_catalogue()}
     splits: dict[str, list[Record]] = {"dev": [], "test": []}
     for entry_id, entry in catalogue.items():
         if entry_id not in RULES:
             continue
-        seen: set[tuple[str, str]] = set()
-        for index in range(per_rule * 3):
-            if len([r for r in splits[_split(entry_id)] if r["expected"] == entry_id]) >= per_rule:
-                break
-            pair = draw(entry_id, random.Random(f"{seed}:{entry_id}:{index}"))
-            if pair is None or pair in seen:
-                continue
-            seen.add(pair)
-            previous, wrong = pair
-            splits[_split(entry_id)].append(
-                {
-                    "id": f"gen/{entry_id}#{index}",
-                    "problem": previous,
-                    "steps": [{"claim": wrong, "justification": ""}],
-                    "focus_step": 1,
-                    "error_type": "algebraic_transformation",
-                    "topic": entry.topic,
-                    "expected": entry_id,
-                    "category": entry.category,
-                    "source": "generated",
-                    "provenance": {"rule": entry_id, "seed": seed},
-                }
-            )
+        records = _generated(entry, draw, "generated", "", per_rule, seed)
+        records += _generated(
+            entry, draw_wrapped, "generated_wrapped", "wrap:", wrapped_per_rule, seed
+        )
+        splits[_split(entry_id)] += records
     for number, query in enumerate(HANDWRITTEN):
         entry = catalogue[query["expected"]]
         splits[_split(entry.id)].append(
@@ -85,7 +108,6 @@ def build(out_dir: Path, per_rule: int, seed: int) -> dict[str, list[Record]]:
             }
         )
     covered = {r["expected"] for records in splits.values() for r in records}
-    dropped = sorted(set(catalogue) - covered)
     for split, records in splits.items():
         write_jsonl(out_dir / split / "retrieve.jsonl", records)
     review = out_dir / "review"
@@ -93,9 +115,11 @@ def build(out_dir: Path, per_rule: int, seed: int) -> dict[str, list[Record]]:
     report = {
         "seed": seed,
         "per_rule": per_rule,
+        "wrapped_per_rule": wrapped_per_rule,
         "catalogue_entries": len(catalogue),
         "entries_with_a_rule": len(RULES),
-        "entries_without_any_query": dropped,
+        "entries_without_any_query": sorted(set(catalogue) - covered - UNREACHABLE),
+        "unreachable_entries": sorted(UNREACHABLE),
         **{split: _summary(records) for split, records in splits.items()},
     }
     (review / "retrieve_build_report.json").write_text(
@@ -118,9 +142,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out-dir", type=Path, default=DATASETS_DIR)
     parser.add_argument("--per-rule", type=int, default=4)
+    parser.add_argument("--wrapped-per-rule", type=int, default=2)
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
-    for split, records in build(args.out_dir, args.per_rule, args.seed).items():
+    for split, records in build(
+        args.out_dir, args.per_rule, args.wrapped_per_rule, args.seed
+    ).items():
         logger.info("%s: %d queries", split, len(records))
 
 

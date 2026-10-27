@@ -7,8 +7,9 @@ catalogue entry. Metrics: Recall@1, @3 and @5, MAP@5 (with one right answer per 
 reciprocal rank, counting 0 beyond rank 5), the same per source and per category, and the value a
 random ranking would get, for context.
 
-Accuracy here is optimistic: the catalogue and the queries are both written by the agent and the
-generated queries are single-rule rewrites. See evals/datasets/README.md.
+Accuracy here is optimistic: the catalogue and the queries are both written by the agent, and the
+plain generated queries have the same shape as the catalogue's examples (they are near-copies after
+abstraction), so quote the wrapped and hand-written sources. See evals/datasets/README.md.
 """
 
 import logging
@@ -72,7 +73,7 @@ def evaluate(
     ]
     metrics = _scores(ranks)
     metrics["random_recall@1"] = 1 / catalogue_size
-    metrics["random_recall@5"] = min(5, catalogue_size) / catalogue_size
+    metrics["random_recall@5"] = 5 / catalogue_size
     metrics["n"] = float(len(cases))
     for key in ("source", "category"):
         for value in sorted({case[key] for case in cases}):
@@ -96,7 +97,7 @@ def main() -> None:
     note = f"{NOTE} Embedding model: {embedding_model_name()}; top {TOP_K} returned."
     result = write_result(COMPONENT, split, len(cases), metrics, note=note)
     logger.info("retrieve (%s): n=%d, model %s", split, len(cases), embedding_model_name())
-    for source in ("handwritten", "generated"):
+    for source in ("handwritten", "generated_wrapped", "generated"):
         row = "  ".join(
             f"{name}={metrics[f'{name}/source={source}']:.3f}"
             for name in ("recall@1", "recall@3", "recall@5", "map@5")

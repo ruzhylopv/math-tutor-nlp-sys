@@ -8,10 +8,12 @@ type that `localize` would give, and the id of the misconception in
 `src/tutor/data/misconceptions.json`. The wrong lines use other numbers and wording than the
 catalogue's examples. The developer spot-checks a sample (provenance `spot_check: pending`).
 
-Known limit: the entries about inequalities, a bare plus-or-minus, and the reasons for
-rejecting roots cannot be reached in the full pipeline, because `verify` cannot parse those
-steps (`localize` gives `other`, and `retrieve` then returns nothing). Here `retrieve` is
-evaluated on its own."""
+Known limits: the entries about inequalities and a bare plus-or-minus cannot be reached in the
+full pipeline, because `verify` cannot parse those steps (`localize` gives `other`, and `retrieve`
+then returns nothing); here `retrieve` is evaluated on its own. `UNREACHABLE` lists the entries
+that no single step's shape can show (a root accepted without a check, or rejected for a wrong
+reason); they have no query.
+"""
 
 from typing import Any
 
@@ -37,6 +39,11 @@ def _query(
     }  # fmt: skip
 
 
+# Entries that are about the student's reasoning, not about one rewrite: the evidence is the missing
+# check of a root or the reason given for rejecting one, which is not in the shape of any step. They
+# have no query and are never scored.
+UNREACHABLE = frozenset({"M064", "M067", "M068"})
+
 HANDWRITTEN: list[dict[str, Any]] = [
     # --- entries without a mechanical rule
     _query("M024", "5n when n = 3", ["8"], 1),
@@ -48,38 +55,6 @@ HANDWRITTEN: list[dict[str, Any]] = [
     _query("M060", "write 'a number decreased by 9' as an expression", ["9 - n"], 1),
     _query("M061", "write 'three times a number plus 5' as an expression", ["3(n + 5)"], 1),
     _query("M062", "7y when y = 2", ["72"], 1),
-    _query(
-        "M064",
-        "sqrt(2x + 3) = x",
-        [("2x + 3 = x^2", "square both sides"), "x^2 - 2x - 3 = 0", "x = 3 or x = -1"],
-        1,
-        OMIT,
-    ),  # fmt: skip
-    _query(
-        "M064",
-        "sqrt(n + 12) = n",
-        [("n + 12 = n^2", "square both sides"), "n^2 - n - 12 = 0", "n = 4 or n = -3"],
-        1,
-        OMIT,
-    ),  # fmt: skip
-    _query(
-        "M067",
-        "sqrt(x + 2) = x",
-        ["x + 2 = x^2", "x = 2 or x = -1", ("x = 2", "x = -1 is rejected because it is negative")],
-        3,
-        MISMATCH,
-    ),  # fmt: skip
-    _query(
-        "M068",
-        "sqrt(3t + 4) = t",
-        [
-            "3t + 4 = t^2",
-            "t = 4 or t = -1",
-            ("no solution", "t = -1 does not work in the original"),
-        ],
-        3,
-        OMIT,
-    ),  # fmt: skip
     _query("M077", "x^2 + 4x + 1 = 0", ["x = -4 +- sqrt(12)/2"], 1),
     _query("M077", "n^2 + 8n + 3 = 0", ["n = -8 +- sqrt(52)/2"], 1),
     _query("M093", "sqrt(25)", ["+-5"], 1),
