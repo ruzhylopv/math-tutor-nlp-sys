@@ -225,8 +225,9 @@ formats, label definitions, sizes and licences are unverified.
 that is why they need hand-made sets.
 
 ## Retrieval
-In-memory index over the misconception catalogue (sentence-transformers embeddings, FAISS). Neither
-library is a dependency yet; adding them needs approval when `retrieve` is built.
+In-memory search over a hand-written misconception catalogue (about 120 school-algebra entries): sentence-transformers
+embeddings and cosine similarity in numpy; no FAISS for a catalogue this small. The dependencies are added in the M4b
+PR (`docs/plans/nodes/2026-10-27-m4b-retrieve.md`).
 
 ## LLM provider
 OpenRouter with a free model, chosen to avoid token costs. OpenRouter is OpenAI-compatible, so this

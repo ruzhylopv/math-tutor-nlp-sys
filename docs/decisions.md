@@ -465,3 +465,17 @@ The five reviews found five P1s; the stack had been merged before they could be 
   would include steps the checker cannot parse, which `localize` could not be scored on. The cost of the filter is
   circularity (the generated accuracy is high by construction, noted in `evals/datasets/README.md`), so the per-source
   accuracy is the headline and the blended number is not quoted alone. PRM800K stays deferred (see above).
+
+## 2026-10-27 | M4b decisions (`retrieve`)
+- **A hand-written catalogue of about 120 school-algebra misconceptions** | the Eedi "Mining Misconceptions in
+  Mathematics" catalogue | the developer could not download Eedi. Cost: the agent writes both the catalogue and the eval
+  queries, so Recall@k is optimistic (circular) and the entries are not teacher-validated. Mitigations: the developer
+  spot-checks about 20%; queries are generated from wrong rules, not from the catalogue's wording; Eedi stays possible
+  later as a second, independent test set.
+- **Plain numpy cosine similarity, no FAISS** | FAISS (approved earlier by the developer) | about 120 vectors; an index
+  library adds a dependency and nothing else. Narrower than the approval; FAISS can be added if the catalogue grows.
+- **Catalogue entries carry an `example` wrong rewrite that is embedded with the description** | embedding the
+  description alone | an embedding model reads a wrong rewrite's structure better from an example than from prose.
+- **No score threshold and no LLM re-ranking in v1** | abstaining below a threshold; a structured-output re-rank of the
+  top 5 | both are decided from the dev eval (open items in the plan).
+
