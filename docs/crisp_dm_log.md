@@ -60,6 +60,16 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   mined pairs (99.2%) and parses 90.1% of 1251; the 9 disagreements are author typos or condition-dependent lines.
   Rare relations are small in dev (implies 8, narrows 6, unparsable 12) and smaller in test (4, 2, 5). Test split
   not run.
+- 2026-10-27 | classify | dev, SUBSET 15 of 420 (taken in turn from each subject) | topic_accuracy=0.667 (baseline; 10 of 15), in_scope_accuracy=0.800, level_accuracy=0.133, level_within_one=0.533 | b178d94 | Model
+  `nvidia/nemotron-3.5-super-vl:free`, prompt hash 96a9483b4d2f, failure_rate 0. Per-subject recall: 1.0 for Algebra, Counting &
+  Probability, Number Theory, Precalculus; 0.5 Geometry; 0.0 Intermediate Algebra and Prealgebra (2 problems each). The 5 misses
+  are mostly fuzzy MATH labels: a probability problem labelled Geometry, two counting-flavoured problems labelled Intermediate
+  Algebra (both sent to Counting & Probability, i.e. out of scope), a linear inequality labelled Prealgebra (sent to Algebra), and a
+  "how many integers divisible by 2, 3 and 5" labelled Prealgebra (sent to Number Theory). So topic accuracy against MATH's labels
+  understates the model, but in-scope problems that land out of scope are the cost that matters (3 of 15). Levels: 8 of the 15 are
+  level 5 by chance and the model rarely says 5, so the level numbers are pessimistic; no node reads `level` yet. n=15 is a smoke
+  check (95% interval for 10/15 is about 0.42-0.85). Not tuned on these misses. Result file:
+  `evals/results/classify/20261027T134021Z_b178d94.json`.
 
 ## Deployment
 - Planned: runnable Streamlit app and a demo video using scenarios A and B.
