@@ -44,6 +44,11 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 - 2026-10-26 | parse_input | Wrote `evals/builders/build_parse_input.py`. Built by the developer's own run (the test split is protected): dev 170
   and test 159 messages (150 generated plus 20 and 9 hand-written), identical to a rebuild of the committed builder.
 
+- 2026-10-27 | localize attempts | No public dataset has first-error labels for our `omission_extraneous_root` and
+  `reasoning_result_mismatch` types (checked earlier, see `docs/architecture.md`), so the expected values come from
+  construction (mined MATH chains with one corrupted step) and from 29 hand-written attempts. Preview of the builder: dev 77
+  and test 72 attempts, the real build is pending the developer's run. Details and limits: `evals/datasets/README.md`.
+
 ## Modeling
 - Planned build order: verify, classify, localize, retrieve, hint, orchestrator + graph, checkpointer
   + scenarios, Streamlit UI.

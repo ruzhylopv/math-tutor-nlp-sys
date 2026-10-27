@@ -106,3 +106,35 @@ How much to trust a metric: the messages are synthetic and only as messy as the 
 text), most chains are arithmetic or expressions (about a sixth of the generated messages are equations: 25 of 150 in dev, 27 of 150 in test), and spoken math is rare in generated
 data because most chains contain brackets or fractions. Hand-written cases are the discriminating ones.
 
+## localize.jsonl (M4a)
+One line per attempt. Built by `uv run python -m evals.builders.build_localize --math-dir <dir with train.jsonl and test.jsonl>`.
+
+| Field | Meaning |
+|---|---|
+| `id` | `math/<unique_id>#<step>` (generated) or `hand/<nnn>` |
+| `problem` | plain-text math, as `parse_input` would produce |
+| `steps` | the student's steps: `claim`, `justification`, `justification_claim` |
+| `expected` | `first_error_step`, `focus_step` (1-based or null) and `error_type` (null when nothing is wrong) |
+| `kind` | `generated_not_valid`, or the hand-written kind (`not_valid`, `lost_solution`, `omission`, `mismatch`, `unparsable`, `incomplete`, `control`, ...) |
+| `source` | `generated` or `handwritten` |
+
+The eval runs the real `verify` and then `localize` on each case. There is no model.
+
+Where the labels come from:
+- `generated`: a step chain mined from a MATH solution (Algebra, Prealgebra, Intermediate Algebra, levels 1-3; one chain
+  per problem), with one step made wrong by `corrupt.py`. The first wrong step is known by construction, and the type is
+  `algebraic_transformation`. A chain is kept only if `verify` accepts every uncorrupted step and, after the corruption,
+  its first problem is a `not_valid` verdict at exactly that step. So the selection uses the code under test.
+- `handwritten`: written by the agent, with the expected values worked out by reading each attempt, then compared with
+  the pipeline (a test fails on any disagreement; none was found, but about ten cases were probed with `verify` before
+  their labels were finalized, so the agreement is not a fully blind check). Within each kind the cases alternate between
+  dev and test. The developer spot-checks a sample (`provenance.spot_check` is `pending`).
+
+How much to trust a metric: accuracy on the generated cases is high by construction (a regression suite). The
+hand-written cases are the discriminating ones, and there are few of them per type (a handful in each split). Known limits:
+- Inequalities and other out-of-grammar steps are `unparsable` by design of the checker, so `other` there is the
+  expected label, not a claim that the student erred.
+- Only the first error is reported; several errors in one attempt are one case with the first one labelled.
+- The generated errors are single-token edits, easier than student errors.
+- A failed check line is information, not an error (see the `localize` docstring).
+
