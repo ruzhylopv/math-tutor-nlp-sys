@@ -1,4 +1,4 @@
-# Plan: M4b `retrieve`, a hand-written misconception catalogue and embedding search (awaiting approval)
+# Plan: M4b `retrieve`, a hand-written misconception catalogue and embedding search (approved 2026-10-27)
 
 Goal: name the misconception behind the wrong step, so `hint` can aim at it. `retrieve` searches a catalogue of
 school-algebra misconceptions and returns the best matches. Roadmap: `docs/plans/design/2026-10-25-roadmap.md`.
@@ -47,8 +47,10 @@ M4a (`localize`) is merged; this node reads its `focus_step` and `error_type`.
   the top 5 is the next step.
 
 ## Data
-- **Catalogue**: about 120 entries across: signs and negatives, distributing over brackets, fractions, exponents and
-  powers, solving equations, squaring and extraneous roots, factoring, radicals, absolute value, inequalities.
+- **Catalogue**: 119 entries across 13 categories: signs and negatives, distributing over brackets, like terms and
+  order of operations, fractions, exponents and powers, solving equations, squaring and extraneous roots, quadratics,
+  factoring, radicals, absolute value, inequalities, rational expressions (the last three of the first list's gaps are
+  added: like terms, quadratics, rational expressions).
 - **Eval queries**: (a) generated from about 40 mechanical wrong rules: a rule is applied to a correct step with random
   numbers and variables, and SymPy confirms the result is really different, so the true misconception is known by
   construction (like the corrupted steps for `verify` and `localize`); `topic` of a generated pair is the entry's topic

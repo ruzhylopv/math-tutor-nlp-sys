@@ -88,6 +88,34 @@ class Misconception(BaseModel):
     score: float
 
 
+Category = Literal[
+    "signs_negatives",
+    "distribution",
+    "like_terms_order",
+    "fractions",
+    "exponents_powers",
+    "solving_equations",
+    "squaring_extraneous",
+    "quadratics",
+    "factoring",
+    "radicals",
+    "absolute_value",
+    "inequalities",
+    "rational_expressions",
+]
+
+
+class CatalogueEntry(BaseModel):
+    """One misconception in the hand-written catalogue (`src/tutor/data/misconceptions.json`)."""
+
+    id: str = Field(pattern=r"^M\d{3}$")
+    description: str = Field(min_length=10)  # in the student's voice: "Believes that ..."
+    category: Category
+    topic: Literal["Prealgebra", "Algebra", "Intermediate Algebra"]  # the in-scope subjects
+    correct_rule: str = Field(min_length=1)
+    example: str = Field(pattern=r".+ -> .+")  # "previous line -> what the student wrote"
+
+
 class LearnerProfile(BaseModel):
     """What the learner DB knows about a student. Shape is finalised with the DB tools (M6)."""
 

@@ -1,0 +1,954 @@
+[
+  {
+    "id": "M001",
+    "description": "Believes that subtracting a negative number makes the result smaller, writing a - (-b) as a - b",
+    "category": "signs_negatives",
+    "topic": "Prealgebra",
+    "correct_rule": "a - (-b) = a + b",
+    "example": "5 - (-3) -> 5 - 3"
+  },
+  {
+    "id": "M002",
+    "description": "Believes that the product of two negative numbers is negative",
+    "category": "signs_negatives",
+    "topic": "Prealgebra",
+    "correct_rule": "(-a)(-b) = ab",
+    "example": "(-4)(-3) -> -12"
+  },
+  {
+    "id": "M003",
+    "description": "Does not change the sign of a term when moving it to the other side of an equation",
+    "category": "signs_negatives",
+    "topic": "Algebra",
+    "correct_rule": "A term that moves across the equals sign changes sign: x + a = b gives x = b - a",
+    "example": "x + 5 = 12 -> x = 12 + 5"
+  },
+  {
+    "id": "M004",
+    "description": "Believes that (-x)^2 is negative, so a squared negative number stays negative",
+    "category": "signs_negatives",
+    "topic": "Algebra",
+    "correct_rule": "(-x)^2 = x^2, while -x^2 = -(x^2)",
+    "example": "(-3)^2 -> -9"
+  },
+  {
+    "id": "M005",
+    "description": "Applies a minus sign in front of a bracket to the first term only",
+    "category": "signs_negatives",
+    "topic": "Algebra",
+    "correct_rule": "-(a + b) = -a - b",
+    "example": "-(x + 4) -> -x + 4"
+  },
+  {
+    "id": "M006",
+    "description": "Believes that a negative number divided by a negative number is negative",
+    "category": "signs_negatives",
+    "topic": "Prealgebra",
+    "correct_rule": "(-a)/(-b) = a/b",
+    "example": "(-12)/(-4) -> -3"
+  },
+  {
+    "id": "M007",
+    "description": "Gives the sum of a negative and a positive number the sign of the positive number whatever their sizes",
+    "category": "signs_negatives",
+    "topic": "Prealgebra",
+    "correct_rule": "The sign of a + b is the sign of the number with the larger absolute value",
+    "example": "-8 + 3 -> 5"
+  },
+  {
+    "id": "M008",
+    "description": "Reverses the order of a subtraction, taking the smaller number from the larger when the smaller comes first",
+    "category": "signs_negatives",
+    "topic": "Prealgebra",
+    "correct_rule": "a - b is not b - a",
+    "example": "3 - 7 -> 4"
+  },
+  {
+    "id": "M009",
+    "description": "Solves -x = c as x = c, ignoring the minus sign on the variable",
+    "category": "signs_negatives",
+    "topic": "Algebra",
+    "correct_rule": "-x = c means x = -c",
+    "example": "-x = 5 -> x = 5"
+  },
+  {
+    "id": "M010",
+    "description": "Multiplies only the first term in a bracket by the number outside",
+    "category": "distribution",
+    "topic": "Algebra",
+    "correct_rule": "a(b + c) = ab + ac",
+    "example": "3(x + 2) = 15 -> 3x + 2 = 15"
+  },
+  {
+    "id": "M011",
+    "description": "Does not distribute a negative factor over the second term of a bracket",
+    "category": "distribution",
+    "topic": "Algebra",
+    "correct_rule": "-a(b - c) = -ab + ac",
+    "example": "-2(x - 3) -> -2x - 3"
+  },
+  {
+    "id": "M012",
+    "description": "Squares a bracket by multiplying it by 2",
+    "category": "distribution",
+    "topic": "Algebra",
+    "correct_rule": "(a + b)^2 = (a + b)(a + b)",
+    "example": "(x + 3)^2 -> 2x + 6"
+  },
+  {
+    "id": "M013",
+    "description": "Expands a product of two brackets by multiplying only the first terms and the last terms",
+    "category": "distribution",
+    "topic": "Algebra",
+    "correct_rule": "(a + b)(c + d) = ac + ad + bc + bd",
+    "example": "(x + 2)(x + 3) -> x^2 + 6"
+  },
+  {
+    "id": "M014",
+    "description": "Subtracts a bracket with a coefficient by applying the minus to the first product only",
+    "category": "distribution",
+    "topic": "Algebra",
+    "correct_rule": "p - a(b + c) = p - ab - ac",
+    "example": "5 - 2(x + 1) -> 5 - 2x + 1"
+  },
+  {
+    "id": "M015",
+    "description": "Multiplies a variable factor by the first term of a bracket only",
+    "category": "distribution",
+    "topic": "Algebra",
+    "correct_rule": "x(x + a) = x^2 + ax",
+    "example": "x(x + 2) -> x^2 + 2"
+  },
+  {
+    "id": "M016",
+    "description": "Multiplies a bracket by a fraction coefficient on the first term only",
+    "category": "distribution",
+    "topic": "Algebra",
+    "correct_rule": "(1/2)(x + 4) = x/2 + 2",
+    "example": "(1/2)(x + 4) -> x/2 + 4"
+  },
+  {
+    "id": "M017",
+    "description": "Loses the minus sign of the second bracket when expanding (x + a)(x - a)",
+    "category": "distribution",
+    "topic": "Algebra",
+    "correct_rule": "(x + a)(x - a) = x^2 - a^2",
+    "example": "(x + 3)(x - 3) -> x^2 + 9"
+  },
+  {
+    "id": "M018",
+    "description": "Adds the exponents as well as the coefficients when combining like terms",
+    "category": "like_terms_order",
+    "topic": "Prealgebra",
+    "correct_rule": "3x + 2x = 5x",
+    "example": "3x + 2x -> 5x^2"
+  },
+  {
+    "id": "M019",
+    "description": "Combines unlike terms, adding a number and a variable term into one term",
+    "category": "like_terms_order",
+    "topic": "Prealgebra",
+    "correct_rule": "Only like terms can be combined",
+    "example": "3x + 4 -> 7x"
+  },
+  {
+    "id": "M020",
+    "description": "Does the operations from left to right, adding before multiplying",
+    "category": "like_terms_order",
+    "topic": "Prealgebra",
+    "correct_rule": "Multiplication is done before addition",
+    "example": "2 + 3 * 4 -> 20"
+  },
+  {
+    "id": "M021",
+    "description": "Ignores the brackets and multiplies only the nearest number",
+    "category": "like_terms_order",
+    "topic": "Prealgebra",
+    "correct_rule": "Work out the brackets first",
+    "example": "(2 + 3) * 4 -> 2 + 12"
+  },
+  {
+    "id": "M022",
+    "description": "Combines x and x^2 as like terms",
+    "category": "like_terms_order",
+    "topic": "Algebra",
+    "correct_rule": "Only terms with the same power of the variable combine",
+    "example": "x^2 + x -> x^3"
+  },
+  {
+    "id": "M023",
+    "description": "Thinks that x * x equals 2x",
+    "category": "like_terms_order",
+    "topic": "Prealgebra",
+    "correct_rule": "x * x = x^2",
+    "example": "x * x -> 2x"
+  },
+  {
+    "id": "M024",
+    "description": "Reads 3x as 3 + x when substituting a value",
+    "category": "like_terms_order",
+    "topic": "Prealgebra",
+    "correct_rule": "3x means 3 times x",
+    "example": "3x with x = 4 -> 7"
+  },
+  {
+    "id": "M025",
+    "description": "Adds the numbers and ignores the signs when combining terms with different signs",
+    "category": "like_terms_order",
+    "topic": "Prealgebra",
+    "correct_rule": "-3x + 5x = 2x",
+    "example": "-3x + 5x -> -8x"
+  },
+  {
+    "id": "M026",
+    "description": "Thinks that x + x + x equals x cubed",
+    "category": "like_terms_order",
+    "topic": "Prealgebra",
+    "correct_rule": "x + x + x = 3x",
+    "example": "x + x + x -> x^3"
+  },
+  {
+    "id": "M027",
+    "description": "Adds fractions by adding the numerators and adding the denominators",
+    "category": "fractions",
+    "topic": "Prealgebra",
+    "correct_rule": "a/b + c/d = (ad + bc)/(bd)",
+    "example": "1/2 + 1/3 -> 2/5"
+  },
+  {
+    "id": "M028",
+    "description": "Subtracts fractions by subtracting the numerators and subtracting the denominators",
+    "category": "fractions",
+    "topic": "Prealgebra",
+    "correct_rule": "a/b - c/d = (ad - bc)/(bd)",
+    "example": "3/4 - 1/2 -> 2/2"
+  },
+  {
+    "id": "M029",
+    "description": "Divides by a fraction by multiplying by the fraction without turning it upside down",
+    "category": "fractions",
+    "topic": "Prealgebra",
+    "correct_rule": "a/b divided by c/d = a/b * d/c",
+    "example": "(1/2) / (1/4) -> (1/2)(1/4)"
+  },
+  {
+    "id": "M030",
+    "description": "Adds a whole number to a fraction by adding it to the numerator only",
+    "category": "fractions",
+    "topic": "Prealgebra",
+    "correct_rule": "n + a/b = (nb + a)/b",
+    "example": "2 + 1/3 -> 3/3"
+  },
+  {
+    "id": "M031",
+    "description": "Multiplies a fraction by a whole number by multiplying both the numerator and the denominator",
+    "category": "fractions",
+    "topic": "Algebra",
+    "correct_rule": "k * a/b = ka/b",
+    "example": "3 * (2/5) -> 6/15"
+  },
+  {
+    "id": "M032",
+    "description": "Simplifies a fraction by subtracting the same number from the numerator and the denominator",
+    "category": "fractions",
+    "topic": "Prealgebra",
+    "correct_rule": "Divide the numerator and the denominator by a common factor",
+    "example": "6/8 -> 4/6"
+  },
+  {
+    "id": "M033",
+    "description": "Reduces (2x)/4 to x/4, dividing only the numerator by 2",
+    "category": "fractions",
+    "topic": "Algebra",
+    "correct_rule": "2x/4 = x/2",
+    "example": "2x/4 -> x/4"
+  },
+  {
+    "id": "M034",
+    "description": "Clears the fraction in an equation by multiplying only the fraction term",
+    "category": "fractions",
+    "topic": "Algebra",
+    "correct_rule": "Multiply every term of the equation by the denominator",
+    "example": "x/3 + 2 = 6 -> x + 2 = 18"
+  },
+  {
+    "id": "M035",
+    "description": "Writes the reciprocal of a/b with a minus sign",
+    "category": "fractions",
+    "topic": "Prealgebra",
+    "correct_rule": "The reciprocal of a/b is b/a",
+    "example": "reciprocal of 3/4 -> -3/4"
+  },
+  {
+    "id": "M036",
+    "description": "Believes that a fraction of a number is found by dividing by the numerator",
+    "category": "fractions",
+    "topic": "Prealgebra",
+    "correct_rule": "(a/b) of n = n * a / b",
+    "example": "(2/3) of 12 -> 12 / 2"
+  },
+  {
+    "id": "M037",
+    "description": "Believes that (a + b)^2 equals a^2 + b^2",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "(a + b)^2 = a^2 + 2ab + b^2",
+    "example": "(x + 3)^2 -> x^2 + 9"
+  },
+  {
+    "id": "M038",
+    "description": "Believes that (a - b)^2 equals a^2 - b^2",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "(a - b)^2 = a^2 - 2ab + b^2",
+    "example": "(x - 4)^2 -> x^2 - 16"
+  },
+  {
+    "id": "M039",
+    "description": "Multiplies the base by the exponent instead of using repeated multiplication",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "x^n is x multiplied by itself n times",
+    "example": "2^3 -> 6"
+  },
+  {
+    "id": "M040",
+    "description": "Adds the exponents when raising a power to a power",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "(x^a)^b = x^(ab)",
+    "example": "(x^2)^3 -> x^5"
+  },
+  {
+    "id": "M041",
+    "description": "Multiplies the exponents when multiplying powers with the same base",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "x^a * x^b = x^(a + b)",
+    "example": "x^2 * x^3 -> x^6"
+  },
+  {
+    "id": "M042",
+    "description": "Divides the exponents when dividing powers with the same base",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "x^a / x^b = x^(a - b)",
+    "example": "x^6 / x^2 -> x^3"
+  },
+  {
+    "id": "M043",
+    "description": "Applies a power to the variable only, not to the coefficient, in a product",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "(ab)^n = a^n b^n",
+    "example": "(2x)^3 -> 2x^3"
+  },
+  {
+    "id": "M044",
+    "description": "Believes that a negative exponent makes the number negative",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "x^(-n) = 1/x^n",
+    "example": "2^(-3) -> -8"
+  },
+  {
+    "id": "M045",
+    "description": "Believes that any number to the power 0 is 0",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "x^0 = 1",
+    "example": "5^0 -> 0"
+  },
+  {
+    "id": "M046",
+    "description": "Reads a power of one half as dividing by 2",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "x^(1/2) = sqrt(x)",
+    "example": "x^(1/2) -> x/2"
+  },
+  {
+    "id": "M047",
+    "description": "Adds the bases as well as the exponents when multiplying powers",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "2^3 * 2^4 = 2^7",
+    "example": "2^3 * 2^4 -> 4^7"
+  },
+  {
+    "id": "M048",
+    "description": "Applies an outer exponent to one factor inside a bracket only",
+    "category": "exponents_powers",
+    "topic": "Algebra",
+    "correct_rule": "(x^2 y)^3 = x^6 y^3",
+    "example": "(x^2 y)^3 -> x^2 y^3"
+  },
+  {
+    "id": "M049",
+    "description": "Divides only the variable term by its coefficient and leaves the other terms unchanged",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "Divide every term on both sides",
+    "example": "3x + 6 = 15 -> x + 6 = 5"
+  },
+  {
+    "id": "M050",
+    "description": "Applies an operation to one side of the equation only",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "Do the same to both sides",
+    "example": "3x + 6 = 15 -> 3x = 15"
+  },
+  {
+    "id": "M051",
+    "description": "Subtracts the coefficient instead of dividing by it to isolate the variable",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "Undo multiplication by dividing",
+    "example": "3x = 12 -> x = 12 - 3"
+  },
+  {
+    "id": "M052",
+    "description": "Divides instead of multiplying to undo a division",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "Undo division by multiplying",
+    "example": "x/3 = 6 -> x = 2"
+  },
+  {
+    "id": "M053",
+    "description": "Subtracts the smaller variable term from the left side only",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "Subtract the same variable term from both sides",
+    "example": "5x - 7 = 2x + 8 -> 3x - 7 = 2x + 8"
+  },
+  {
+    "id": "M054",
+    "description": "Forgets to divide the right-hand side when dividing both sides by the coefficient",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "ax = b gives x = b/a",
+    "example": "4x = 20 -> x = 20"
+  },
+  {
+    "id": "M055",
+    "description": "Writes the solution of ax = b as x = a/b, inverting the quotient",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "ax = b gives x = b/a",
+    "example": "4x = 12 -> x = 4/12"
+  },
+  {
+    "id": "M056",
+    "description": "Drops a variable term from the other side when expanding and collecting",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "Keep every term of both sides",
+    "example": "3(x + 2) = 2x + 5 -> 3x + 6 = 5"
+  },
+  {
+    "id": "M057",
+    "description": "Cross-multiplies a proportion by multiplying the numerators together and the denominators together",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "a/b = c/d gives ad = bc",
+    "example": "x/3 = 4/5 -> 4x = 15"
+  },
+  {
+    "id": "M058",
+    "description": "Believes an equation that reduces to 0 = 0 has no solution",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "0 = 0 is always true, so every number is a solution",
+    "example": "x + 1 = x + 1 -> no solution"
+  },
+  {
+    "id": "M059",
+    "description": "Gives a solution to a contradiction such as 3 = 4 by setting the variable to 0",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "A contradiction has no solution",
+    "example": "2x + 3 = 2x + 4 -> x = 0"
+  },
+  {
+    "id": "M060",
+    "description": "Translates 'a number decreased by 4' as 4 - x",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "'a number decreased by 4' is x - 4",
+    "example": "a number decreased by 4 -> 4 - x"
+  },
+  {
+    "id": "M061",
+    "description": "Translates 'twice a number plus 3' as 2(x + 3)",
+    "category": "solving_equations",
+    "topic": "Algebra",
+    "correct_rule": "'twice a number plus 3' is 2x + 3",
+    "example": "twice a number plus 3 -> 2(x + 3)"
+  },
+  {
+    "id": "M062",
+    "description": "Joins the coefficient and the value side by side when substituting",
+    "category": "solving_equations",
+    "topic": "Prealgebra",
+    "correct_rule": "3x with x = 4 means 3 times 4",
+    "example": "3x with x = 4 -> 34"
+  },
+  {
+    "id": "M063",
+    "description": "Squares both sides of an equation with a radical by squaring each term on the right separately",
+    "category": "squaring_extraneous",
+    "topic": "Algebra",
+    "correct_rule": "(x - 5)^2 = x^2 - 10x + 25",
+    "example": "sqrt(x + 7) = x - 5 -> x + 7 = x^2 - 25"
+  },
+  {
+    "id": "M064",
+    "description": "Accepts every root found after squaring without checking it in the original equation",
+    "category": "squaring_extraneous",
+    "topic": "Algebra",
+    "correct_rule": "Check each root in the original equation",
+    "example": "sqrt(x + 7) = x - 5: x = 2 or x = 9 -> both are solutions"
+  },
+  {
+    "id": "M065",
+    "description": "Squares only the variable on the right when squaring both sides",
+    "category": "squaring_extraneous",
+    "topic": "Algebra",
+    "correct_rule": "Square the whole right-hand side",
+    "example": "sqrt(x) = x - 2 -> x = x^2 - 2"
+  },
+  {
+    "id": "M066",
+    "description": "Squares both sides of an equation before isolating the radical",
+    "category": "squaring_extraneous",
+    "topic": "Algebra",
+    "correct_rule": "Isolate the radical, then square",
+    "example": "sqrt(x) + 1 = 3 -> x + 1 = 9"
+  },
+  {
+    "id": "M067",
+    "description": "Rejects a root only because it is negative, not because it fails the original equation",
+    "category": "squaring_extraneous",
+    "topic": "Algebra",
+    "correct_rule": "Substitute the root into the original equation",
+    "example": "sqrt(x + 2) = x: x = 2 or x = -1 -> x = -1 is rejected because it is negative"
+  },
+  {
+    "id": "M068",
+    "description": "Believes that when one root fails the original equation the equation has no solution",
+    "category": "squaring_extraneous",
+    "topic": "Algebra",
+    "correct_rule": "Reject only the root that fails",
+    "example": "x = 2 or x = 9, and 2 fails -> no solution"
+  },
+  {
+    "id": "M069",
+    "description": "Divides both sides by an expression that contains the variable without considering that it may be zero",
+    "category": "squaring_extraneous",
+    "topic": "Algebra",
+    "correct_rule": "x^2 = 3x gives x = 0 or x = 3",
+    "example": "x^2 = 3x -> x = 3"
+  },
+  {
+    "id": "M070",
+    "description": "Multiplies out the denominators of a rational equation and keeps every root",
+    "category": "squaring_extraneous",
+    "topic": "Algebra",
+    "correct_rule": "Reject a root that makes a denominator zero",
+    "example": "x/(x - 2) = 2/(x - 2) -> x = 2"
+  },
+  {
+    "id": "M071",
+    "description": "Applies the zero product rule when the product equals a number other than zero",
+    "category": "quadratics",
+    "topic": "Algebra",
+    "correct_rule": "Move everything to one side so that the product is 0",
+    "example": "(x - 2)(x - 3) = 6 -> x - 2 = 6 or x - 3 = 6"
+  },
+  {
+    "id": "M072",
+    "description": "Reads the roots of (x - a)(x + b) = 0 with the signs reversed",
+    "category": "quadratics",
+    "topic": "Algebra",
+    "correct_rule": "x = a or x = -b",
+    "example": "(x - 2)(x + 3) = 0 -> x = -2 or x = 3"
+  },
+  {
+    "id": "M073",
+    "description": "Solves x^2 = 9 as x = 3 only and loses the negative root",
+    "category": "quadratics",
+    "topic": "Algebra",
+    "correct_rule": "x^2 = 9 gives x = 3 or x = -3",
+    "example": "x^2 = 9 -> x = 3"
+  },
+  {
+    "id": "M074",
+    "description": "Solves x^2 = 9 by dividing 9 by 2",
+    "category": "quadratics",
+    "topic": "Algebra",
+    "correct_rule": "Take the square root of both sides",
+    "example": "x^2 = 9 -> x = 9/2"
+  },
+  {
+    "id": "M075",
+    "description": "Gives only the non-zero root of x(x - 5) = 0",
+    "category": "quadratics",
+    "topic": "Algebra",
+    "correct_rule": "x = 0 or x = 5",
+    "example": "x(x - 5) = 0 -> x = 5"
+  },
+  {
+    "id": "M076",
+    "description": "Uses b instead of -b in the quadratic formula",
+    "category": "quadratics",
+    "topic": "Algebra",
+    "correct_rule": "x = (-b +- sqrt(b^2 - 4ac))/(2a)",
+    "example": "x^2 - 5x + 6 = 0 -> x = (-5 +- sqrt(25 - 24))/2"
+  },
+  {
+    "id": "M077",
+    "description": "Divides only the square root by 2a in the quadratic formula",
+    "category": "quadratics",
+    "topic": "Algebra",
+    "correct_rule": "Divide the whole numerator by 2a",
+    "example": "x^2 + 6x + 4 = 0 -> x = -6 +- sqrt(20)/2"
+  },
+  {
+    "id": "M078",
+    "description": "Completes the square without adding the same number to the other side",
+    "category": "quadratics",
+    "topic": "Algebra",
+    "correct_rule": "Add the same number to both sides",
+    "example": "x^2 + 6x = 5 -> (x + 3)^2 = 5"
+  },
+  {
+    "id": "M079",
+    "description": "Uses b instead of half of b when completing the square",
+    "category": "quadratics",
+    "topic": "Algebra",
+    "correct_rule": "x^2 + bx + (b/2)^2 = (x + b/2)^2",
+    "example": "x^2 + 6x = 5 -> (x + 6)^2 = 5 + 36"
+  },
+  {
+    "id": "M080",
+    "description": "Moves the right-hand side to the left without changing its sign before using the quadratic formula",
+    "category": "quadratics",
+    "topic": "Algebra",
+    "correct_rule": "x^2 + 3x = 4 becomes x^2 + 3x - 4 = 0",
+    "example": "x^2 + 3x = 4 -> x^2 + 3x + 4 = 0"
+  },
+  {
+    "id": "M081",
+    "description": "Swaps the roles of the sum and the product when factorising x^2 + bx + c",
+    "category": "factoring",
+    "topic": "Algebra",
+    "correct_rule": "The numbers multiply to c and add to b",
+    "example": "x^2 + 7x + 10 -> (x + 7)(x + 3)"
+  },
+  {
+    "id": "M082",
+    "description": "Chooses two numbers that multiply to the constant without checking that they add to the middle coefficient",
+    "category": "factoring",
+    "topic": "Algebra",
+    "correct_rule": "The numbers must also add to b",
+    "example": "x^2 + 5x + 6 -> (x + 1)(x + 6)"
+  },
+  {
+    "id": "M083",
+    "description": "Ignores the sign of the constant when factorising",
+    "category": "factoring",
+    "topic": "Algebra",
+    "correct_rule": "x^2 - 5x + 6 = (x - 2)(x - 3)",
+    "example": "x^2 - 5x + 6 -> (x + 2)(x + 3)"
+  },
+  {
+    "id": "M084",
+    "description": "Factorises a difference of two squares as a squared bracket",
+    "category": "factoring",
+    "topic": "Algebra",
+    "correct_rule": "x^2 - a^2 = (x - a)(x + a)",
+    "example": "x^2 - 9 -> (x - 3)^2"
+  },
+  {
+    "id": "M085",
+    "description": "Factorises a sum of two squares as if it were a difference",
+    "category": "factoring",
+    "topic": "Algebra",
+    "correct_rule": "x^2 + 9 cannot be factorised over the real numbers",
+    "example": "x^2 + 9 -> (x + 3)(x - 3)"
+  },
+  {
+    "id": "M086",
+    "description": "Takes out a common factor from only some of the terms",
+    "category": "factoring",
+    "topic": "Algebra",
+    "correct_rule": "Divide every term by the common factor",
+    "example": "6x + 9 -> 3(2x + 9)"
+  },
+  {
+    "id": "M087",
+    "description": "Forgets the 1 that is left when a whole term is the common factor",
+    "category": "factoring",
+    "topic": "Algebra",
+    "correct_rule": "3x + 3 = 3(x + 1)",
+    "example": "3x + 3 -> 3(x)"
+  },
+  {
+    "id": "M088",
+    "description": "Gets the sign wrong inside the bracket after taking out a common factor",
+    "category": "factoring",
+    "topic": "Algebra",
+    "correct_rule": "x^2 - 4x = x(x - 4)",
+    "example": "x^2 - 4x -> x(x + 4)"
+  },
+  {
+    "id": "M089",
+    "description": "Factorises ax^2 + bx + c with a not equal to 1 as though a were 1",
+    "category": "factoring",
+    "topic": "Algebra",
+    "correct_rule": "The leading coefficient changes the factor pairs",
+    "example": "2x^2 + 7x + 3 -> (x + 3)(x + 1)"
+  },
+  {
+    "id": "M090",
+    "description": "Believes that sqrt(a + b) equals sqrt(a) + sqrt(b)",
+    "category": "radicals",
+    "topic": "Algebra",
+    "correct_rule": "sqrt(a + b) cannot be split over a sum",
+    "example": "sqrt(9 + 16) -> 3 + 4"
+  },
+  {
+    "id": "M091",
+    "description": "Adds the radicands when multiplying square roots",
+    "category": "radicals",
+    "topic": "Algebra",
+    "correct_rule": "sqrt(a) * sqrt(b) = sqrt(ab)",
+    "example": "sqrt(2) * sqrt(8) -> sqrt(10)"
+  },
+  {
+    "id": "M092",
+    "description": "Believes that sqrt(x^2) equals x whatever the sign of x",
+    "category": "radicals",
+    "topic": "Algebra",
+    "correct_rule": "sqrt(x^2) = |x|",
+    "example": "sqrt(x^2) -> x"
+  },
+  {
+    "id": "M093",
+    "description": "Gives both signs for a principal square root",
+    "category": "radicals",
+    "topic": "Algebra",
+    "correct_rule": "sqrt(16) = 4",
+    "example": "sqrt(16) -> +-4"
+  },
+  {
+    "id": "M094",
+    "description": "Halves the number under the root to take a square root",
+    "category": "radicals",
+    "topic": "Algebra",
+    "correct_rule": "sqrt(36) = 6",
+    "example": "sqrt(36) -> 18"
+  },
+  {
+    "id": "M095",
+    "description": "Rationalises 1/sqrt(a) by multiplying the numerator only",
+    "category": "radicals",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "1/sqrt(2) = sqrt(2)/2",
+    "example": "1/sqrt(2) -> sqrt(2)/1"
+  },
+  {
+    "id": "M096",
+    "description": "Pulls the wrong factor out of a root when simplifying",
+    "category": "radicals",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "sqrt(50) = 5 sqrt(2)",
+    "example": "sqrt(50) -> 5*sqrt(10)"
+  },
+  {
+    "id": "M097",
+    "description": "Removes a square root from one side of an equation without squaring the other side",
+    "category": "radicals",
+    "topic": "Algebra",
+    "correct_rule": "sqrt(x) = 5 gives x = 25",
+    "example": "sqrt(x) = 5 -> x = 5"
+  },
+  {
+    "id": "M098",
+    "description": "Adds the radicands when multiplying numbers with roots",
+    "category": "radicals",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "2 sqrt(3) * 3 sqrt(5) = 6 sqrt(15)",
+    "example": "2*sqrt(3) * 3*sqrt(5) -> 6*sqrt(8)"
+  },
+  {
+    "id": "M099",
+    "description": "Gives only the positive case when solving an absolute value equation",
+    "category": "absolute_value",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "|x - 3| = 5 gives x - 3 = 5 or x - 3 = -5",
+    "example": "|x - 3| = 5 -> x - 3 = 5"
+  },
+  {
+    "id": "M100",
+    "description": "Drops the sign to give a solution to an absolute value equal to a negative number",
+    "category": "absolute_value",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "|x| = -3 has no solution",
+    "example": "|x| = -3 -> x = 3"
+  },
+  {
+    "id": "M101",
+    "description": "Believes that |a + b| always equals |a| + |b|",
+    "category": "absolute_value",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "|a + b| <= |a| + |b|",
+    "example": "|3 + (-5)| -> |3| + |-5|"
+  },
+  {
+    "id": "M102",
+    "description": "Changes the sign on the wrong term for the negative case of an absolute value equation",
+    "category": "absolute_value",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "The negative case is x - 3 = -5",
+    "example": "|x - 3| = 5 -> x - 3 = 5 or x + 3 = 5"
+  },
+  {
+    "id": "M103",
+    "description": "Believes that |-x| equals -x",
+    "category": "absolute_value",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "|-x| = |x|",
+    "example": "|-4| -> -4"
+  },
+  {
+    "id": "M104",
+    "description": "Removes the absolute value bars without considering the sign of the inside",
+    "category": "absolute_value",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "|x - 5| = x - 5 only if x >= 5",
+    "example": "|x - 5| -> x - 5"
+  },
+  {
+    "id": "M105",
+    "description": "Does not reverse the inequality sign when dividing by a negative number",
+    "category": "inequalities",
+    "topic": "Algebra",
+    "correct_rule": "Dividing by a negative number reverses the inequality",
+    "example": "-2x > 6 -> x > -3"
+  },
+  {
+    "id": "M106",
+    "description": "Reverses the inequality sign when subtracting from both sides",
+    "category": "inequalities",
+    "topic": "Algebra",
+    "correct_rule": "Only multiplying or dividing by a negative number reverses it",
+    "example": "x + 3 > 5 -> x < 2"
+  },
+  {
+    "id": "M107",
+    "description": "Treats an inequality as an equation and gives a single value as the answer",
+    "category": "inequalities",
+    "topic": "Algebra",
+    "correct_rule": "The solution of an inequality is a range",
+    "example": "2x > 6 -> x = 3"
+  },
+  {
+    "id": "M108",
+    "description": "Solves an absolute value inequality |2x + 1| < 5 as one inequality only",
+    "category": "inequalities",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "|u| < a means -a < u < a",
+    "example": "|2x + 1| < 5 -> 2x + 1 < 5"
+  },
+  {
+    "id": "M109",
+    "description": "Solves x^2 > 9 as x > 3 and loses the other branch",
+    "category": "inequalities",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "x^2 > 9 gives x > 3 or x < -3",
+    "example": "x^2 > 9 -> x > 3"
+  },
+  {
+    "id": "M110",
+    "description": "Writes the solution of x^2 < 9 with 'or' instead of 'and'",
+    "category": "inequalities",
+    "topic": "Intermediate Algebra",
+    "correct_rule": "x^2 < 9 gives -3 < x < 3",
+    "example": "x^2 < 9 -> x < 3 or x > -3"
+  },
+  {
+    "id": "M111",
+    "description": "Multiplies both sides of an inequality by a variable expression without considering its sign",
+    "category": "inequalities",
+    "topic": "Algebra",
+    "correct_rule": "The direction depends on the sign of the expression",
+    "example": "1/x > 2 -> 1 > 2x"
+  },
+  {
+    "id": "M112",
+    "description": "Joins the two parts of a compound inequality with 'or'",
+    "category": "inequalities",
+    "topic": "Algebra",
+    "correct_rule": "2 < x < 5 means x > 2 and x < 5",
+    "example": "2 < x < 5 -> x > 2 or x < 5"
+  },
+  {
+    "id": "M113",
+    "description": "Cancels a term of the numerator with a term of the denominator",
+    "category": "rational_expressions",
+    "topic": "Algebra",
+    "correct_rule": "Only common factors cancel",
+    "example": "(x + 3)/(x + 5) -> 3/5"
+  },
+  {
+    "id": "M114",
+    "description": "Splits a sum in the denominator into two fractions",
+    "category": "rational_expressions",
+    "topic": "Algebra",
+    "correct_rule": "1/(a + b) is not 1/a + 1/b",
+    "example": "1/(x + 2) -> 1/x + 1/2"
+  },
+  {
+    "id": "M115",
+    "description": "Divides only the first term of the numerator when simplifying",
+    "category": "rational_expressions",
+    "topic": "Algebra",
+    "correct_rule": "Divide every term of the numerator",
+    "example": "(4x + 8)/4 -> x + 8"
+  },
+  {
+    "id": "M116",
+    "description": "Adds rational expressions by adding the denominators",
+    "category": "rational_expressions",
+    "topic": "Algebra",
+    "correct_rule": "1/x + 1/y = (x + y)/(xy)",
+    "example": "1/x + 1/y -> 2/(x + y)"
+  },
+  {
+    "id": "M117",
+    "description": "Believes that x divided by x^2 equals x",
+    "category": "rational_expressions",
+    "topic": "Algebra",
+    "correct_rule": "x/x^2 = 1/x",
+    "example": "x/x^2 -> x"
+  },
+  {
+    "id": "M118",
+    "description": "Accepts a value that makes a denominator zero as a solution",
+    "category": "rational_expressions",
+    "topic": "Algebra",
+    "correct_rule": "Exclude values that make a denominator zero",
+    "example": "(x^2 - 4)/(x - 2) = 0 -> x = 2 or x = -2"
+  },
+  {
+    "id": "M119",
+    "description": "Multiplies the denominator but not the numerator when writing a common denominator",
+    "category": "rational_expressions",
+    "topic": "Algebra",
+    "correct_rule": "Multiply numerator and denominator by the same factor",
+    "example": "1/x + 1/(x + 1) -> (x + 1)/(x(x + 1)) + 1/(x(x + 1))"
+  }
+]
