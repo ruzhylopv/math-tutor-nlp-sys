@@ -465,3 +465,14 @@ The five reviews found five P1s; the stack had been merged before they could be 
   would include steps the checker cannot parse, which `localize` could not be scored on. The cost of the filter is
   circularity (the generated accuracy is high by construction, noted in `evals/datasets/README.md`), so the per-source
   accuracy is the headline and the blended number is not quoted alone. PRM800K stays deferred (see above).
+
+## 2026-10-27 | Review loop: one pass, fix only blockers
+- **One review pass per PR, with a fix round only for P0 and P1** | the two-pass loop with a final re-review | it took
+  longer than the work it checked (M3 and M4 each spent several rounds on P2 and P3 findings). Cost: a P2 that
+  matters can be postponed; mitigated by listing every P2 and P3 in the PR comment.
+- **P2, P3 and the reviewer's "Possible over-engineering signs" are reported, not fixed** | fixing P2 automatically |
+  the developer decides; each sign comes with a simpler alternative and its drawbacks. A new dependency or
+  infrastructure without an approved plan is the one over-engineering finding that blocks (P1).
+- **Stack reviews run in parallel in detached worktrees** | reviewing layers one after another in the shared checkout |
+  speed, and a reviewer once switched the shared checkout to `main`.
+

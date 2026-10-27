@@ -36,7 +36,7 @@ push. pytest exit code 5 (no tests collected) is fine early in the project. Fix 
   `--open`.
 
 ## Step 5: Review loop
-Run the `review-loop` skill on the PR (on each layer, for a stack).
+Run the `review-loop` skill on the PR (one review, in parallel for every layer of a stack; a fix round only for P0/P1).
 
 ## Step 6: Report
 Give the user the PR URL(s), the stack order, check results, and anything the review loop escalated.
