@@ -35,6 +35,24 @@ def parse_split(description: str | None, argv: Sequence[str] | None = None) -> s
     return str(parser.parse_args(argv).split)
 
 
+def _positive_int(text: str) -> int:
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return value
+
+
+def parse_split_and_limit(
+    description: str | None, argv: Sequence[str] | None = None
+) -> tuple[str, int | None]:
+    """Parse --split (as `parse_split`) and --limit N, the size of a quick subset (default: all)."""
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--split", choices=SPLITS, default="dev")
+    parser.add_argument("--limit", type=_positive_int, default=None)
+    args = parser.parse_args(argv)
+    return str(args.split), args.limit
+
+
 def dataset_path(component: str, split: str) -> Path:
     """Where a component's dataset for a split lives: datasets/<split>/<component>.jsonl.
 

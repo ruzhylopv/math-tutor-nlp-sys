@@ -5,8 +5,12 @@ through the real model (needs the key in .env). Answers are cached under evals/.
 rerun with the same prompt costs nothing and a changed prompt asks again. Successful answers are
 cached; a failed call is asked again on a rerun. A failed call counts as a wrong answer and in
 `failure_rate`.
+
+Use `--limit N` for a quick run on N problems taken in turn from each subject (the result file
+says so).
 """
 
+import hashlib
 import logging
 import os
 from collections import Counter
@@ -16,7 +20,7 @@ from evals.runner import (
     EVALS_DIR,
     dataset_path,
     load_jsonl,
-    parse_split,
+    parse_split_and_limit,
     setup_logging,
     write_result,
 )
@@ -89,9 +93,28 @@ def evaluate(
     return metrics
 
 
+def stratified_sample(cases: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    """`limit` cases, taken in turn from each MATH subject.
+
+    Deterministic: inside a subject cases are ordered by a hash of their id, so the same subset is
+    chosen on every run and the eval cache stays valid. A limit above the size returns everything.
+    """
+    groups: dict[str, list[dict[str, Any]]] = {}
+    ordered = sorted(cases, key=lambda case: hashlib.sha256(case["id"].encode()).hexdigest())
+    for case in ordered:
+        groups.setdefault(case["subject"], []).append(case)
+    queues = [groups[subject] for subject in sorted(groups)]
+    chosen: list[dict[str, Any]] = []
+    while len(chosen) < limit and any(queues):
+        for queue in queues:
+            if queue and len(chosen) < limit:
+                chosen.append(queue.pop(0))
+    return sorted(chosen, key=lambda case: str(case["id"]))
+
+
 def main() -> None:
     setup_logging()
-    split = parse_split(__doc__)
+    split, limit = parse_split_and_limit(__doc__)
     path = dataset_path(COMPONENT, split)
     if not path.exists():
         logger.info("Dataset %s is missing. No labels are invented; add the dataset first.", path)
@@ -99,6 +122,10 @@ def main() -> None:
     os.environ.setdefault("LLM_CACHE_DIR", str(EVALS_DIR / ".llm_cache"))
     config = load_config()
     cases = load_jsonl(path)
+    note = NOTE
+    if limit is not None and limit < len(cases):
+        note += f" SUBSET: {limit} of {len(cases)} problems, taken in turn from each subject."
+        cases = stratified_sample(cases, limit)
     metrics = evaluate(cases, [predict(case) for case in cases])
     result = write_result(
         COMPONENT,
@@ -107,7 +134,7 @@ def main() -> None:
         metrics,
         model_name=config.model_name,
         prompt_path=PROMPT,
-        note=NOTE,
+        note=note,
     )
     logger.info("classify (%s): n=%d", split, len(cases))
     for name in ("topic_accuracy", "topic_macro_f1", "in_scope_accuracy"):

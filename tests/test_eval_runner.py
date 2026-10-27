@@ -12,6 +12,7 @@ from evals.runner import (
     git_hash,
     load_jsonl,
     parse_split,
+    parse_split_and_limit,
     run_eval_stub,
     write_result,
 )
@@ -27,6 +28,17 @@ def test_split_defaults_to_dev_and_accepts_test() -> None:
 def test_split_rejects_other_values() -> None:
     with pytest.raises(SystemExit):
         parse_split("x", ["--split", "train"])
+
+
+def test_split_and_limit() -> None:
+    assert parse_split_and_limit("x", []) == ("dev", None)
+    assert parse_split_and_limit("x", ["--limit", "15", "--split", "test"]) == ("test", 15)
+
+
+@pytest.mark.parametrize("bad", ["0", "-3", "abc"])
+def test_limit_must_be_a_positive_integer(bad: str) -> None:
+    with pytest.raises(SystemExit):
+        parse_split_and_limit("x", ["--limit", bad])
 
 
 def test_dataset_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

@@ -1,6 +1,7 @@
 import json
 import runpy
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -103,3 +104,55 @@ def test_the_script_runs_the_node_and_writes_a_result_with_the_model_and_the_pro
     assert data["model_name"] == "some/model" and data["prompt_hash"]
     assert data["n_examples"] == 2 and data["metrics"]["topic_accuracy"] == 0.5
     assert data["metrics"]["failure_rate"] == 0.5 and "MATH" in data["note"]
+
+
+def _sample_case(case_id: str, subject: str) -> dict[str, Any]:
+    return {"id": case_id, "subject": subject, "level": 1, "problem": case_id}
+
+
+def test_the_sample_takes_problems_in_turn_from_each_subject() -> None:
+    cases = [_sample_case(f"a{i}", "Algebra") for i in range(10)]
+    cases += [_sample_case(f"g{i}", "Geometry") for i in range(10)]
+    cases += [_sample_case(f"p{i}", "Precalculus") for i in range(10)]
+    sample = _module()["stratified_sample"](cases, 7)
+    counts = Counter(case["subject"] for case in sample)
+    assert sorted(counts.values()) == [2, 2, 3] and len(sample) == 7
+
+
+def test_the_sample_is_deterministic_and_a_big_limit_returns_everything() -> None:
+    cases = [_sample_case(f"c{i}", "Algebra") for i in range(20)]
+    first = _module()["stratified_sample"](cases, 5)
+    second = _module()["stratified_sample"](list(reversed(cases)), 5)
+    assert [c["id"] for c in first] == [c["id"] for c in second]
+    assert len(_module()["stratified_sample"](cases, 99)) == 20
+
+
+def test_the_script_runs_a_limited_subset_and_says_so(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    (tmp_path / "datasets" / "dev").mkdir(parents=True)
+    cases = [
+        {"id": f"{subject}{i}", "problem": f"{subject} {i}", "subject": subject, "level": 1}
+        for subject in ("Algebra", "Geometry")
+        for i in range(3)
+    ]
+    (tmp_path / "datasets" / "dev" / "classify.jsonl").write_text(
+        "".join(json.dumps(c) + "\n" for c in cases), encoding="utf-8"
+    )
+
+    def fake(prompt: str, schema: type[BaseModel], text: str, retries: int = 1) -> Any:
+        return Classification(topic="Algebra", level=1)
+
+    monkeypatch.setattr(structured, "call_structured", fake)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    monkeypatch.setenv("MODEL_NAME", "some/model")
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setattr(runner, "DATASETS_DIR", tmp_path / "datasets")
+    monkeypatch.setattr(runner, "RESULTS_DIR", tmp_path / "results")
+    monkeypatch.setattr(sys, "argv", ["eval_classify.py", "--limit", "2"])
+    runpy.run_path(str(SCRIPT), run_name="__main__")
+    (result,) = (tmp_path / "results" / "classify").glob("*.json")
+    data = json.loads(result.read_text(encoding="utf-8"))
+    assert data["n_examples"] == 2 and "SUBSET: 2 of 6" in data["note"]
+    assert data["metrics"]["support/Algebra"] == 1.0  # one problem from each subject
