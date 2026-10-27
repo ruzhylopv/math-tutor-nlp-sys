@@ -90,6 +90,16 @@ class HintText(BaseModel):
     text: str = Field(min_length=1)
 
 
+class HintRubric(BaseModel):
+    """The eval judge's grades for one hint (see src/tutor/prompts/hint_judge.md)."""
+
+    praises_correct_work: bool  # acknowledges what was right, or encourages when nothing was
+    socratic: bool  # leads the student to find the fix instead of stating it
+    on_target: bool  # points at the wrong step and the idea behind the mistake
+    fits_level: bool  # as direct as the level allows, no more and no less
+    reveals_answer: bool  # states the corrected line or the final answer
+
+
 class Decision(BaseModel):
     """The orchestrator's structured decision for a new student message."""
 
