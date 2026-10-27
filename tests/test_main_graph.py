@@ -8,7 +8,8 @@ from langgraph.graph import END, START
 
 from tutor import graph as graph_module
 from tutor.graph import build_main_graph, route_from_orchestrator
-from tutor.state import TutorState
+from tutor.state import Decision, TutorState
+from tutor.tools import structured
 
 
 @pytest.mark.parametrize(
@@ -41,10 +42,18 @@ def test_main_graph_has_the_designed_nodes_and_edges() -> None:
     assert {edge.source for edge in drawn.edges if edge.target == "parse_input"} == {START}
 
 
-def test_with_the_stubs_a_run_replies_and_ends() -> None:
+def test_a_greeting_replies_and_ends(monkeypatch: pytest.MonkeyPatch) -> None:
     # parse_input is the real node here; it makes no LLM call because the state has no messages.
+    # The orchestrator is real too; only its model call is scripted.
+    monkeypatch.setattr(
+        structured,
+        "call_structured",
+        lambda name, schema, text, retries=1: Decision(
+            action="reply", reason="greeting", reply_text="Hello!"
+        ),
+    )
     result = build_main_graph().invoke({"student_id": "ada"})
-    assert result["reply_text"] == "TODO"
+    assert result["reply_text"] == "Hello!"
 
 
 @pytest.mark.parametrize("action", ["ask", "reply"])
