@@ -5,11 +5,14 @@ Each case (a problem and the student's steps) is run through the real `verify` a
 model, no cache and the result file records a null model name. Metrics are flat floats: accuracy of
 each field and of all three together, precision, recall and support per error type (`none` is the
 clean outcome), the mismatch detection rate (recall of `reasoning_result_mismatch`), accuracy per
-kind and per source, and confusion counts.
+kind and per source, and confusion counts. Recall (and so the mismatch detection rate) is left out
+for a type with no cases, and precision for a type never predicted, instead of reporting 0.
 
-Accuracy here is high by construction for the generated cases (the corrupted step is known and the
-chain was selected with `verify`); the hand-written cases are the discriminating ones. See
-evals/datasets/README.md.
+Headline: `case_accuracy/source=handwritten` and `case_accuracy/source=generated`, reported
+separately. The blended `case_accuracy` is not to be quoted alone: the generated cases are high by
+construction (the corrupted step is known and the chain was selected with `verify`) and are mostly
+arithmetic or expression simplification, not equations; the hand-written cases are the
+discriminating ones. See evals/datasets/README.md.
 """
 
 import logging
@@ -30,9 +33,11 @@ TYPES = (
     "none",
 )
 NOTE = (
-    "Deterministic: verify then localize, no model. Generated cases are high by construction "
-    "(the corrupted step is known and the chain was selected with verify); the hand-written cases "
-    "are the discriminating ones. See evals/datasets/README.md."
+    "Deterministic: verify then localize, no model. Headline: case_accuracy/source=handwritten "
+    "and case_accuracy/source=generated, separately; do not quote the blended case_accuracy "
+    "alone. Generated cases are high by construction (the corrupted step is known, the chain was "
+    "selected with verify) and mostly arithmetic, not equations; the hand-written cases are the "
+    "discriminating ones. See evals/datasets/README.md."
 )
 logger = logging.getLogger("eval_localize")
 Outcome = tuple[int | None, int | None, str]
@@ -83,10 +88,12 @@ def evaluate(cases: list[dict[str, Any]], predictions: list[Outcome]) -> dict[st
         predicted = sum(1 for p in predictions if p[2] == name)
         hits = sum(1 for g, p in zip(gold, predictions, strict=True) if g[2] == p[2] == name)
         metrics[f"support/{name}"] = float(support)
-        metrics[f"recall/{name}"] = hits / support if support else 0.0
+        if support:  # recall is undefined, not 0, for a type with no cases
+            metrics[f"recall/{name}"] = hits / support
         if predicted:  # precision is undefined, not 0, for a type that was never predicted
             metrics[f"precision/{name}"] = hits / predicted
-    metrics["mismatch_detection_rate"] = metrics["recall/reasoning_result_mismatch"]
+    if "recall/reasoning_result_mismatch" in metrics:
+        metrics["mismatch_detection_rate"] = metrics["recall/reasoning_result_mismatch"]
     for key in ("kind", "source"):
         for value in sorted({case[key] for case in cases}):
             flags = [ok for case, ok in zip(cases, exact, strict=True) if case[key] == value]
@@ -110,6 +117,11 @@ def main() -> None:
     metrics = evaluate(cases, [predict(case) for case in cases])
     result = write_result(COMPONENT, split, len(cases), metrics, note=NOTE)
     logger.info("localize (%s): n=%d", split, len(cases))
+    logger.info("  Headline, per source (the blended number is not to be quoted alone):")
+    for name, value in sorted(metrics.items()):
+        if name.startswith("case_accuracy/source="):
+            count = metrics[name.replace("case_accuracy/", "n/")]
+            logger.info("  %-35s %.3f (n=%d)", name, value, count)
     for name in (
         "case_accuracy",
         "first_error_step_accuracy",
@@ -117,10 +129,18 @@ def main() -> None:
         "error_type_accuracy",
         "mismatch_detection_rate",
     ):
-        logger.info("  %-27s %.3f", name, metrics[name])
+        if name in metrics:
+            logger.info("  %-35s %.3f", name, metrics[name])
+        else:
+            logger.info("  %-35s n/a (no cases)", name)
     for name in TYPES:
-        logger.info("  %-27s support=%-4d recall=%.3f", name, metrics[f"support/{name}"],
-                    metrics[f"recall/{name}"])  # fmt: skip
+        recall = metrics.get(f"recall/{name}")
+        logger.info(
+            "  %-35s support=%-4d recall=%s",
+            name,
+            metrics[f"support/{name}"],
+            "n/a" if recall is None else f"{recall:.3f}",
+        )
     for name, value in sorted(metrics.items()):
         if name.startswith("confusion/"):
             logger.info("  %s: %d", name, value)

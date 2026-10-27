@@ -5,6 +5,20 @@ step and error type worked out by reading the attempt, not by running the node.
 1-based step numbers or None. A disagreement with the pipeline (`verify` then `localize`) means a
 bug or a wrong label here and is investigated, never fixed by editing the label to match. The
 developer spot-checks a sample (provenance `spot_check: pending`).
+
+Conventions behind the labels:
+- `control` cases may contain a check line that is false (`sqrt(2 + 7) = 2 - 5`). That is how a
+  student rejects an extraneous root: `check_holds` False is information, not an error, so the
+  expected outcome stays "nothing wrong".
+- `mismatch_then_invalid`: a step whose written justification claim is false AND a later step is
+  not a valid consequence. The wrong justification counts as the earlier error, so the first error
+  step is the step with the false claim and the type is `reasoning_result_mismatch`.
+- `lost_solution` is labelled `algebraic_transformation`: the step is not a valid consequence of
+  the previous one (a design choice, see evals/datasets/README.md).
+- `checker_limit` is not worked out by reading the math: `2x + 1 > 7` is a correct solution that
+  the checker cannot judge (no inequalities), so `other` records the limitation of the checker.
+
+The builder splits these cases by problem text (whole groups), see `build_localize.py`.
 """
 
 from typing import Any
@@ -40,7 +54,6 @@ ALG = "algebraic_transformation"
 OMIT = "omission_extraneous_root"
 MISMATCH = "reasoning_result_mismatch"
 
-# Within each kind the builder alternates the cases between dev and test, starting with dev.
 HANDWRITTEN: list[Case] = [
     _case("not_valid", "3(x + 2) = 15", _plain("3x + 2 = 15", "3x = 13", "x = 13/3"), 1, 1, ALG),
     _case(
@@ -101,7 +114,7 @@ HANDWRITTEN: list[Case] = [
         MISMATCH,
     ),
     _case(
-        "unparsable",
+        "checker_limit",
         "2x + 1 > 7",
         _plain("2x > 6", "x > 3"),
         None,
@@ -245,6 +258,80 @@ HANDWRITTEN: list[Case] = [
         "not_valid",
         "sqrt(x + 7) = x - 5",
         _plain("x + 7 = x^2 - 25", "x^2 - x - 32 = 0", "x = (1 +- sqrt(129))/2"),
+        1,
+        1,
+        ALG,
+    ),
+    # Added after the review: more mismatch cases and a second case of each singleton kind.
+    # 4x - 3 = 13: 4x = 16 is right, but the justification says 13 + 3 = 15 (false).
+    _case(
+        "mismatch",
+        "4x - 3 = 13",
+        [
+            _step("4x = 16", "add 3 to both sides, 13 + 3 = 15", "13 + 3 = 15"),
+            _step("x = 4"),
+        ],
+        1,
+        1,
+        MISMATCH,
+    ),
+    # sqrt(3x + 4) = x: squaring is an `implies` step, and the false claim sits on it (3*4 + 4 is
+    # 16). The extraneous root -1 is rejected by a failing check line, so nothing else is wrong
+    # and the final answer is right.
+    _case(
+        "mismatch",
+        "sqrt(3x + 4) = x",
+        [
+            _step(
+                "3x + 4 = x^2",
+                "square both sides, at x = 4 the left side is 3*4 + 4 = 15",
+                "3*4 + 4 = 15",
+            ),
+            _step("x^2 - 3x - 4 = 0"),
+            _step("x = 4 or x = -1"),
+            _step("sqrt(3*(-1) + 4) = -1"),
+            _step("x = 4"),
+        ],
+        1,
+        1,
+        MISMATCH,
+    ),
+    # 2(x - 4) = 6: the first step is fine, the false claim is on the second.
+    _case(
+        "mismatch",
+        "2(x - 4) = 6",
+        [
+            _step("2x - 8 = 6"),
+            _step("2x = 14", "add 8 to both sides, 6 + 8 = 13", "6 + 8 = 13"),
+            _step("x = 7"),
+        ],
+        2,
+        2,
+        MISMATCH,
+    ),
+    # 5x + 2 = 17: 5x = 15 is right but the claim 17 - 2 = 14 is false; then x = 4 is wrong.
+    _case(
+        "mismatch_then_invalid",
+        "5x + 2 = 17",
+        [_step("5x = 15", "17 - 2 = 14", "17 - 2 = 14"), _step("x = 4")],
+        1,
+        1,
+        MISMATCH,
+    ),
+    # x - 4 = 9: "x = 9 - 4" is wrong (it is x = 5), "x = 13" is the right answer.
+    _case(
+        "correct_answer_invalid_step",
+        "x - 4 = 9",
+        _plain("x = 9 - 4", "x = 13"),
+        1,
+        1,
+        ALG,
+    ),
+    # 3(x - 2) = 12: 3x - 2 = 12 forgets to multiply the 2; 3x = 10 is then wrong again.
+    _case(
+        "several_errors",
+        "3(x - 2) = 12",
+        _plain("3x - 2 = 12", "3x = 10", "x = 10/3"),
         1,
         1,
         ALG,

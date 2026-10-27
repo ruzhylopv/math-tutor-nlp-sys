@@ -14,7 +14,9 @@ evals/datasets/README.md). Hand-written cases (`handwritten_localize.py`) cover 
     evals/datasets/test/localize.jsonl
     evals/datasets/review/localize_build_report.json
 
-Problems go to dev or test by a hash of the MATH problem, so no problem is in both.
+Generated problems go to dev or test by a hash of the MATH `unique_id`. Hand-written cases are
+grouped by problem text and each whole group goes to one split (a greedy rule that keeps both
+splits covering every error type and as many kinds as possible), so no problem is in both splits.
 """
 
 import argparse
@@ -84,12 +86,40 @@ def generated_record(uid: str, chain: Chain, seed: int) -> Record | None:
     }
 
 
+def _assign_groups(groups: dict[str, list[Record]]) -> dict[str, str]:
+    """Problem text -> split, deterministic and greedy.
+
+    Biggest groups first (ties by text). A group goes to the split where it adds the most error
+    types not yet covered, then the most kinds not yet covered, then to the smaller split, then dev.
+    """
+    seen: dict[str, dict[str, set[str]]] = {
+        split: {"types": set(), "kinds": set()} for split in ("dev", "test")
+    }
+    size = {"dev": 0, "test": 0}
+    assignment: dict[str, str] = {}
+    for problem in sorted(groups, key=lambda text: (-len(groups[text]), text)):
+        types = {str(r["expected"]["error_type"]) for r in groups[problem]}
+        kinds = {str(r["kind"]) for r in groups[problem]}
+
+        def score(split: str, types: set[str] = types, kinds: set[str] = kinds) -> tuple[int, ...]:
+            return (
+                len(types - seen[split]["types"]),
+                len(kinds - seen[split]["kinds"]),
+                -size[split],
+            )
+
+        split = "test" if score("test") > score("dev") else "dev"
+        assignment[problem] = split
+        seen[split]["types"] |= types
+        seen[split]["kinds"] |= kinds
+        size[split] += len(groups[problem])
+    return assignment
+
+
 def handwritten_records() -> list[tuple[str, Record]]:
-    """The hand-written cases with their split: within a kind they alternate dev, test, dev, ..."""
-    out: list[tuple[str, Record]] = []
-    seen: Counter[str] = Counter()
-    for index, case in enumerate(HANDWRITTEN):
-        record = {
+    """The hand-written cases with their split. All cases on one problem go to the same split."""
+    records: list[Record] = [
+        {
             "id": f"hand/{index:03d}",
             "problem": case["problem"],
             "steps": case["steps"],
@@ -98,9 +128,13 @@ def handwritten_records() -> list[tuple[str, Record]]:
             "source": "handwritten",
             "provenance": {"spot_check": "pending"},
         }
-        out.append(("test" if seen[case["kind"]] % 2 else "dev", record))
-        seen[case["kind"]] += 1
-    return out
+        for index, case in enumerate(HANDWRITTEN)
+    ]
+    groups: dict[str, list[Record]] = {}
+    for record in records:
+        groups.setdefault(record["problem"], []).append(record)
+    assignment = _assign_groups(groups)
+    return [(assignment[record["problem"]], record) for record in records]
 
 
 def build(math_dir: Path, out_dir: Path, per_split: int, seed: int) -> dict[str, list[Record]]:
@@ -137,7 +171,7 @@ def build(math_dir: Path, out_dir: Path, per_split: int, seed: int) -> dict[str,
 
 
 def _summary(records: list[Record]) -> dict[str, Any]:
-    types = Counter(str(r["expected"]["error_type"]) for r in records)
+    types = Counter(str(r["expected"]["error_type"] or "none") for r in records)
     return {
         "n": len(records),
         "by_source": dict(Counter(r["source"] for r in records)),
