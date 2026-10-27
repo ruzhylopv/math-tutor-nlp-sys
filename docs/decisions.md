@@ -572,3 +572,17 @@ fallback hints" from the roadmap.
   new tools | one place for the SymPy failure and timeout handling.
 - **Canned hints** hold no numbers and no math, so they cannot leak; they are used by the M6 orchestrator after a
   second leak. Rejected: generating them per problem (would need a check again).
+
+## 2026-10-27 | M5 layers 4-5: the `hint` node and its eval
+- **`hint` never fails to return a hint** | returning nothing so the orchestrator decides | with no `error_context` or
+  when the model fails, it returns the canned hint for the level; the orchestrator (M6) still runs the leakage check and
+  can retry. Cost: a canned hint hides model failures from the student, so the eval reports `canned_rate`.
+- **The general rule (`correct_rule`) is given to the model at level 4 only; the misconception description at every level** |
+  the rule at levels 3 and 4 | the rule often is the corrected step for a single-rule problem. Even so a level-4 hint
+  can leak (dev: "x * x = x^2" for the problem x * x); the check flags it and the orchestrator would retry it.
+- **Eval: gold misconception, not `retrieve`'s output** | running the whole diagnosis | it measures the hint alone; the
+  cost is that it does not show a wrong misconception misleading the hint.
+- **Judge = the writer's model** | a second model | no budget for one; the human check of a 20-hint sample is the
+  counterweight. Metrics also compare the judge's `reveals_answer` with the automatic check.
+- **Eval data: option A, 60 dev cases from `retrieve.jsonl`** (all 20 hand-written + generated in turn), levels dealt in
+  turn. The test file is for the developer to build.

@@ -123,8 +123,9 @@ rejects a hint containing the final answer or the key correct intermediate expre
 ### Counterexamples
 Numbers in a hint (for example the level-2 numeric counterexample) are never computed by the LLM. A
 SymPy-based function in `src/tutor/tools/` produces them and the `hint` node passes them into the prompt;
-the LLM only words the hint. OPEN: the tool's design (how it chooses the value, its interface, when
-`hint` calls it).
+the LLM only words the hint. DECIDED (M5): `tools/counterexample.py` returns small whole numbers (never a solution of the
+problem) and the values of the changed side of the lines, or of left - right; `hint` calls it at level 2 only. See "M5
+layer 3" in `docs/decisions.md`.
 
 ### Conventions
 - Step numbers are 1-based. Step 1's predecessor is the problem statement.

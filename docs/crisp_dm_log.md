@@ -133,5 +133,17 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   off-catalogue steps are missing from the data, so quote these numbers as optimistic. Result file:
   `evals/results/retrieve/20261027T161743Z_3cd8c9f.json`.
 
+- **M5 layers 3-5, `hint` (2026-10-27)**: `hint` node, SymPy counterexample, leakage check, canned hints, eval. Dev, 15 of 60
+  cases (`--limit`, in turn over the levels), gold misconception: leakage 0.067 (1 case, level 4: "x * x = x^2", the general
+  rule applied to a problem that is itself the rule, so it also writes the corrected line; counted as a leak), counterexample
+  numbers used by the hint 1.000 (level 2, n=4), judge pass rates praise/Socratic/on-target 1.000 and fits-level 0.833 (n=12
+  judged). **Failures: 2 of 15 hints fell back to the canned hint (0.133) and 3 of 15 judge calls failed (0.200), all
+  HTTP 429 rate limits from the free model; a rerun hit the same limits.** The rates over the judged cases are
+  therefore from 12 cases and are not reliable; the judge is the same model as the writer and gave no failing grade on
+  praise, Socratic or on-target, so it is likely lenient. Read by hand: hints are on target and use only given numbers;
+  the praise is a generic "thanks for trying" at every level. Next: the human check of the 20-hint sample file (fill
+  `human_ok`), a full dev run when the rate limit allows, then the test split once (the developer builds
+  `test/hint.jsonl`). Result: `evals/results/hint/20261027T163059Z_6271572.json` (+ `_samples.jsonl`).
+
 ## Deployment
 - Planned: runnable Streamlit app and a demo video using scenarios A and B.
