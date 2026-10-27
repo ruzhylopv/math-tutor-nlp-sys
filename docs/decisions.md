@@ -90,12 +90,14 @@ Format: decision | rejected alternative | why.
 - The target grades (resolved 2026-10-26), and the final free OpenRouter model.
 
 ## OPEN: error-type taxonomy and its data (added after the PR #11 review)
-Status: not decided. The four error types come from the planning handoff and have not been checked
+Status: partly decided (the fallback value is resolved, the rest is not). The four error types come from the planning handoff and have not been checked
 against real student work. Published sources exist (see `docs/architecture.md`, section
 "Error-type taxonomy: candidate sources").
 - **Derive the taxonomy from data**, not from the handoff alone: map labels from the candidate
   datasets onto ours and count what does not fit. Decide after that mapping.
-- **Add a fallback value** (`other` / `unclassified`) so unmatched cases are visible. Undecided.
+- **Add a fallback value** (`other` / `unclassified`) so unmatched cases are visible. (Resolved 2026-10-27, see
+  M4a decisions: `other` was added. It now covers unparsable steps and steps that stop early (incomplete answers),
+  and, in the current rules, a lost solution through a `narrows` step. The other cases below stay open.)
 - **Cases the four types do not cover:**
   - lost solutions (for example dividing by `x` loses `x = 0`), the opposite of `omission_extraneous_root`;
   - several errors in one solution (`first_error_step` names only the first);
@@ -450,5 +452,7 @@ The five reviews found five P1s; the stack had been merged before they could be 
   an absent error is not an error type, and the stale-field problem (M3 OPEN items) is easier to see with None.
 - **PRM800K step labels are not used in v1** | using them as a second opinion now | its solutions are prose and LaTeX
   that need a conversion to plain-text steps which does not exist, and `-1` does not mean "algebraically invalid".
-- **For M4b, PyTorch (sentence-transformers) and FAISS are approved by the developer**, and the developer downloads
-  the Eedi dataset. The dependency is added in the M4b plan's PR, not here.
+- **For M4b the developer approved a PyTorch-based embedding stack (sentence-transformers, FAISS) and will download
+  Eedi** | TF-IDF/BM25 or plain cosine over the catalogue as the only method | the developer chose embeddings; the
+  lighter methods stay available as a first baseline if installation size is a problem. The dependency is added in
+  the M4b PR.

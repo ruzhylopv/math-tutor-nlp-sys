@@ -2,26 +2,33 @@
 
 Goal: find where a wrong attempt goes wrong and what kind of error it is, using only what `verify` already
 computed. No LLM and no new dependency in this part. M4b (`retrieve`, Eedi, embeddings) is a separate plan.
-Roadmap: `docs/plans/design/2026-10-25-roadmap.md`.
+Roadmap: `docs/plans/design/2026-10-25-roadmap.md`. M4a narrows the roadmap's M4 row: rules only first; the LLM
+interpretation and ProcessBench / PRM800K come later.
 
 ## Decisions (from the developer)
-- M4 is split: M4a `localize` first, M4b `retrieve` after. For M4b the developer agreed to the PyTorch /
-  sentence-transformers / FAISS dependency and will download the Eedi dataset (Kaggle terms are theirs to accept).
+- M4 is split: M4a `localize` first, M4b `retrieve` after.
+- For M4b the developer approved a PyTorch-based embedding stack (sentence-transformers, FAISS) and will download
+  Eedi (Kaggle terms are theirs to accept) | TF-IDF/BM25 or plain cosine over the catalogue as the only method | the
+  developer chose embeddings; the lighter methods stay available as a first baseline if installation size is a
+  problem. The dependency is added in the M4b PR.
 - Error types: the three we have plus a fallback `other`, so cases the three do not cover are visible in the eval
   and not forced into a wrong type.
-- Data for the `localize` eval combines generated cases, hand-written cases and, as a second opinion, PRM800K step
-  labels (see "Data" for what v1 does with the last).
+- Data for the `localize` eval combines generated and hand-written cases. PRM800K step labels are planned only as a
+  later second opinion, not in v1 (see "Data").
 
 ## Decisions (agent defaults, for review in the PR)
 Rules, in this order. The node scans the steps once, in order; the first step with a problem decides.
 1. `not_valid` step: `first_error_step` = `focus_step` = that step; `error_type` = `algebraic_transformation`.
    A step that is both `not_valid` and has a false justification claim is `algebraic_transformation`.
 2. `unparsable` step: `first_error_step` = None (SymPy could not judge it), `focus_step` = that step (so the tutor
-   can ask the student to rewrite it); `error_type` = `other`.
+   can ask the student to rewrite it); `error_type` = `other`. Step 1 is also `unparsable` when the problem
+   statement itself does not parse (a `parse_input` failure); the step is then not the student's fault.
 3. A valid step (equivalent / implies / narrows) whose `justification_claims_ok` is False: `first_error_step` =
    `focus_step` = that step; `error_type` = `reasoning_result_mismatch`.
 4. No such step, but `is_correct` is False and some step is `implies` (a non-reversible step such as squaring):
    `first_error_step` = None, `focus_step` = the first `implies` step; `error_type` = `omission_extraneous_root`.
+   Rule 4 takes priority over rule 5 on purpose: an `implies` step with a wrong answer is treated as an omitted
+   root.
 5. No such step, `is_correct` False, no `implies` step (for example a lost solution through a `narrows` step, or an
    incomplete answer): `first_error_step` = None, `focus_step` = None, `error_type` = `other`.
 6. A clean state (nothing found): `first_error_step`, `focus_step` and `error_type` are all None. The graph does not
@@ -30,6 +37,8 @@ Rules, in this order. The node scans the steps once, in order; the first step wi
   extraneous root); `localize` does not blame it. Known limit: a wrong arithmetic claim written as a check line is
   not flagged.
 - Several errors in one solution: only the first is reported (`first_error_step` names one step). Known limit.
+- Known limits: after an unparsable step, later errors are not reported; rule 4 can fire when the student ran a
+  check line and the answer is wrong for another reason.
 - Eval metrics (dev split): `first_error_step` accuracy, `focus_step` accuracy, `error_type` accuracy with
   per-type recall, precision and confusion counts, and the mismatch detection rate (recall of
   `reasoning_result_mismatch`). The eval runs `verify` and then `localize` on each case, since `localize` reads
