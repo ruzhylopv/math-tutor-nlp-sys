@@ -586,3 +586,33 @@ fallback hints" from the roadmap.
   counterweight. Metrics also compare the judge's `reveals_answer` with the automatic check.
 - **Eval data: option A, 60 dev cases from `retrieve.jsonl`** (all 20 hand-written + generated in turn), levels dealt in
   turn. The test file is for the developer to build.
+
+## 2026-10-27 | M6: orchestration (plan: docs/plans/nodes/2026-10-27-m6-orchestration.md)
+- **Out-of-scope subject: decline after diagnosis, no hint, no `record_attempt`** | hint anyway | the catalogue and
+  the checks are algebra-only, so a hint on geometry would be generic at best. Cost: the diagnosis (several calls) has
+  already run when the orchestrator declines; declining before it would need `classify` to run first.
+- **Checkpointer: `langgraph-checkpoint-sqlite`** (new dependency, approved) | `InMemorySaver` only | state survives a
+  restart. `new_turn()` resets `stage` on every run, because the saver restores the previous run's `hinted` or
+  `diagnosed`. `types-pyyaml` was added as a dev dependency with `pyyaml` for mypy (not named in the plan).
+- **Scenarios: YAML, per-turn expectations (nodes visited, hint level, reply text, expected misconception)** | JSON |
+  the architecture says YAML. A wrong misconception is reported apart (`misconception_ok`), not as a turn failure:
+  retrieval is not the orchestrator's job.
+- **New problem resets the per-problem fields** (hint level, retries, hints used, turns, error context, misconception,
+  misconceptions seen, step verdicts, focus step) | carrying `misconceptions_seen` over | it would mix the hint-level
+  escalation across problems. The trigger is `topic` None (cleared by `parse_input`) while an old diagnosis is still in
+  state; without that second condition an `ask` turn on a new problem would reset the turn count on the next turn too.
+  A solved attempt resets the same fields after `record_attempt`.
+- **Guards over the LLM `Decision`**: `diagnose` without steps or problem becomes `ask`; `hint` without an
+  `error_context` becomes `ask`. Rejected: routing `diagnose` whenever steps exist, without the model, because
+  `parse_input` can extract a step from a question (scenario B T2).
+- **Hint level without a retrieved misconception**: escalate only if the problem already got a hint, else level 1.
+  Rejected: always escalate (the first hint on a problem would start at level 2).
+- **Only misconception ids are recorded** for an attempt: `misconceptions_seen` holds ids, so `error_type` and
+  `focus_step` stay empty in the DB. Cost: the DB cannot say what kind of error each was.
+- **Practice offer names the catalogue category** ("signs negatives"), not the description (they start with
+  "Believes that…", which does not fit "practice problems on …"). Threshold: the third occurrence in the profile,
+  counting the current attempt.
+- **A missing `LEARNER_DB_PATH` logs a warning and skips the DB** | raising | the graph still tutors; cost: nothing is
+  remembered, and the warning is easy to miss.
+- **Eval: `--part routing` (default) and `--part scenarios`** | one run doing both | with the routing dataset missing
+  the default has to stop at once, and a scenario replay is many slow model calls.
