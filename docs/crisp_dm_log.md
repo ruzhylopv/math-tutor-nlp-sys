@@ -158,4 +158,8 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   this entry with the numbers.
 
 ## Deployment
-- Planned: runnable Streamlit app and a demo video using scenarios A and B.
+- **M7 app (2026-10-27)**: Streamlit chat (`app.py`, `src/tutor/ui.py`): name field, chat bubbles on the checkpointed
+  history, "New chat" (same person, same profile), sidebar with hint level, hints used and the `get_profile` summary,
+  a visited-nodes toggle. Unit tests (`test_ui.py`, `test_app.py` with Streamlit's `AppTest`) run with the model scripted.
+  No metrics: the app is not a node. **Not done yet: the demo video, the report and the single test-split run.**
+- Planned: the demo video using scenarios A and B.
