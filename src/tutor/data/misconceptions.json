@@ -164,7 +164,7 @@
     "description": "Ignores the brackets and multiplies only the nearest number",
     "category": "like_terms_order",
     "topic": "Prealgebra",
-    "correct_rule": "Work out the brackets first",
+    "correct_rule": "Work out the brackets first, then multiply",
     "example": "(2 + 3) * 4 -> 2 + 12"
   },
   {
@@ -196,7 +196,7 @@
     "description": "Adds the numbers and ignores the signs when combining terms with different signs",
     "category": "like_terms_order",
     "topic": "Prealgebra",
-    "correct_rule": "-3x + 5x = 2x",
+    "correct_rule": "ax + bx = (a + b)x, keeping the signs",
     "example": "-3x + 5x -> -8x"
   },
   {
@@ -243,7 +243,7 @@
     "id": "M031",
     "description": "Multiplies a fraction by a whole number by multiplying both the numerator and the denominator",
     "category": "fractions",
-    "topic": "Algebra",
+    "topic": "Prealgebra",
     "correct_rule": "k * a/b = ka/b",
     "example": "3 * (2/5) -> 6/15"
   },
@@ -273,7 +273,7 @@
   },
   {
     "id": "M035",
-    "description": "Writes the reciprocal of a/b with a minus sign",
+    "description": "Confuses the reciprocal of a fraction with its negative",
     "category": "fractions",
     "topic": "Prealgebra",
     "correct_rule": "The reciprocal of a/b is b/a",
@@ -307,7 +307,7 @@
     "id": "M039",
     "description": "Multiplies the base by the exponent instead of using repeated multiplication",
     "category": "exponents_powers",
-    "topic": "Algebra",
+    "topic": "Prealgebra",
     "correct_rule": "x^n is x multiplied by itself n times",
     "example": "2^3 -> 6"
   },
@@ -372,7 +372,7 @@
     "description": "Adds the bases as well as the exponents when multiplying powers",
     "category": "exponents_powers",
     "topic": "Algebra",
-    "correct_rule": "2^3 * 2^4 = 2^7",
+    "correct_rule": "a^m * a^n = a^(m + n): add the exponents and keep the base",
     "example": "2^3 * 2^4 -> 4^7"
   },
   {
@@ -490,7 +490,7 @@
   {
     "id": "M062",
     "description": "Joins the coefficient and the value side by side when substituting",
-    "category": "solving_equations",
+    "category": "like_terms_order",
     "topic": "Prealgebra",
     "correct_rule": "3x with x = 4 means 3 times 4",
     "example": "3x with x = 4 -> 34"
@@ -513,11 +513,11 @@
   },
   {
     "id": "M065",
-    "description": "Squares only the variable on the right when squaring both sides",
+    "description": "Squares only the right-hand side of an equation with a radical and leaves the radical",
     "category": "squaring_extraneous",
     "topic": "Algebra",
-    "correct_rule": "Square the whole right-hand side",
-    "example": "sqrt(x) = x - 2 -> x = x^2 - 2"
+    "correct_rule": "Square both sides",
+    "example": "sqrt(x + 7) = x - 5 -> sqrt(x + 7) = (x - 5)^2"
   },
   {
     "id": "M066",
@@ -529,11 +529,11 @@
   },
   {
     "id": "M067",
-    "description": "Rejects a root only because it is negative, not because it fails the original equation",
+    "description": "Rejects a valid negative root of a squared equation only because it is negative",
     "category": "squaring_extraneous",
     "topic": "Algebra",
-    "correct_rule": "Substitute the root into the original equation",
-    "example": "sqrt(x + 2) = x: x = 2 or x = -1 -> x = -1 is rejected because it is negative"
+    "correct_rule": "Check each root in the original equation",
+    "example": "x^2 + x - 6 = 0 -> x = 2 (rejects x = -3 as negative)"
   },
   {
     "id": "M068",
@@ -546,14 +546,14 @@
   {
     "id": "M069",
     "description": "Divides both sides by an expression that contains the variable without considering that it may be zero",
-    "category": "squaring_extraneous",
+    "category": "solving_equations",
     "topic": "Algebra",
     "correct_rule": "x^2 = 3x gives x = 0 or x = 3",
     "example": "x^2 = 3x -> x = 3"
   },
   {
     "id": "M070",
-    "description": "Multiplies out the denominators of a rational equation and keeps every root",
+    "description": "Multiplies both sides of a rational equation by the denominator and keeps a root that makes it zero",
     "category": "squaring_extraneous",
     "topic": "Algebra",
     "correct_rule": "Reject a root that makes a denominator zero",
@@ -708,7 +708,7 @@
     "description": "Factorises ax^2 + bx + c with a not equal to 1 as though a were 1",
     "category": "factoring",
     "topic": "Algebra",
-    "correct_rule": "The leading coefficient changes the factor pairs",
+    "correct_rule": "For ax^2 + bx + c the two brackets must also multiply to the leading coefficient a",
     "example": "2x^2 + 7x + 3 -> (x + 3)(x + 1)"
   },
   {
@@ -739,7 +739,7 @@
     "id": "M093",
     "description": "Gives both signs for a principal square root",
     "category": "radicals",
-    "topic": "Algebra",
+    "topic": "Prealgebra",
     "correct_rule": "sqrt(16) = 4",
     "example": "sqrt(16) -> +-4"
   },
@@ -747,17 +747,17 @@
     "id": "M094",
     "description": "Halves the number under the root to take a square root",
     "category": "radicals",
-    "topic": "Algebra",
+    "topic": "Prealgebra",
     "correct_rule": "sqrt(36) = 6",
     "example": "sqrt(36) -> 18"
   },
   {
     "id": "M095",
-    "description": "Rationalises 1/sqrt(a) by multiplying the numerator only",
+    "description": "Rationalises 1/sqrt(a) by multiplying the numerator only by sqrt(a)",
     "category": "radicals",
     "topic": "Intermediate Algebra",
     "correct_rule": "1/sqrt(2) = sqrt(2)/2",
-    "example": "1/sqrt(2) -> sqrt(2)/1"
+    "example": "1/sqrt(2) -> sqrt(2)/sqrt(2)"
   },
   {
     "id": "M096",
@@ -777,11 +777,11 @@
   },
   {
     "id": "M098",
-    "description": "Adds the radicands when multiplying numbers with roots",
+    "description": "Adds the coefficients instead of multiplying them when multiplying numbers with roots",
     "category": "radicals",
     "topic": "Intermediate Algebra",
     "correct_rule": "2 sqrt(3) * 3 sqrt(5) = 6 sqrt(15)",
-    "example": "2*sqrt(3) * 3*sqrt(5) -> 6*sqrt(8)"
+    "example": "2*sqrt(3) * 3*sqrt(5) -> 5*sqrt(15)"
   },
   {
     "id": "M099",
@@ -819,7 +819,7 @@
     "id": "M103",
     "description": "Believes that |-x| equals -x",
     "category": "absolute_value",
-    "topic": "Intermediate Algebra",
+    "topic": "Prealgebra",
     "correct_rule": "|-x| = |x|",
     "example": "|-4| -> -4"
   },
@@ -921,7 +921,7 @@
   },
   {
     "id": "M116",
-    "description": "Adds rational expressions by adding the denominators",
+    "description": "Adds rational expressions by adding the numerators and adding the denominators",
     "category": "rational_expressions",
     "topic": "Algebra",
     "correct_rule": "1/x + 1/y = (x + y)/(xy)",

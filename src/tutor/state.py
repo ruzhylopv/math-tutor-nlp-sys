@@ -109,7 +109,7 @@ class CatalogueEntry(BaseModel):
     """One misconception in the hand-written catalogue (`src/tutor/data/misconceptions.json`)."""
 
     id: str = Field(pattern=r"^M\d{3}$")
-    description: str = Field(min_length=10)  # in the student's voice: "Believes that ..."
+    description: str = Field(min_length=10)  # describes what the student does or believes
     category: Category
     topic: Literal["Prealgebra", "Algebra", "Intermediate Algebra"]  # the in-scope subjects
     correct_rule: str = Field(min_length=1)
