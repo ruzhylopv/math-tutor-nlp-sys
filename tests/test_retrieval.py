@@ -58,7 +58,8 @@ def test_an_entrys_own_example_finds_an_entry_with_that_shape() -> None:
     for entry in entries[::7]:
         previous, written = entry.example.split(" -> ")
         best = retrieval.search(previous, written, k=3)[0]
-        assert retrieval.entry_shape(entries[int(best.id[1:]) - 1]) == retrieval.entry_shape(entry)
+        by_id = {e.id: e for e in entries}
+        assert retrieval.entry_shape(by_id[best.id]) == retrieval.entry_shape(entry)
 
 
 def test_results_are_best_first_and_k_is_respected() -> None:
@@ -118,3 +119,48 @@ def test_the_catalogue_is_embedded_once(monkeypatch: pytest.MonkeyPatch) -> None
     retrieval.search("a", "b", k=1)
     retrieval.search("c", "d", k=1)
     assert calls == [len(load_catalogue()), 1, 1]
+
+
+@pytest.mark.parametrize(
+    ("previous", "written", "trimmed"),
+    [
+        ("3(x + 2) = 15", "3x + 2 = 15", ("3(x + 2)", "3x + 2")),
+        ("7 + (3(x + 2))", "7 + (3x + 2)", ("3(x + 2)", "3x + 2")),
+        ("12 + 5", "13 + 5", ("12", "13")),  # never cuts inside a number
+        ("ab + 1", "ac + 1", ("ab", "ac")),  # nor inside a name
+        ("x + 5 = 12", "x = 12 + 5", ("+ 5 = 12", "= 12 + 5")),
+        ("2 + 2", "2 + 2", ("", "")),
+        ("abc", "xyz", ("abc", "xyz")),
+    ],
+)
+def test_trim_drops_what_the_two_lines_share_at_the_ends(
+    previous: str, written: str, trimmed: tuple[str, str]
+) -> None:
+    assert retrieval.trim(previous, written) == trimmed
+
+
+def test_the_same_slip_inside_a_larger_expression_has_the_same_shape() -> None:
+    plain = retrieval.shape("3(x + 2)", "3x + 2")
+    assert retrieval.shape("7 + (3(x + 2))", "7 + (3x + 2)") == plain
+    assert retrieval.shape("3(x + 2) + 9 = 9 + 15", "3x + 2 + 9 = 9 + 15") == plain
+
+
+def test_the_catalogue_vectors_are_kept_per_embedding_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[int] = []
+
+    def counting(texts: Sequence[str]) -> NDArray[np.float32]:
+        calls.append(len(texts))
+        return fake_embed(texts)
+
+    monkeypatch.setattr(embedding, "embed", counting)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    monkeypatch.setenv("EMBEDDING_MODEL", "model/a")
+    retrieval.search("a", "b", k=1)
+    monkeypatch.setenv("EMBEDDING_MODEL", "model/b")
+    retrieval.search("a", "b", k=1)
+    monkeypatch.setenv("EMBEDDING_MODEL", "model/a")
+    retrieval.search("a", "b", k=1)
+    size = len(load_catalogue())
+    assert calls == [size, 1, size, 1, 1]  # the vectors of model/a were kept, not recomputed

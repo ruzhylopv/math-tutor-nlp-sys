@@ -483,20 +483,32 @@ This entry supersedes the 2026-10-26 FAISS / Eedi entries above.
 
 ## 2026-10-27 | M4b results that changed the design (dev split only)
 First design: embed each entry's description plus example with MiniLM, and query with the topic, the error type and
-the raw lines. On the dev preview (225 queries; random would be Recall@1 0.008) it gave Recall@1 0.16 and Recall@5 0.44.
-Experiments on dev only (Recall@1 / Recall@5, generated and hand-written queries):
-- raw example vs raw pair (no topic, no error type): 0.34 / 0.71 and 0.33 / 0.57. Topic and error type words hurt.
-- adding the entry description to the score made it worse; `bge-small-en-v1.5` was no better than MiniLM.
-- shape only (variables to `v`, numbers to `n`; correct version): embedding 0.94 / 1.00 and 0.71 / 0.86; plain
-  string similarity (`difflib`) 0.92 / 0.98 and 0.81 / 0.90; their mean 0.94 / 1.00 and 0.81 / 0.90.
-- an earlier abstraction that accidentally mapped numbers and variables to the same symbol gave a similar mean
-  (0.89 / 1.00 and 0.86 / 0.95); the differences are within noise (21 hand-written queries; one query is 5 points).
-- **Decision: compare shapes, with the mean of string similarity and embedding cosine** | embedding the description and
-  the raw lines (the plan) | far worse on dev. **Honest reading**: string similarity alone is nearly as good, so the
-  embedding model adds little on this data (a small gain on the hand-written queries); and the result is partly
-  circular, because the same author wrote the catalogue examples and the rules in the same shapes. Real students'
-  rewrites are messier. The embedding stack is kept (approved, and it is the part that may help with paraphrased or
-  worded input later); it can be dropped if the full eval shows it adds nothing.
-- **Process note**: while building the preview I printed the test split's aggregate scores once, before tuning. I did
-  not look at any test example and made every choice above on dev only, but the test numbers are no longer untouched.
-
+the raw lines. On the dev preview it gave Recall@1 0.16 and Recall@5 0.44 (random: 0.008 and 0.042). The experiments
+below are on the dev split only (Recall@1 / Recall@5; the sources are the plain generated queries, the generated
+queries wrapped in a larger expression, and the hand-written ones; the full eval is in the next layer).
+- raw example vs raw pair, without the topic and the error type: 0.34 / 0.71 on generated. Topic and error type words
+  hurt, and so did adding the description to the score. `bge-small-en-v1.5` was no better than MiniLM.
+- the shape of the whole rewrite (variables to `v`, numbers to `n`): the plain generated queries reach 0.98 / 1.00,
+  but that is close to a lookup, because 89 of the 99 rules give a query whose shape equals the catalogue example's
+  (the same author wrote both). The **wrapped** queries (the same slip inside a larger expression) reveal the real
+  level: 0.63 / 0.73 for the mean of string similarity and embedding cosine, 0.51 / 0.67 for string similarity alone
+  and 0.58 / 0.74 for the embedding alone. So the embedding model does help where the shape is not a copy.
+- **comparing only what changed** (trim what the two lines share at the start and at the end, then take the shape):
+  plain 0.96 / 1.00, wrapped 0.86 / 1.00, hand-written 0.90 / 0.95 for the mean. The wrapped queries gain 23 points
+  of Recall@1 and the others lose almost nothing.
+- **Decision: compare the shape of what changed, scored by the mean of string similarity and embedding cosine** |
+  embedding the description and the raw lines (the plan), the shape of the whole rewrite, and either similarity
+  alone | the numbers above. Choices rest on few hand-written queries (20 in dev; one query is 5 points), and the
+  differences between abstraction variants there are within noise; the test split is the arbiter.
+- **Honest reading**: the result is partly circular (the same author wrote the catalogue and the queries); the
+  wrapped queries are a first, mild perturbation, not real student work; entries about a root accepted without a
+  check or rejected for a wrong reason (`M064`, `M067`, `M068`) cannot be shown by any single step's shape and
+  have no query.
+- **Cost of the embedding stack**: `sentence-transformers` pulls in PyTorch (a macOS wheel of about 130 MB; on Linux
+  x86_64 about 550 MB plus the CUDA packages unless a CPU-only index is used) and about 50 packages; the lock file grew
+  by about 700 lines. `.github/workflows/address-review.yml` runs a plain `uv sync`, so the Actions runner downloads
+  it too. The developer approved the dependency; if the final eval shows no benefit over string similarity it can be
+  dropped.
+- **Process notes**: (1) while building the preview I printed the test split's aggregate scores once, before tuning;
+  (2) a reviewer later ran `retrieve` over the test split and looked at which queries missed, to diagnose labels. No
+  choice was tuned on test, but the test split is no longer untouched.
