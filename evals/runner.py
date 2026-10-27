@@ -10,7 +10,8 @@ import hashlib
 import json
 import logging
 import subprocess
-from collections.abc import Mapping, Sequence
+import time
+from collections.abc import Iterator, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -24,8 +25,37 @@ SPLITS = ("dev", "test")
 
 
 def setup_logging() -> None:
-    """Plain message-only logging for eval scripts."""
+    """Plain message-only logging for eval scripts.
+
+    The HTTP client logs one line per request; at the speed of a free model they would bury the
+    progress line, so they are kept for warnings and errors only.
+    """
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
+def _clock(seconds: float) -> str:
+    minutes, secs = divmod(int(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}:{minutes:02d}:{secs:02d}" if hours else f"{minutes}:{secs:02d}"
+
+
+def with_progress[T](items: Sequence[T], label: str) -> Iterator[T]:
+    """Yield the items, logging `label i/n`, the time spent and an estimate of the time left."""
+    start = time.monotonic()
+    total = len(items)
+    for index, item in enumerate(items, 1):
+        yield item
+        elapsed = time.monotonic() - start
+        remaining = elapsed / index * (total - index)
+        logger.info(
+            "%s %d/%d  elapsed %s  left ~%s",
+            label,
+            index,
+            total,
+            _clock(elapsed),
+            _clock(remaining),
+        )
 
 
 def parse_split(description: str | None, argv: Sequence[str] | None = None) -> str:

@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 import subprocess
 from pathlib import Path
@@ -14,6 +15,8 @@ from evals.runner import (
     parse_split,
     parse_split_and_limit,
     run_eval_stub,
+    setup_logging,
+    with_progress,
     write_result,
 )
 
@@ -134,3 +137,36 @@ def test_results_dir_is_read_at_call_time(monkeypatch: pytest.MonkeyPatch, tmp_p
     monkeypatch.setattr(runner, "RESULTS_DIR", tmp_path)
     path = write_result("verify", "dev", 1, {"a": 1.0}, commit="abc1234")
     assert path.parent == tmp_path / "verify"
+
+
+def test_with_progress_yields_every_item_and_logs_each_step(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level("INFO", logger="eval")
+    assert list(with_progress(["a", "b", "c"], "demo")) == ["a", "b", "c"]
+    lines = [record.getMessage() for record in caplog.records]
+    assert [line.split("  ")[0] for line in lines] == ["demo 1/3", "demo 2/3", "demo 3/3"]
+    assert all("elapsed" in line and "left" in line for line in lines)
+    assert "left ~0:00" in lines[-1]
+
+
+def test_with_progress_logs_after_the_work_not_before(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level("INFO", logger="eval")
+    seen: list[int] = []
+    for _ in with_progress([1, 2], "x"):
+        seen.append(len(caplog.records))
+    assert seen == [0, 1]  # the line for item 1 appears only once the loop asks for item 2
+
+
+def test_the_clock_shows_minutes_or_hours() -> None:
+    assert runner._clock(65) == "1:05"
+    assert runner._clock(3725) == "1:02:05"
+
+
+def test_setup_logging_quiets_the_http_client() -> None:
+    before = logging.getLogger("httpx").level
+    try:
+        setup_logging()
+        assert logging.getLogger("httpx").level == logging.WARNING
+    finally:
+        logging.getLogger("httpx").setLevel(before)
