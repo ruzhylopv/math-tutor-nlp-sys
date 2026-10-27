@@ -5,17 +5,18 @@ config:
 ---
 graph TD;
 	__start__([<p>__start__</p>]):::first
+	parse_input(parse_input)
 	orchestrator(orchestrator)
 	hint(hint)
 	__end__([<p>__end__</p>]):::last
-	__start__ --> orchestrator;
+	__start__ --> parse_input;
 	diagnosis\3afinish_diagnosis --> orchestrator;
 	hint --> orchestrator;
 	orchestrator -.-> __end__;
-	orchestrator -.-> diagnosis\3aparse_input;
+	orchestrator -.-> diagnosis\3aclassify;
 	orchestrator -.-> hint;
+	parse_input --> orchestrator;
 	subgraph diagnosis
-	diagnosis\3aparse_input(parse_input)
 	diagnosis\3aclassify(classify)
 	diagnosis\3averify(verify)
 	diagnosis\3alocalize(localize)
@@ -23,7 +24,6 @@ graph TD;
 	diagnosis\3afinish_diagnosis(finish_diagnosis)
 	diagnosis\3aclassify --> diagnosis\3averify;
 	diagnosis\3alocalize --> diagnosis\3aretrieve;
-	diagnosis\3aparse_input --> diagnosis\3aclassify;
 	diagnosis\3aretrieve --> diagnosis\3afinish_diagnosis;
 	diagnosis\3averify -.-> diagnosis\3afinish_diagnosis;
 	diagnosis\3averify -.-> diagnosis\3alocalize;

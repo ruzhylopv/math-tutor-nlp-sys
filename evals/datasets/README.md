@@ -3,11 +3,13 @@
 Fixed `dev/` and `test/` splits per component. Iterate on dev only; test is for the final reported
 numbers. Never edit a dataset or its labels to make a result pass.
 
-**Status:** the files in `dev/` and `test/` were built before the M2 review fixes. The builder in
-`evals/builders/` is now stricter, and rebuilding is waiting for the developer's approval (the test
-split is written by a script, which the `Edit`/`Write` deny on `evals/datasets/test/**` does not
-cover). Counts, rates and versions live in `review/verify_build_report.json`; they are not repeated
-here so they cannot go stale.
+**Status:** the files in `dev/` and `test/` were built before the M2 review fixes and are intentionally not
+rebuilt (developer decision, 2026-10-26). The builder in `evals/builders/` is stricter than the build that produced
+them (a preview gives dev 1,237 and test 479 cases against the committed 1,621 and 671), so it does not reproduce the
+committed files. Dev and test share 12 identical (prev, curr, relation) pairs; most are trivial, but some are not
+(for example `(x + y)^2 -> x^2 + y^2 + 2xy` and `xy-2x-yx+2y -> -2x+2y`). This is dev/test leakage, and the reported test
+numbers inherit it. Counts, rates and versions of the
+committed build live in `review/verify_build_report.json`.
 
 ## verify_steps.jsonl (M2)
 One line per pair of consecutive lines of a solution. Built by
@@ -71,3 +73,36 @@ human-written step (agreement rate on parseable pairs) and how often it cannot p
 - Two unrelated equations that share a solution (`x + 3 = 5`, `x + 7 = 9`) could still be mined as a pair.
 - The datasets are frozen once approved. Do not rebuild after a checker change without saying so:
   membership depends on the code under test.
+
+## classify.jsonl (M3)
+One line per MATH problem: `id`, `problem` (LaTeX as in MATH), `subject`, `level` (1-5). Built by
+`uv run python -m evals.builders.build_classify --math-dir <dir with train.jsonl and test.jsonl>`. Labels are MATH's own,
+human-assigned, so they do not depend on our code. 60 problems per subject per split (420 each), problems ordered by a
+seeded hash, first 60 to dev and next 60 to test, identical texts kept once. Counts: `review/classify_build_report.json`.
+Limits: the eval feeds LaTeX; in use `classify` receives `parse_input`'s plain-text problem. Level labels are noisy at the
+edges, so the eval also reports "within one level".
+
+## parse_input.jsonl (M3)
+One line per student message. Built by
+`uv run python -m evals.builders.build_parse_input --math-dir <dir with train.jsonl and test.jsonl>`.
+
+| Field | Meaning |
+|---|---|
+| `id` | `math/<unique_id>` (generated) or `hand/<nnn>` |
+| `message` | the student's raw message |
+| `stored_problem` | the problem already in the session, or null |
+| `expected_problem` | the new problem the message states, or null (the stored one stays) |
+| `expected_steps` | the claims, in order, as plain-text math (a wrong step stays wrong) |
+| `features` | generated messages: the kind (`full`, `steps_only`, `problem_only`, `answer_only`, `question_only`), the layout, the notation, and `chatty`, `typos`, `wrong_step`. Hand-written messages use free-form descriptive tags (in use: `answer_only`, `chatty`, `connectors`, `greeting`, `justifications`, `latex`, `new_problem`, `numbered`, `one_line`, `problem_only`, `question_only`, `smalltalk`, `spoken`, `steps_only`, `typos`, `unicode`, `word_problem`, `wrong_step`) |
+| `source` | `generated` or `handwritten` |
+
+The labels come from the rendering direction: a step chain is mined from a MATH solution (Algebra, Prealgebra,
+Intermediate Algebra, levels 1-3; one chain per problem; first line = problem, the rest = steps), one step is sometimes
+made wrong by `corrupt.py`, and the chain is written as a message (`render_message.py`). 150 generated messages per split,
+split by problem hash; 20 (dev) and 9 (test) hand-written ones. `review/parse_input_spotcheck.jsonl` is a seeded sample of
+24 generated messages from the dev split only (the test split stays unread while the prompt is tuned); hand-written cases carry `spot_check: pending`.
+
+How much to trust a metric: the messages are synthetic and only as messy as the renderer makes them (no real student
+text), most chains are arithmetic or expressions (about a sixth of the generated messages are equations: 25 of 150 in dev, 27 of 150 in test), and spoken math is rare in generated
+data because most chains contain brackets or fractions. Hand-written cases are the discriminating ones.
+

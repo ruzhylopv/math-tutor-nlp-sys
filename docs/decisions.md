@@ -80,14 +80,14 @@ Format: decision | rejected alternative | why.
   inside the orchestrator node | testable without the graph and reusable in the hint eval.
 - **Learner DB: SQLite with `attempts` and `misconceptions_seen`** | a document store; no persistence |
   small, relational, no server.
-- **Target level (provisional): MATH Algebra, levels 1-3** | all MATH subjects | keeps scope small.
+- **Target level (provisional): MATH Algebra, levels 1-3** | all MATH subjects | keeps scope small. Superseded 2026-10-26, see M3 decisions.
 
 ## OPEN items (not decided)
 - (Resolved 2026-10-25: retry once, then a canned fallback; see "Design gaps" below.)
 - (Resolved 2026-10-25: `localize` writes `focus_step`; `student_id` is a name from a login-style UI field. See "State additions" below.)
 - How Eedi's multiple-choice records map to the retrieval query (problem + wrong step); verify its
   fields and Kaggle terms before use.
-- The target grades, and the final free OpenRouter model.
+- The target grades (resolved 2026-10-26), and the final free OpenRouter model.
 
 ## OPEN: error-type taxonomy and its data (added after the PR #11 review)
 Status: not decided. The four error types come from the planning handoff and have not been checked
@@ -175,10 +175,9 @@ Format: decision | rejected alternative | why.
 
 ### Still OPEN after this change
 - The counterexample tool: how it chooses a value, its interface, when `hint` calls it. (The rule is decided.)
-- Where `parse_input` sits (proposal in the TutorState outline: first node of the diagnosis subgraph).
 - The checkpointer: in-memory for now; a persistent one is a new dependency and needs approval.
 - The error-type taxonomy and Eedi items above;
-  the hint cap, the recurrence threshold, the target grades and the final model.
+  the hint cap, the recurrence threshold, the target grades (resolved 2026-10-26) and the final model.
 
 ### Found in the design-gaps review (not decided; to settle before the nodes they touch)
 - **`stage` writers: settled** (see "finish_diagnosis" below). The UI and the scenario runner must still set
@@ -227,9 +226,8 @@ Format: decision | rejected alternative | why.
   enough for a demo; a typo creates a new profile, which is acceptable here.
 - **`parse_input` takes the problem and the step structure; `classify` only tags topic and level** | one node doing
   both | each node then has its own eval (extraction and step-split accuracy vs topic accuracy).
-- **OPEN:** `parse_input`'s position (proposal: first node of the diagnosis subgraph, so pure questions cost no LLM
-  call; alternative: before the orchestrator, which gives it the structure to route on but costs a call on every
-  message).
+- **Resolved 2026-10-26:** `parse_input` runs before the orchestrator (alternative rejected: first node of the
+  diagnosis subgraph, to save a call on pure questions). See "M3 decisions" below.
 - **Consequence:** CLAUDE.md requires an eval script per node; `parse_input` gets one (problem-extraction and
   step-split accuracy).
 
@@ -364,3 +362,75 @@ The five reviews found five P1s; the stack had been merged before they could be 
 - **`verify` needs a plain-text problem statement**; a prose problem makes step 1 `unparsable` and `is_correct` False until M3's
   `parse_input` supplies one (listed in the roadmap). `is_correct` cannot say "could not judge" (a tri-state is an option).
 
+## 2026-10-26 | M3 decisions
+- **`parse_input` sits in the main graph between the UI and the orchestrator** | the first node of the diagnosis subgraph
+  (proposed earlier) | the orchestrator then routes on a structure (problem, steps) and not only on raw text. Cost: one
+  LLM call per message, including pure questions. `parse_input` resets `student_steps` for a message without working, so
+  stale steps are never mistaken for a new attempt.
+- **OPEN (settle in M5, before `hint` and the orchestrator are built): the `student_steps` reset conflicts with the
+  hint path.** `hint` reads the wrong step; `focus_step` and `first_error_step` index into `student_steps` and
+  `step_verdicts` is written against them. A question after a diagnosis (scenario B T2, required behaviour 2) is routed
+  to `hint` with no new diagnosis; after the reset `hint` has no step to talk about and the indices point at nothing.
+  The `diagnose` -> `is_clean_solution` path on a message without steps sees verdicts for steps that no longer exist,
+  and the same reset happens when the model fails twice. Options: (a) at diagnosis time store the wrong step's claim
+  in a field `parse_input` does not reset, and `hint` reads that; (b) the reset also clears `first_error_step`,
+  `focus_step`, `step_verdicts`, `error_type` and `misconception`, and `hint` does not depend on them after a question;
+  (c) `parse_input` resets only when the message contains a new attempt (steps found), or when no diagnosis is
+  outstanding. Proposal, awaiting the developer: (a), because `hint` keeps what it needs without making the reset
+  depend on diagnosis state. Rejected for now: changing the approved reset before the developer has chosen.
+- **OPEN (settle with the item above): stale `topic` and `level`.** `classify` returns `{}` on failure or an empty
+  problem, so `topic` and `level` keep the value from an earlier problem in the same thread. The orchestrator (or
+  `parse_input` when `problem` changes) must clear them.
+- **OPEN (settle with the items above; a consumer question for the orchestrator): out-of-scope subjects.** `classify`
+  runs inside the diagnosis subgraph, after the orchestrator has already routed to `diagnose`, so it cannot guard
+  the scope by itself. Nothing yet says what happens when it returns Geometry, Number Theory, Precalculus or Counting &
+  Probability.
+- **`topic` is one of the 7 MATH subjects and `level` is MATH's 1-5** | our own finer taxonomy (brackets, quadratics, ...) |
+  labels exist, are human-assigned and independent of our code; a finer taxonomy would need hand labels. In scope:
+  Prealgebra, Algebra, Intermediate Algebra. `classify` tags the subject; what happens on an out-of-scope subject is not
+  designed yet.
+- **`parse_input` is evaluated by normalized exact match of each claim** | equivalence under SymPy | SymPy's parser
+  distributes `3(x+2)` into `3x+6`, so an LLM that "repairs" a student's mistake would go unnoticed.
+- **An invalid model output twice in a row gives an empty result, not an exception** | raising | the orchestrator then asks
+  the student to resend; a free model failing once must not crash a session.
+- **The committed `verify` datasets are not rebuilt** | rebuilding with the stricter miner (preview: dev 1,237, test 479) |
+  the developer decided it was not needed. Known consequence: 12 identical (prev, curr, relation) pairs appear in both
+  splits (some non-trivial, so reported test numbers inherit the leakage), and the miner in `evals/builders/` no longer reproduces the committed files.
+
+## 2026-10-26 | M3 implementation notes
+- **`classify` returns no update when the model fails twice** (topic and level stay unset) | the "out-of-scope default" the
+  plan proposed | a default label would be indistinguishable from a real answer in the state and in the eval; the failure is
+  logged and counted in `failure_rate`. The orchestrator must treat a missing `topic` as "not classified" (wiring layer).
+- **LLM calls go through `tools/structured.call_structured`** | each node calling the client | one place for the retry, the
+  eval cache and the mock point. Nodes call it as `structured.call_structured` (module attribute), so tests patch one name.
+- **`parse_input` data is rendered from known structure** | asking a model to write student messages, or collecting real ones |
+  the expected problem and steps are known before the message exists (mined MATH chains, some steps made wrong by
+  `corrupt.py`), so labels do not depend on a model or on our checker. Cost: the messages are synthetic and only as messy
+  as the renderer (layouts, LaTeX, unicode, spoken math, typos in words, chatty frames); hand-written messages (29) cover
+  what the renderer cannot. Real student messages are not tested; reported as a limit with the numbers.
+- **One chain per MATH problem, subjects Algebra, Prealgebra, Intermediate Algebra, levels 1-3** | all chains | avoids many
+  near-identical messages from one solution. 150 generated messages per split plus the hand-written ones.
+- **A message that only gives an answer has no steps** | treating the answer as a one-line attempt | it follows the prompt
+  ("A bare answer in a message that states no problem and shows no other working is not a step. A line written after a stated
+  problem or after other working is a step, including the last line."); an answer-only message is still read by
+  the orchestrator from the raw message. Open: whether `verify` should get the bare answer as a step.
+- **Two match rules for claims, both on text**: strict (no spaces, trailing stop) and canonical (also `*` and brackets around
+  one token ignored) | SymPy equivalence | see the M3 decisions above. The canonical rule exists because mined text carries
+  converter artefacts (`x = (19)`), which a model may reasonably drop.
+- **Model for M3 evals: `nvidia/nemotron-3.5-super-vl:free`** (set by the developer in `.env`; recorded in every result file).
+- **Datasets for `classify` and `parse_input` are written by the developer's own run of the builders**: the test split is
+  protected, and the auto-mode classifier blocks an agent's script that writes it.
+
+- **The eval cache: key = model + prompt + schema + user text, opt-in via `LLM_CACHE_DIR`, evals only** | `functools.lru_cache`
+  (does not survive across eval runs) and no cache at all | a long eval on a free, rate-limited model must be restartable.
+  Consequence: a stale-but-valid answer stays cached until the directory is deleted.
+- **`call_structured` returns None after the retry instead of raising** | raising | it retries only transient and
+  invalid-output errors (connection, timeout, 429, 5xx, ValueError, OSError); auth, permission, bad-request and
+  programming errors propagate, so a wrong key does not look like N silent failures. `method="json_schema"` and a 60 s
+  timeout are fixed because the developer's model passed it 3/3.
+- **`classify`: `topic` is a closed Literal of the 7 MATH subjects; `level` is MATH's 1-5, chosen by the model from a scale
+  defined in the prompt** | free-text topic; a rubric-free level guess | a closed set can be scored and routed on; the
+  rubric makes the level reproducible. The eval also reports within-one, because level labels are noisy. The eval feeds
+  LaTeX problem text while in use `classify` receives `parse_input`'s plain text (a known gap, noted in the result file).
+- **`classify` returning `{}` on failure leaves a stale `topic` and `level` in a thread** | clearing them in `classify` |
+  open, see the OPEN items in "M3 decisions" above.

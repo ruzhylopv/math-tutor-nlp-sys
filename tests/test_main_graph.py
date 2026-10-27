@@ -1,7 +1,7 @@
 import runpy
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 from langgraph.graph import END, START
@@ -26,19 +26,23 @@ def test_a_missing_action_ends_the_run() -> None:
 
 def test_main_graph_has_the_designed_nodes_and_edges() -> None:
     drawn = build_main_graph().get_graph()
-    assert {"orchestrator", "diagnosis", "hint"} <= set(drawn.nodes)
+    assert {"parse_input", "orchestrator", "diagnosis", "hint"} <= set(drawn.nodes)
     edges = {(edge.source, edge.target) for edge in drawn.edges}
     assert {
-        (START, "orchestrator"),
+        (START, "parse_input"),
+        ("parse_input", "orchestrator"),
         ("orchestrator", "diagnosis"),
         ("orchestrator", "hint"),
         ("orchestrator", END),
         ("diagnosis", "orchestrator"),
         ("hint", "orchestrator"),
     } <= edges
+    # parse_input runs once per message: nothing in the loop leads back to it
+    assert {edge.source for edge in drawn.edges if edge.target == "parse_input"} == {START}
 
 
 def test_with_the_stubs_a_run_replies_and_ends() -> None:
+    # parse_input is the real node here; it makes no LLM call because the state has no messages.
     result = build_main_graph().invoke({"student_id": "ada"})
     assert result["reply_text"] == "TODO"
 
@@ -76,6 +80,88 @@ def test_diagnosis_and_hint_both_return_to_the_orchestrator(
     result = build_main_graph().invoke({"stage": "new_message"})
     assert seen == ["new_message", "diagnosed", "hinted"]
     assert result["reply_text"] == "done"
+
+
+def test_parse_input_runs_first_and_the_orchestrator_sees_its_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    order: list[str] = []
+
+    def scripted_parse(state: TutorState) -> dict[str, Any]:
+        order.append("parse_input")
+        return {"problem": "2x = 4"}
+
+    def scripted(state: TutorState) -> dict[str, Any]:
+        order.append(f"orchestrator sees {state.get('problem')}")
+        return {"next_action": "reply", "reply_text": "ok"}
+
+    monkeypatch.setattr(graph_module, "parse_input", scripted_parse)
+    monkeypatch.setattr(graph_module, "orchestrator", scripted)
+    build_main_graph().invoke({})
+    assert order == ["parse_input", "orchestrator sees 2x = 4"]
+
+
+def _script_loop(
+    monkeypatch: pytest.MonkeyPatch, route_after_diagnosis: Literal["hint", "reply"]
+) -> dict[str, list[str]]:
+    """Script parse_input, diagnosis and the orchestrator; record how often each one ran."""
+    calls: dict[str, list[str]] = {
+        "parse_input": [],
+        "diagnosis": [],
+        "hint": [],
+        "orchestrator": [],
+    }
+
+    def scripted_parse(state: TutorState) -> dict[str, Any]:
+        calls["parse_input"].append("run")
+        return {}
+
+    def scripted_diagnosis(state: TutorState) -> dict[str, Any]:
+        calls["diagnosis"].append("run")
+        return {"stage": "diagnosed"}
+
+    def scripted_hint(state: TutorState) -> dict[str, Any]:
+        calls["hint"].append("run")
+        return {"stage": "hinted"}
+
+    def scripted_orchestrator(state: TutorState) -> dict[str, Any]:
+        calls["orchestrator"].append("run")
+        stage = state.get("stage", "new_message")
+        if stage == "new_message":
+            return {"next_action": "diagnose"}
+        if stage == "diagnosed" and route_after_diagnosis == "hint":
+            return {"next_action": "hint"}
+        return {"next_action": "reply", "reply_text": "done"}
+
+    monkeypatch.setattr(graph_module, "parse_input", scripted_parse)
+    monkeypatch.setattr(graph_module, "build_diagnosis_graph", lambda: scripted_diagnosis)
+    monkeypatch.setattr(graph_module, "hint", scripted_hint)
+    monkeypatch.setattr(graph_module, "orchestrator", scripted_orchestrator)
+    return calls
+
+
+def test_parse_input_runs_once_per_message_across_the_diagnosis_loop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _script_loop(monkeypatch, route_after_diagnosis="reply")
+    result = build_main_graph().invoke({"stage": "new_message"})
+    assert result["reply_text"] == "done"
+    assert calls["diagnosis"] == ["run"]
+    assert calls["orchestrator"] == ["run", "run"]  # before and after the diagnosis
+    assert calls["parse_input"] == ["run"]  # the loop did not re-parse
+    assert calls["hint"] == []
+
+
+def test_parse_input_runs_once_per_message_across_the_hint_loop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _script_loop(monkeypatch, route_after_diagnosis="hint")
+    result = build_main_graph().invoke({"stage": "new_message"})
+    assert result["reply_text"] == "done"
+    assert calls["diagnosis"] == ["run"]
+    assert calls["hint"] == ["run"]
+    assert calls["orchestrator"] == ["run", "run", "run"]  # new message, diagnosed, hinted
+    assert calls["parse_input"] == ["run"]  # neither loop re-parsed
 
 
 def test_draw_script_writes_mermaid(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

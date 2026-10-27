@@ -1,0 +1,82 @@
+{
+  "seed": 0,
+  "per_split": 150,
+  "usable_chains": 535,
+  "source": "openai/prm800k math_splits (main branch), subjects Algebra, Prealgebra, Intermediate Algebra",
+  "dev": {
+    "n": 170,
+    "by_source": {
+      "generated": 150,
+      "handwritten": 20
+    },
+    "by_feature": {
+      "answer_only": 16,
+      "ascii": 71,
+      "chatty": 35,
+      "connectors": 20,
+      "equation": 25,
+      "expression": 125,
+      "full": 87,
+      "greeting": 1,
+      "latex": 25,
+      "numbered": 19,
+      "one_line": 35,
+      "plain": 50,
+      "problem_only": 16,
+      "question_only": 8,
+      "smalltalk": 1,
+      "spoken": 6,
+      "steps_only": 28,
+      "typos": 25,
+      "unicode": 46,
+      "wrong_step": 11
+    },
+    "steps_per_message": {
+      "0": 42,
+      "1": 4,
+      "2": 79,
+      "3": 29,
+      "4": 14,
+      "5": 2
+    }
+  },
+  "test": {
+    "n": 159,
+    "by_source": {
+      "generated": 150,
+      "handwritten": 9
+    },
+    "by_feature": {
+      "answer_only": 14,
+      "ascii": 86,
+      "chatty": 48,
+      "connectors": 29,
+      "equation": 27,
+      "expression": 123,
+      "full": 87,
+      "justifications": 1,
+      "latex": 33,
+      "new_problem": 1,
+      "numbered": 20,
+      "one_line": 24,
+      "plain": 47,
+      "problem_only": 14,
+      "question_only": 7,
+      "spoken": 3,
+      "steps_only": 31,
+      "typos": 32,
+      "unicode": 22,
+      "word_problem": 1,
+      "wrong_step": 22
+    },
+    "steps_per_message": {
+      "0": 35,
+      "1": 1,
+      "2": 67,
+      "3": 38,
+      "4": 12,
+      "5": 5,
+      "6": 1
+    }
+  }
+}

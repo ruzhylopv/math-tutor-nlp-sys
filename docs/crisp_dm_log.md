@@ -25,6 +25,13 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   MATH dataset card; sizes, schema and the Algebra levels 1-3 yield are in `docs/plans/nodes/2026-10-26-m2-verify.md`.
   PRM800K is a good fit for the final-answer check and for localize (M4), a poor fit for step relations. The
   `phase2_train` file (435 MB) is not downloaded yet.
+- 2026-10-26 | MATH labels for classify | MATH has 12,500 problems with human-assigned `subject` (Algebra 2,931; Prealgebra
+  2,076; Intermediate Algebra 2,198; Geometry 1,350; Number Theory 1,409; Precalculus 1,291; Counting & Probability 1,245)
+  and `level` 1-5, in the PRM800K `math_splits` files. `classify` uses them as labels; no finer topic taxonomy.
+- 2026-10-26 | parse_input messages | No dataset of messy student algebra messages with a known parse was found or checked;
+  the expected parse is instead known by construction: mined MATH step chains (one per problem; 535 were usable), rendered in
+  four layouts and four notations, with typos in words only, chatty frames and some deliberately wrong steps, plus 29
+  hand-written messages. Details and limits: `evals/datasets/README.md`. The prompt's "new or different problem" rule was written after reading hand-written case `hand/011`, which is in the test split; do not tune the prompt further on hand cases of the test split.
 - 2026-10-25 | Eedi | A paper reports 1,857 questions; the number of distinct misconceptions and
   whether the scenario A/B misconceptions exist in it are unverified.
 
@@ -33,6 +40,9 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 - 2026-10-26 | verify_steps | Built `evals/datasets/{dev,test}/verify_steps.jsonl` from MATH Algebra levels 1-3 (mined
   identity pairs), rule-based corruptions with a witness guard, and 76 hand-written cases. Dev 1621, test 671, review 9.
   Format and limits: `evals/datasets/README.md`.
+- 2026-10-26 | classify | Built the dev and test sets (420 problems each, 60 per MATH subject) from MATH's own labels.
+- 2026-10-26 | parse_input | Wrote `evals/builders/build_parse_input.py`. Built by the developer's own run (the test split is protected): dev 170
+  and test 159 messages (150 generated plus 20 and 9 hand-written), identical to a rebuild of the committed builder.
 
 ## Modeling
 - Planned build order: verify, classify, localize, retrieve, hint, orchestrator + graph, checkpointer
@@ -41,13 +51,18 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   nodes, the diagnosis subgraph and the main graph compile and pass 83 unit tests; `docs/graph.mmd` is the
   Mermaid export. No model has been called yet: `scripts/check_llm.py` is the next step to run by hand once
   `MODEL_NAME` is chosen. Plan: `docs/plans/design/2026-10-25-m1-skeleton.md`.
+- 2026-10-26 | M3 input layer | `classify` (7 MATH subjects, levels 1-5, in-scope = Prealgebra, Algebra, Intermediate
+  Algebra) and `parse_input` (problem and steps from the raw message, faithful transcription) implemented behind
+  `tools/structured.call_structured` (one retry, eval cache); prompts have no dataset examples. Model for the evals:
+  `nvidia/nemotron-3.5-super-vl:free`. No real-model run yet; unit tests mock the model. Plan:
+  `docs/plans/nodes/2026-10-26-m3-input-layer.md`.
 
 ## Evaluation
 <!-- Format: YYYY-MM-DD | <component> | <split> | <key metric>=<value> (change) | <git-hash> | note -->
 - 2026-10-26 | verify | dev | accuracy=0.9975 (was 1.000; same committed dev data, fixed checker and node) | 6f3c644 | The 4
   cases that changed are `2^(3^2)`: stacked powers are rejected on purpose now (denial of service); the failed check
   line `hand/058` is mapped through `check_holds`. Still high by construction (see the next line). A preview rebuild
-  with the stricter miner (not committed, awaiting approval) gives dev 1,237 and test 479 cases and an agreement of
+  with the stricter miner (decided not to rebuild, 2026-10-26; see docs/decisions.md) gives dev 1,237 and test 479 cases and an agreement of
   838 of 842 parseable pairs (99.5%) with a parse rate of 92%; no independent number exists for the generated and
   hand-written relations.
 - 2026-10-26 | verify | dev | accuracy=1.000 (baseline; n=1621) | 631144b | High by construction, a regression suite
@@ -57,6 +72,24 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   mined pairs (99.2%) and parses 90.1% of 1251; the 9 disagreements are author typos or condition-dependent lines.
   Rare relations are small in dev (implies 8, narrows 6, unparsable 12) and smaller in test (4, 2, 5). Test split
   not run.
+- 2026-10-27 | parse_input | dev, SUBSET 15 of 170 (taken in turn from each kind) | case_accuracy=0.933 (baseline; 14 of 15) | e42d774 | Model
+  `nvidia/nemotron-3.5-super-vl:free`, prompt hash cd937f44ed21. failure_rate 0, sympy_parse_rate 1.0, no_working_accuracy 1.0
+  (7 cases), claim_recall_canonical 0.882 (15 of 17 claims; strict equals canonical). Both deliberately wrong steps were
+  transcribed unchanged. The one miss (`full`, `expression`, `connectors`, `unicode`): the model kept the first step inside the
+  problem (`((1/2))^3 . (1/2)*(1/2)*(1/2)`) and so dropped it as a step; the lone `.` the renderer puts between the problem
+  and the first step may have read as a multiplication dot (a guess). Partly an ambiguous message, partly a prompt gap. n=15, so the 95% Wilson interval for 14/15 is about 0.70-0.99:
+  a smoke check, not an estimate. Not tuned on this miss; the full dev run is the next step. Result file:
+  `evals/results/parse_input/20261027T132533Z_e42d774.json`.
+- 2026-10-27 | classify | dev, SUBSET 15 of 420 (taken in turn from each subject) | topic_accuracy=0.667 (baseline; 10 of 15), in_scope_accuracy=0.800, level_accuracy=0.133, level_within_one=0.533 | b178d94 | Model
+  `nvidia/nemotron-3.5-super-vl:free`, prompt hash 96a9483b4d2f, failure_rate 0. Per-subject recall: 1.0 for Algebra, Counting &
+  Probability, Number Theory, Precalculus; 0.5 Geometry; 0.0 Intermediate Algebra and Prealgebra (2 problems each). The 5 misses
+  are mostly fuzzy MATH labels: a probability problem labelled Geometry, two counting-flavoured problems labelled Intermediate
+  Algebra (both sent to Counting & Probability, i.e. out of scope), a linear inequality labelled Prealgebra (sent to Algebra), and a
+  "how many integers divisible by 2, 3 and 5" labelled Prealgebra (sent to Number Theory). So topic accuracy against MATH's labels
+  understates the model, but in-scope problems that land out of scope are the cost that matters (3 of 15). Levels: 8 of the 15 are
+  level 5 by chance and the model rarely says 5, so the level numbers are pessimistic; no node reads `level` yet. n=15 is a smoke
+  check (95% interval for 10/15 is about 0.42-0.85). Not tuned on these misses. Result file:
+  `evals/results/classify/20261027T134021Z_b178d94.json`.
 
 ## Deployment
 - Planned: runnable Streamlit app and a demo video using scenarios A and B.

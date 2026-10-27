@@ -11,7 +11,7 @@ Source: the planning handoff from the chat outside this repo. Docs only; no code
 ## Answers to the OPEN questions
 - LLM: OpenRouter, a free model (the developer will not pay for tokens). Dependency swap deferred.
 - Retrieval: in-memory sentence-transformers + FAISS (approval needed when added).
-- Target level: provisional, MATH Algebra levels 1-3.
+- Target level: provisional, MATH Algebra levels 1-3. Superseded 2026-10-26, see M3 decisions in `docs/decisions.md`.
 - `localize`: rules first, LLM only for interpretation.
 - Leakage check: a function in `src/tutor/tools/`, called by the orchestrator.
 - Learner DB: SQLite, `attempts` and `misconceptions_seen`.

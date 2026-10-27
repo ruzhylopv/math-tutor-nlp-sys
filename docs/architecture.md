@@ -17,7 +17,8 @@ a prompt. The student submits a problem and their own step-by-step attempt
 
 In scope: school-level arithmetic and algebra (linear equations, brackets, quadratics, factoring,
 radical and rational equations). Out of scope: calculus, proofs, geometry diagrams, other languages.
-Target level (provisional): MATH "Algebra", levels 1-3. OPEN: confirm the grades.
+Target subjects (decided 2026-10-26): MATH Prealgebra, Algebra and Intermediate Algebra. Levels 1-3 remain the range used
+for the `verify` and `parse_input` datasets; `classify` returns MATH levels 1-5.
 Input is text for now. Photos of handwritten work would need a vision/OCR model in front of `parse_input`;
 out of scope.
 
@@ -32,7 +33,7 @@ evaluated in isolation on its own dataset.
 ### Main graph
 ```mermaid
 flowchart TD
-  START --> orchestrator
+  START --> parse_input --> orchestrator
   orchestrator -->|diagnose| diagnosis
   orchestrator -->|hint| hint
   orchestrator -->|ask / reply| END
@@ -42,11 +43,28 @@ flowchart TD
 The orchestrator sets `reply_text` for `ask` and `reply`. Both `diagnosis` and `hint` always return
 to the orchestrator (see "Orchestrator modes").
 
+`parse_input` runs on every student message, before the orchestrator, so the orchestrator routes on a
+structure (is there a problem, are there steps) and not only on raw text. For a message without working
+it resets `student_steps` to empty; for a message without a problem it keeps the stored `problem`.
+OPEN (M5, before `hint` and the orchestrator are built): this reset conflicts with the hint path. `hint`
+reads the wrong step, and `focus_step`, `first_error_step` and `step_verdicts` index into `student_steps`; a
+question after a diagnosis (scenario B T2, required behaviour 2) goes to `hint` with no new diagnosis, and
+after the reset those fields point at nothing. The same happens when the model fails twice, and the
+`is_clean_solution` path then sees verdicts for steps that no longer exist. Options: (a) at diagnosis time
+store the wrong step's claim in a field `parse_input` does not reset, and `hint` reads that; (b) the reset
+also clears `first_error_step`, `focus_step`, `step_verdicts`, `error_type` and `misconception`, and `hint`
+does not depend on them after a question; (c) reset only when the message contains a new attempt (steps
+found), or when no diagnosis is outstanding. Proposal, awaiting the developer: (a). Related OPEN hazard:
+`classify` returns `{}` on failure or an empty problem, so `topic` and `level` keep the value of an earlier
+problem in the same thread; the orchestrator (or `parse_input` when `problem` changes) must clear them.
+A third OPEN item: what the orchestrator does when `classify` tags an out-of-scope subject is not yet decided.
+See "M3 decisions" in `docs/decisions.md`.
+
 ### Diagnosis subgraph
 Fixed order, compiled separately so evals can call it without the chat layer.
 ```mermaid
 flowchart LR
-  START --> parse_input --> classify --> verify
+  START --> classify --> verify
   verify -->|"correct, all steps valid, no flagged justification"| finish_diagnosis
   verify -->|otherwise| localize --> retrieve --> finish_diagnosis
   finish_diagnosis --> END
@@ -69,8 +87,8 @@ invalid step, therefore goes on to `localize` (error type `reasoning_result_mism
 | Node | Type | Purpose | Reads | Writes | Metric |
 |---|---|---|---|---|---|
 | orchestrator | LLM (structured `Decision`) on a new student message; plain code in the other two modes | Decide the next action; ask for working when missing; after a diagnosis set or escalate the hint level; after a hint run the leakage check; call DB tools | messages, stage, state so far | next_action, hint_level, hint_retries, learner_profile, reply_text, messages, turns, hints_used, misconceptions_seen | routing accuracy on labelled turns |
-| parse_input | LLM, structured output | Turn the student's raw text into our structure: the problem text and the attempt as `Step`s (claim, justification, optional justification claim, operation tag). Keeps the stored problem when the message has none. | latest student message, stored problem | problem, student_steps | problem-extraction accuracy; step-split accuracy; SymPy parse rate of claims |
-| classify | LLM | Tag topic and level | problem, student_steps | topic, level | topic accuracy / macro-F1 |
+| parse_input | LLM, structured output (main graph, before the orchestrator) | Turn the student's raw text into our structure: the problem text and the attempt as `Step`s (claim, justification, optional justification claim, operation tag). Keeps the stored problem when the message has none. | latest student message, stored problem | problem, student_steps | problem-extraction accuracy; step-split accuracy; SymPy parse rate of claims |
+| classify | LLM | Tag topic and level | problem | topic, level | topic accuracy / macro-F1 |
 | verify | deterministic (SymPy) | Solve the original; check the final answer; check each step as equivalent / implies / narrows / not_valid / unparsable; evaluate arithmetic claims in justifications | problem, student_steps | is_correct, step_verdicts | answer-check accuracy; step-verdict accuracy |
 | localize | rules on SymPy verdicts, LLM only for interpretation | First wrong step or error type; check that the justification matches what happened | step_verdicts, student_steps | first_error_step, focus_step, error_type | first-error-step accuracy; error-type accuracy; mismatch detection rate |
 | retrieve | retrieval | Query: problem + wrong step + topic + error type; search the misconception catalogue | above | misconception_candidates, misconception | Recall@k, MAP@k |

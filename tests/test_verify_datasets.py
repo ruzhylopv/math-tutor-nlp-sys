@@ -53,8 +53,8 @@ def test_generated_records_name_their_rule_and_seed() -> None:
 
 
 @pytest.mark.xfail(
-    reason="the committed files were built before duplicates were dropped; "
-    "passes after the rebuild the developer has to approve",
+    reason="known limit: the committed files were built before duplicates were dropped and are "
+    "intentionally not rebuilt (decisions.md, M3 decisions)",
     strict=False,
 )
 def test_no_pair_is_in_both_splits() -> None:

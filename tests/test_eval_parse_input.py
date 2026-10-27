@@ -1,0 +1,234 @@
+import json
+import runpy
+import sys
+from pathlib import Path
+from typing import Any
+
+import pytest
+from pydantic import BaseModel
+
+from evals import runner
+from tutor.state import ParsedInput, Step
+from tutor.tools import structured
+
+SCRIPT = Path(__file__).resolve().parents[1] / "evals" / "scripts" / "eval_parse_input.py"
+
+
+def _module() -> dict[str, Any]:
+    return runpy.run_path(str(SCRIPT))
+
+
+def _case(
+    problem: str | None, steps: list[str], features: tuple[str, ...] = (), source: str = "generated"
+) -> dict[str, Any]:
+    return {
+        "message": "m",
+        "stored_problem": None,
+        "expected_problem": problem,
+        "expected_steps": steps,
+        "features": list(features),
+        "source": source,
+    }
+
+
+def test_norm_and_canon() -> None:
+    module = _module()
+    assert module["norm"]("x  =  (19). ") == "x=(19)"
+    assert module["canon"]("x = (19)") == module["canon"]("x=19")
+    assert module["canon"]("2 * x") == module["canon"]("2x")
+    assert module["canon"]("sqrt(5)") == "sqrt(5)"  # a function call keeps its brackets
+    assert module["canon"]("x = 3") != module["canon"]("x = 4")
+    assert module["canon"]("(2x)^2") != module["canon"]("2x^2")  # only one number or letter
+    assert module["canon"]("a/(2x)") != module["canon"]("a/2x")
+    assert module["canon"]("(x)/(2)") == module["canon"]("x/2")
+
+
+def test_perfect_predictions() -> None:
+    cases = [_case("2x = 4", ["x = 2"]), _case(None, [])]
+    metrics = _module()["evaluate"](cases, [("2x = 4", ["x = 2"], False), (None, [], False)])
+    assert metrics["case_accuracy"] == metrics["case_accuracy_strict"] == 1.0
+    assert metrics["claim_recall_exact"] == 1.0 and metrics["no_working_accuracy"] == 1.0
+    assert metrics["failure_rate"] == metrics["invented_steps_rate"] == 0.0
+
+
+def test_a_corrected_step_is_not_faithful() -> None:
+    cases = [_case("5x - 4 = 11", ["5x = 7", "x = 7/5"])]
+    metrics = _module()["evaluate"](cases, [("5x - 4 = 11", ["5x = 15", "x = 3"], False)])
+    assert metrics["problem_accuracy"] == 1.0
+    assert metrics["steps_accuracy"] == 0.0 and metrics["case_accuracy"] == 0.0
+    assert metrics["claim_recall_exact"] == 0.0
+
+
+def test_formatting_differences_pass_canonical_but_not_strict() -> None:
+    cases = [_case("2x = 4", ["x = (2)"])]
+    metrics = _module()["evaluate"](cases, [("2x = 4", ["x = 2"], False)])
+    assert metrics["case_accuracy"] == 1.0 and metrics["case_accuracy_strict"] == 0.0
+
+
+def test_a_restated_problem_when_none_was_expected_is_wrong() -> None:
+    metrics = _module()["evaluate"]([_case(None, ["x = 2"])], [("2x = 4", ["x = 2"], False)])
+    assert metrics["problem_accuracy"] == 0.0 and metrics["steps_accuracy"] == 1.0
+
+
+def test_invented_and_dropped_steps_are_counted() -> None:
+    cases = [_case(None, ["a = 1"]), _case(None, ["a = 1", "b = 2"]), _case(None, [])]
+    predictions = [
+        (None, ["a = 1", "c = 3"], False),
+        (None, ["a = 1"], False),
+        (None, ["z = 1"], False),
+    ]
+    metrics = _module()["evaluate"](cases, predictions)
+    assert metrics["invented_steps_rate"] == pytest.approx(2 / 3)
+    assert metrics["dropped_steps_rate"] == pytest.approx(1 / 3)
+    assert metrics["no_working_accuracy"] == 0.0 and metrics["n/no_working"] == 1.0
+    assert metrics["claim_recall_exact"] == pytest.approx(2 / 3)  # position-wise, 3 expected
+
+
+def test_parse_rate_counts_claims_the_checker_cannot_read() -> None:
+    cases = [_case(None, ["x = 2", "y"])]
+    metrics = _module()["evaluate"](cases, [(None, ["x = 2", "hello world"], False)])
+    assert metrics["sympy_parse_rate"] == 0.5
+
+
+def test_a_failed_call_is_wrong_even_when_nothing_was_expected() -> None:
+    cases = [_case("x = 1", ["x = 1"]), _case(None, [])]
+    metrics = _module()["evaluate"](cases, [(None, [], True), (None, [], True)])
+    assert metrics["failure_rate"] == 1.0
+    for name in (
+        "case_accuracy",
+        "case_accuracy_strict",
+        "case_accuracy_answered",
+        "problem_accuracy",
+        "steps_accuracy",
+        "steps_accuracy_strict",
+        "no_working_accuracy",
+        "step_count_accuracy",
+    ):
+        assert metrics[name] == 0.0, name
+
+
+def test_case_accuracy_answered_leaves_the_failed_cases_out() -> None:
+    cases = [_case("x = 1", ["x = 1"]), _case(None, []), _case(None, [])]
+    predictions = [("x = 1", ["x = 1"], False), (None, [], False), (None, [], True)]
+    metrics = _module()["evaluate"](cases, predictions)
+    assert metrics["case_accuracy"] == pytest.approx(2 / 3)
+    assert metrics["case_accuracy_answered"] == 1.0
+    assert metrics["no_working_accuracy"] == 0.5
+
+
+def test_strict_case_accuracy_is_strict_about_the_problem_too() -> None:
+    cases = [_case("x + 1 = (2)", ["x = 1"])]
+    metrics = _module()["evaluate"](cases, [("x + 1 = 2", ["x = 1"], False)])
+    assert metrics["problem_accuracy"] == 1.0 and metrics["steps_accuracy_strict"] == 1.0
+    assert metrics["case_accuracy"] == 1.0 and metrics["case_accuracy_strict"] == 0.0
+
+
+def test_gold_parse_rate_is_the_same_rate_over_the_expected_claims() -> None:
+    cases = [_case(None, ["x = 2", "hello world"])]
+    metrics = _module()["evaluate"](cases, [(None, ["x = 2", "x = 3"], False)])
+    assert metrics["gold_parse_rate"] == 0.5 and metrics["sympy_parse_rate"] == 1.0
+
+
+def test_metrics_by_feature_and_source() -> None:
+    cases = [
+        _case("a = 1", ["b = 2"], ("latex",)),
+        _case("a = 1", ["b = 2"], ("latex", "typos"), "handwritten"),
+    ]
+    metrics = _module()["evaluate"](
+        cases, [("a = 1", ["b = 2"], False), ("a = 1", ["b = 3"], False)]
+    )
+    assert metrics["case_accuracy/feature=latex"] == 0.5 and metrics["n/feature=latex"] == 2.0
+    assert metrics["case_accuracy/feature=typos"] == 0.0
+    assert (
+        metrics["case_accuracy/source=handwritten"] == 0.0 and metrics["n/source=generated"] == 1.0
+    )
+
+
+def test_the_script_runs_the_node_and_writes_a_result(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    (tmp_path / "datasets" / "dev").mkdir(parents=True)
+    cases = [
+        {**_case("2x = 4", ["x = 2"]), "id": "a", "message": "Solve 2x = 4\nx = 2"},
+        {**_case(None, []), "id": "b", "message": "why?", "stored_problem": "2x = 4"},
+        {**_case(None, ["y = 1"]), "id": "c", "message": "y = 1"},
+    ]
+    (tmp_path / "datasets" / "dev" / "parse_input.jsonl").write_text(
+        "".join(json.dumps(c) + "\n" for c in cases), encoding="utf-8"
+    )
+    answers = {
+        "Stored problem: none\n\nStudent message:\nSolve 2x = 4\nx = 2": ParsedInput(
+            problem="2x = 4", steps=[Step(claim="x = 2")]
+        ),
+        "Stored problem: 2x = 4\n\nStudent message:\nwhy?": ParsedInput(),
+    }  # the third message gets None: a failed call
+
+    def fake(prompt: str, schema: type[BaseModel], text: str, retries: int = 1) -> Any:
+        return answers.get(text)
+
+    monkeypatch.setattr(structured, "call_structured", fake)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    monkeypatch.setenv("MODEL_NAME", "some/model")
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setattr(runner, "DATASETS_DIR", tmp_path / "datasets")
+    monkeypatch.setattr(runner, "RESULTS_DIR", tmp_path / "results")
+    monkeypatch.setattr(sys, "argv", ["eval_parse_input.py"])
+    runpy.run_path(str(SCRIPT), run_name="__main__")
+    (result,) = (tmp_path / "results" / "parse_input").glob("*.json")
+    data = json.loads(result.read_text(encoding="utf-8"))
+    assert data["model_name"] == "some/model" and data["prompt_hash"]
+    assert data["n_examples"] == 3 and data["metrics"]["case_accuracy"] == pytest.approx(2 / 3)
+    assert data["metrics"]["failure_rate"] == pytest.approx(1 / 3)
+
+
+def _kinds_case(case_id: str, kind: str, source: str = "generated") -> dict[str, Any]:
+    return {**_case(None, [], (kind,), source), "id": case_id}
+
+
+def test_the_sample_takes_cases_in_turn_from_each_kind() -> None:
+    cases = [_kinds_case(f"a{i}", "full") for i in range(10)]
+    cases += [_kinds_case(f"b{i}", "question_only") for i in range(10)]
+    cases += [_kinds_case(f"h{i}", "full", "handwritten") for i in range(10)]
+    sample = _module()["stratified_sample"](cases, 6)
+    kinds = [("hand" if c["source"] == "handwritten" else c["features"][0]) for c in sample]
+    assert sorted(kinds) == ["full", "full", "hand", "hand", "question_only", "question_only"]
+
+
+def test_the_sample_is_deterministic_and_sorted_by_id() -> None:
+    cases = [_kinds_case(f"c{i}", "full") for i in range(20)]
+    first = _module()["stratified_sample"](cases, 5)
+    second = _module()["stratified_sample"](list(reversed(cases)), 5)
+    assert [c["id"] for c in first] == [c["id"] for c in second]
+    assert [c["id"] for c in first] == sorted(c["id"] for c in first)
+
+
+def test_a_limit_above_the_size_returns_everything() -> None:
+    cases = [_kinds_case(f"c{i}", "full") for i in range(4)]
+    assert len(_module()["stratified_sample"](cases, 50)) == 4
+
+
+def test_the_script_runs_a_limited_subset_and_says_so(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    (tmp_path / "datasets" / "dev").mkdir(parents=True)
+    cases = [{**_kinds_case(f"c{i}", "full"), "message": f"m{i}"} for i in range(6)]
+    (tmp_path / "datasets" / "dev" / "parse_input.jsonl").write_text(
+        "".join(json.dumps(c) + "\n" for c in cases), encoding="utf-8"
+    )
+
+    def fake(prompt: str, schema: type[BaseModel], text: str, retries: int = 1) -> Any:
+        return ParsedInput()
+
+    monkeypatch.setattr(structured, "call_structured", fake)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    monkeypatch.setenv("MODEL_NAME", "some/model")
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setattr(runner, "DATASETS_DIR", tmp_path / "datasets")
+    monkeypatch.setattr(runner, "RESULTS_DIR", tmp_path / "results")
+    monkeypatch.setattr(sys, "argv", ["eval_parse_input.py", "--limit", "2"])
+    runpy.run_path(str(SCRIPT), run_name="__main__")
+    (result,) = (tmp_path / "results" / "parse_input").glob("*.json")
+    data = json.loads(result.read_text(encoding="utf-8"))
+    assert data["n_examples"] == 2 and "SUBSET: 2 of 6" in data["note"]

@@ -39,8 +39,8 @@ Settled additions (2026-10-25):
 - `student_id`: the name typed into a login-style field in the Streamlit UI.
 
 Settled (2026-10-25): `parse_input` takes the problem and the step structure; `classify` only tags topic and level.
-OPEN: where `parse_input` sits. Proposal: the first node of the diagnosis subgraph, so that pure questions cost no
-extra LLM call (as drawn in `docs/architecture.md`).
+Settled (2026-10-26): `parse_input` sits in the main graph before the orchestrator, runs on every message, and resets
+`student_steps` for a message without working (see `docs/architecture.md`).
 
 ## Pydantic models
 - `Step`: claim (math expression or equation), justification (text, may be empty), justification_claim (optional), operation tag

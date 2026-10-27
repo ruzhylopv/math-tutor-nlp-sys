@@ -13,4 +13,5 @@ def get_llm(config: Config) -> ChatOpenAI:
         api_key=SecretStr(config.openrouter_api_key),
         base_url=OPENROUTER_BASE_URL,
         temperature=0,
+        timeout=60,  # a stuck call must fail, not wait forever
     )
