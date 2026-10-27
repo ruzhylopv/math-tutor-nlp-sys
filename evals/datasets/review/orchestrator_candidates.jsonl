@@ -1,0 +1,32 @@
+{"id": "cand/001", "message": "hi", "problem": null, "n_steps": 0, "diagnosed": false, "expected_action": null}
+{"id": "cand/002", "message": "Can you help me with algebra?", "problem": null, "n_steps": 0, "diagnosed": false, "expected_action": null}
+{"id": "cand/003", "message": "Solve 2x + 3 = 11", "problem": null, "n_steps": 0, "diagnosed": false, "expected_action": null}
+{"id": "cand/004", "message": "What is the capital of France?", "problem": null, "n_steps": 0, "diagnosed": false, "expected_action": null}
+{"id": "cand/005", "message": "Thanks, that helped!", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/006", "message": "I got x = 13/3", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": false, "expected_action": null}
+{"id": "cand/007", "message": "the answer is 5", "problem": "x^2 - 5x + 6 = 0", "n_steps": 0, "diagnosed": false, "expected_action": null}
+{"id": "cand/008", "message": "3x + 2 = 15; 3x = 13; x = 13/3", "problem": "3(x + 2) = 15", "n_steps": 3, "diagnosed": false, "expected_action": null}
+{"id": "cand/009", "message": "3x + 6 = 15; 3x = 9; x = 3", "problem": "3(x + 2) = 15", "n_steps": 3, "diagnosed": true, "expected_action": null}
+{"id": "cand/010", "message": "first I expand: 3x + 6 = 15, then I subtract 6 to get 3x = 9, so x = 3", "problem": "3(x + 2) = 15", "n_steps": 3, "diagnosed": true, "expected_action": null}
+{"id": "cand/011", "message": "(x-2)(x-3)=0 so x=2 or x=3", "problem": "x^2 - 5x + 6 = 0", "n_steps": 2, "diagnosed": false, "expected_action": null}
+{"id": "cand/012", "message": "Why is my step 1 wrong?", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/013", "message": "I don't get it, can you explain again?", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/014", "message": "isn't (x - 5)^2 just x^2 - 25?", "problem": "sqrt(x + 7) = x - 5", "n_steps": 1, "diagnosed": true, "expected_action": null}
+{"id": "cand/015", "message": "so does 3(x+2) really equal 3x + 6?", "problem": "3(x + 2) = 15", "n_steps": 1, "diagnosed": true, "expected_action": null}
+{"id": "cand/016", "message": "can you give me another hint", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/017", "message": "just tell me the answer", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/018", "message": "Is the bracket the problem?", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/019", "message": "what does distribute mean", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/020", "message": "ok let me try again", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/021", "message": "Here is my second try: 3x + 6 = 15; 3x = 9; x = 3", "problem": "3(x + 2) = 15", "n_steps": 3, "diagnosed": true, "expected_action": null}
+{"id": "cand/022", "message": "x + 7 = x^2 - 10x + 25; x^2 - 11x + 18 = 0; (x-9)(x-2)=0; x = 9 or 2", "problem": "sqrt(x + 7) = x - 5", "n_steps": 4, "diagnosed": true, "expected_action": null}
+{"id": "cand/023", "message": "do I need to check my roots?", "problem": "sqrt(x + 7) = x - 5", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/024", "message": "What's the weather like?", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/025", "message": "lol", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": false, "expected_action": null}
+{"id": "cand/026", "message": "New problem: x^2 - 5x + 6 = 0", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/027", "message": "x^2 - 5x + 6 = 0, I factored it and got x = 2 or 3", "problem": "3(x + 2) = 15", "n_steps": 1, "diagnosed": true, "expected_action": null}
+{"id": "cand/028", "message": "I think I subtracted wrong", "problem": "3(x + 2) = 15", "n_steps": 0, "diagnosed": true, "expected_action": null}
+{"id": "cand/029", "message": "I'm stuck", "problem": "x^2 - 5x + 6 = 0", "n_steps": 0, "diagnosed": false, "expected_action": null}
+{"id": "cand/030", "message": "Why did you say step 2 is wrong? 3x = 13 looks fine to me", "problem": "3(x + 2) = 15", "n_steps": 1, "diagnosed": true, "expected_action": null}
+{"id": "cand/031", "message": "2x + 3 = 11", "problem": null, "n_steps": 1, "diagnosed": false, "expected_action": null}
+{"id": "cand/032", "message": "Thank you so much, you're great", "problem": null, "n_steps": 0, "diagnosed": false, "expected_action": null}

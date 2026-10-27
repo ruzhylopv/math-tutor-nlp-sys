@@ -1,0 +1,26 @@
+# Scenario B: squaring both sides. Source: docs/architecture.md, "Acceptance scenarios".
+name: B
+description: "sqrt(x + 7) = x - 5: wrong square, a question, an unrejected root, then a full solution"
+student_id: scenario-b
+past_attempts: []
+turns:
+  - student: "sqrt(x + 7) = x - 5. x + 7 = x^2 - 25; x^2 - x - 32 = 0; x = (1 +- sqrt(129))/2"
+    expect:
+      visited: [parse_input, diagnosis, hint]
+      hint_level: 1
+      misconception: M038
+  - student: "isn't (x - 5)^2 just x^2 - 25?"
+    expect:
+      visited: [parse_input, hint]
+      not_visited: [diagnosis]
+      hint_level: 2
+  - student: "x + 7 = x^2 - 10x + 25; x^2 - 11x + 18 = 0; (x - 9)(x - 2) = 0; x = 9 or x = 2"
+    expect:
+      visited: [parse_input, diagnosis, hint]
+      hint_level: 1
+      misconception: M064
+  - student: "Checking x = 9 works; x = 2 fails (sqrt(9) = 3, 2 - 5 = -3), so x = 9"
+    expect:
+      visited: [parse_input, diagnosis]
+      not_visited: [hint]
+      reply_contains: ["Correct"]
