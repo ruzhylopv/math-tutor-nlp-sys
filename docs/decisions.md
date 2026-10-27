@@ -90,12 +90,15 @@ Format: decision | rejected alternative | why.
 - The target grades (resolved 2026-10-26), and the final free OpenRouter model.
 
 ## OPEN: error-type taxonomy and its data (added after the PR #11 review)
-Status: not decided. The four error types come from the planning handoff and have not been checked
+Status: partly decided (the fallback value is resolved, the rest is not). The four error types come from the planning handoff and have not been checked
 against real student work. Published sources exist (see `docs/architecture.md`, section
 "Error-type taxonomy: candidate sources").
 - **Derive the taxonomy from data**, not from the handoff alone: map labels from the candidate
   datasets onto ours and count what does not fit. Decide after that mapping.
-- **Add a fallback value** (`other` / `unclassified`) so unmatched cases are visible. Undecided.
+- **Add a fallback value** (`other` / `unclassified`) so unmatched cases are visible. (Resolved 2026-10-27, see
+  M4a decisions: `other` was added. It now covers unparsable steps and steps that stop early (incomplete answers),
+  (A lost solution, such as dividing by `x`, is a `not_valid` step in `verify`, so it is an
+  `algebraic_transformation`.) The other cases below stay open.)
 - **Cases the four types do not cover:**
   - lost solutions (for example dividing by `x` loses `x = 0`), the opposite of `omission_extraneous_root`;
   - several errors in one solution (`first_error_step` names only the first);
@@ -434,3 +437,31 @@ The five reviews found five P1s; the stack had been merged before they could be 
   LaTeX problem text while in use `classify` receives `parse_input`'s plain text (a known gap, noted in the result file).
 - **`classify` returning `{}` on failure leaves a stale `topic` and `level` in a thread** | clearing them in `classify` |
   open, see the OPEN items in "M3 decisions" above.
+
+## 2026-10-27 | M4a decisions (`localize`)
+- **Error types: the three we have plus `other`** | keeping three and forcing every case into one of them; a separate
+  `unparsable_step` type now | the taxonomy was OPEN (see "OPEN: error-type taxonomy"); a fallback makes the cases
+  the three do not cover visible in the eval without committing to a finer split before there is data. Covers
+  unparsable steps and steps that stop before an answer. A lost solution turned out to be `not_valid` in `verify`
+  (checked on `x^2 = 3x`), so it is an `algebraic_transformation`. Still open: lost solutions as their own type,
+  several errors in one solution (only the first is reported), wrong method.
+- **`localize` is rules only in v1, no LLM** | an LLM classifying the error type | the verdicts already say where and
+  roughly what; a model on this path would add latency and could contradict SymPy. A later iteration may add an LLM
+  reading of justifications if the eval shows the rules miss it.
+- **An `unparsable` step gives `first_error_step` None and `focus_step` = that step** | blaming the step as
+  `algebraic_transformation` | SymPy could not judge it; the tutor can still ask the student to rewrite it.
+- **`error_type` is optional in `TutorState` (None when nothing is wrong)** | a sentinel value `none` in `ErrorType` |
+  an absent error is not an error type, and the stale-field problem (M3 OPEN items) is easier to see with None.
+- **PRM800K step labels are not used in v1** | using them as a second opinion now | its solutions are prose and LaTeX
+  that need a conversion to plain-text steps which does not exist, and `-1` does not mean "algebraically invalid".
+- **For M4b the developer approved a PyTorch-based embedding stack (sentence-transformers, FAISS) and will download
+  Eedi** | TF-IDF/BM25 or plain cosine over the catalogue as the only method | the developer chose embeddings; the
+  lighter methods stay available as a first baseline if installation size is a problem. The dependency is added in
+  the M4b PR.
+- **`localize` dataset: hand-written cases split by problem group, generated chains selected with `verify`, PRM800K
+  deferred** | alternating the hand-written cases within a kind (it put 6 problems in both dev and test); generated chains
+  without a filter; PRM800K step labels now | a whole problem group goes to one split by a deterministic greedy rule that
+  keeps both splits covering every error type and as many kinds as possible, so no problem leaks. An unfiltered chain
+  would include steps the checker cannot parse, which `localize` could not be scored on. The cost of the filter is
+  circularity (the generated accuracy is high by construction, noted in `evals/datasets/README.md`), so the per-source
+  accuracy is the headline and the blended number is not quoted alone. PRM800K stays deferred (see above).

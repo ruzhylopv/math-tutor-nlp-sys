@@ -44,6 +44,18 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 - 2026-10-26 | parse_input | Wrote `evals/builders/build_parse_input.py`. Built by the developer's own run (the test split is protected): dev 170
   and test 159 messages (150 generated plus 20 and 9 hand-written), identical to a rebuild of the committed builder.
 
+- 2026-10-27 | localize attempts | No public dataset has first-error labels for our `omission_extraneous_root` and
+  `reasoning_result_mismatch` types (checked earlier, see `docs/architecture.md`), so the expected values come from
+  construction (mined MATH chains with one corrupted step) and from 35 hand-written attempts (dev 18, test 17, split by
+  problem group so no problem is in both). Built by the developer's own run (the test split is protected): dev 78 and test 77 attempts
+  (60 generated plus 18 and 17 hand-written), identical to a rebuild of the committed builder. Caveats: (1) report `case_accuracy/source=handwritten` and `generated` separately and never
+  the blended number alone, because in the real build only about 4 of 60 dev and 2 of 60 test generated problems are
+  equations, the rest are arithmetic or expression simplification (e.g. `sqrt(25 + 144)`); (2) the lost-solution cases were
+  `other` in the approved plan and were relabelled `algebraic_transformation` after probing `verify` showed `not_valid`,
+  so that label is a design choice (a step that is not a valid consequence of the previous one), not independent ground
+  truth; (3) the generated chains were selected with `verify`, so their accuracy is high by construction. Details and
+  limits: `evals/datasets/README.md`.
+
 ## Modeling
 - Planned build order: verify, classify, localize, retrieve, hint, orchestrator + graph, checkpointer
   + scenarios, Streamlit UI.
@@ -90,6 +102,13 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   level 5 by chance and the model rarely says 5, so the level numbers are pessimistic; no node reads `level` yet. n=15 is a smoke
   check (95% interval for 10/15 is about 0.42-0.85). Not tuned on these misses. Result file:
   `evals/results/classify/20261027T134021Z_b178d94.json`.
+- 2026-10-27 | localize | dev | case_accuracy=1.000 (baseline; n=78, generated 1.000, handwritten 1.000) | 178cc20 | Deterministic
+  (`verify` then `localize`, no model). first_error_step, focus_step and error_type accuracy all 1.000, mismatch_detection_rate
+  1.000, no confusions. A regression suite, not independent evidence: the generated cases are correct by construction and were
+  selected with `verify`, and the 35 hand-written labels were worked out by reading and agree with the pipeline (about ten were
+  probed with `verify` first; the lost-solution label was revised, see above). Dev has few hand-written cases per type (4
+  mismatch, 2 omission, 3 other, 1 control). Test split not run. Result file:
+  `evals/results/localize/20261027T141132Z_178cc20.json`.
 
 ## Deployment
 - Planned: runnable Streamlit app and a demo video using scenarios A and B.

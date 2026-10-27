@@ -1,0 +1,62 @@
+{
+  "seed": 0,
+  "per_split": 60,
+  "chains_tried": {
+    "test": 71,
+    "dev": 77
+  },
+  "dev": {
+    "n": 78,
+    "by_source": {
+      "generated": 60,
+      "handwritten": 18
+    },
+    "by_kind": {
+      "checker_limit": 1,
+      "control": 1,
+      "correct_answer_invalid_step": 1,
+      "generated_not_valid": 60,
+      "incomplete": 1,
+      "lost_solution": 2,
+      "mismatch": 3,
+      "mismatch_then_invalid": 1,
+      "not_valid": 4,
+      "omission": 2,
+      "several_errors": 1,
+      "unparsable": 1
+    },
+    "by_error_type": {
+      "algebraic_transformation": 68,
+      "none": 1,
+      "omission_extraneous_root": 2,
+      "other": 3,
+      "reasoning_result_mismatch": 4
+    }
+  },
+  "test": {
+    "n": 77,
+    "by_source": {
+      "generated": 60,
+      "handwritten": 17
+    },
+    "by_kind": {
+      "control": 3,
+      "correct_answer_invalid_step": 1,
+      "generated_not_valid": 60,
+      "incomplete": 1,
+      "mismatch": 3,
+      "mismatch_then_invalid": 1,
+      "not_valid": 4,
+      "omission": 2,
+      "several_errors": 1,
+      "unparsable": 1
+    },
+    "by_error_type": {
+      "algebraic_transformation": 66,
+      "none": 3,
+      "omission_extraneous_root": 2,
+      "other": 2,
+      "reasoning_result_mismatch": 4
+    }
+  }
+}

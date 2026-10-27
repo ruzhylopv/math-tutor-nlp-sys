@@ -106,3 +106,49 @@ How much to trust a metric: the messages are synthetic and only as messy as the 
 text), most chains are arithmetic or expressions (about a sixth of the generated messages are equations: 25 of 150 in dev, 27 of 150 in test), and spoken math is rare in generated
 data because most chains contain brackets or fractions. Hand-written cases are the discriminating ones.
 
+## localize.jsonl (M4a)
+One line per attempt. Built by `uv run python -m evals.builders.build_localize --math-dir <dir with train.jsonl and test.jsonl>`.
+
+| Field | Meaning |
+|---|---|
+| `id` | `math/<unique_id>#<step>` (generated) or `hand/<nnn>` |
+| `problem` | plain-text math, as `parse_input` would produce |
+| `steps` | the student's steps: `claim`, `justification`, `justification_claim` |
+| `expected` | `first_error_step`, `focus_step` (1-based or null) and `error_type` (null when nothing is wrong) |
+| `kind` | `generated_not_valid`, or the hand-written kind (`not_valid`, `lost_solution`, `omission`, `mismatch`, `mismatch_then_invalid`, `correct_answer_invalid_step`, `several_errors`, `unparsable`, `incomplete`, `control`, `checker_limit`) |
+| `source` | `generated` or `handwritten` |
+
+The eval runs the real `verify` and then `localize` on each case. There is no model.
+
+Where the labels come from:
+- `generated`: a step chain mined from a MATH solution (Algebra, Prealgebra, Intermediate Algebra, levels 1-3; one chain
+  per problem), with one step made wrong by `corrupt.py`. The first wrong step is known by construction, and the type is
+  `algebraic_transformation`. A chain is kept only if `verify` accepts every uncorrupted step and, after the corruption,
+  its first problem is a `not_valid` verdict at exactly that step. So the selection uses the code under test.
+- `handwritten`: 35 cases written by the agent (dev 18, test 17), with the expected values worked out by reading each
+  attempt, then compared with the pipeline (a test fails on any disagreement). That agreement is not a fully blind
+  check: about ten cases were probed with `verify` before their labels were finalized, and one label was revised after
+  probing. The lost-solution cases (`x^2 = 3x` answered with `x = 3`) were `other` in the approved plan and were
+  relabelled `algebraic_transformation` after probing showed `verify` calls the step `not_valid`. That label is a design
+  choice (a step that is not a valid consequence of the previous one), not independent ground truth. The cases added
+  after the review (3 `mismatch` and a second case of each singleton kind) were labelled by reading before anything was
+  run, and all agreed with the pipeline. The `checker_limit` case (`2x + 1 > 7`, a correct solution) is not worked out by
+  reading: it records a limitation of the checker (no inequalities), so `other` is what the checker can say, not a claim
+  about the student. The cases are grouped by problem text and each whole group goes to one split (a deterministic greedy
+  rule that keeps both splits covering every error type and as many kinds as possible), so no problem is in both splits.
+  Kinds that sit on one problem only (`lost_solution`, `checker_limit`) are in dev only. The developer spot-checks a
+  sample (`provenance.spot_check` is `pending`).
+
+**Headline numbers:** report `case_accuracy/source=handwritten` and `case_accuracy/source=generated` separately. Do not
+quote the blended `case_accuracy` alone. In the real build only about 4 of 60 dev and 2 of 60 test generated problems are
+equations; the rest are arithmetic or expression simplification (for example `sqrt(25 + 144)`), so the blended number is
+dominated by a near-trivial group.
+
+How much to trust a metric: accuracy on the generated cases is high by construction (a regression suite). The
+hand-written cases are the discriminating ones, and there are few of them per type (a handful in each split). Known limits:
+- Inequalities and other out-of-grammar steps are `unparsable` by design of the checker, so `other` there is the
+  expected label, not a claim that the student erred.
+- Only the first error is reported; several errors in one attempt are one case with the first one labelled.
+- The generated errors are single-token edits, easier than student errors.
+- A failed check line is information, not an error (see the `localize` docstring).
+

@@ -99,7 +99,7 @@ def test_messages_use_the_add_messages_reducer() -> None:
 
 def test_field_types_follow_the_design() -> None:
     hints = get_type_hints(TutorState, include_extras=True)
-    assert hints["error_type"] == ErrorType
+    assert hints["error_type"] == ErrorType | None
     assert hints["stage"] == Stage
     assert hints["next_action"] == Action
     assert hints["first_error_step"] == int | None
@@ -115,6 +115,7 @@ def test_literals_match_the_architecture() -> None:
     assert get_args(Operation) == (
         "expand", "rearrange", "factor", "zero-product", "substitute", "square", "other",
     )  # fmt: skip
+    assert "other" in get_args(ErrorType)  # the fallback added in M4a
     # final_answer_only is not a localize output (docs/architecture.md)
     assert "final_answer_only" not in get_args(ErrorType)
 

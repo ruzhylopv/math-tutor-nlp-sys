@@ -7,7 +7,6 @@ from pydantic import TypeAdapter
 
 from tutor.nodes.finish_diagnosis import finish_diagnosis
 from tutor.nodes.hint import hint
-from tutor.nodes.localize import localize
 from tutor.nodes.orchestrator import orchestrator
 from tutor.nodes.retrieve import retrieve
 from tutor.nodes.verify import verify
@@ -17,7 +16,6 @@ Node = Callable[[TutorState], dict[str, Any]]
 
 DECLARED_WRITES: dict[str, set[str]] = {
     "verify": {"is_correct", "step_verdicts"},
-    "localize": {"first_error_step", "focus_step", "error_type"},
     "retrieve": {"misconception_candidates", "misconception"},
     "finish_diagnosis": {"stage"},
     "hint": {"hint_text", "stage"},
@@ -25,7 +23,6 @@ DECLARED_WRITES: dict[str, set[str]] = {
 }
 NODES: dict[str, Node] = {
     "verify": verify,
-    "localize": localize,
     "retrieve": retrieve,
     "finish_diagnosis": finish_diagnosis,
     "hint": hint,

@@ -8,8 +8,9 @@ A line that is a closed statement is a check (`sqrt(9+7) = 9-5`). Its relation i
 (it is not a derivation step), its truth goes to `check_holds`, and it is not the predecessor of
 the next line. A check that fails is information, not an error: it is how a student rejects an
 extraneous root. Consequence: a wrong arithmetic claim written as a check line is not flagged by
-`verify` itself; `localize` reads `check_holds`. `justification_claim`s are judged when they are
-closed statements.
+`verify`, and `localize` deliberately ignores `check_holds`, so it is not flagged there either (a
+known, documented limit; see docs/plans/nodes/2026-10-27-m4a-localize.md).
+`justification_claim`s are judged when they are closed statements.
 
 Reads: problem, student_steps
 Writes: is_correct, step_verdicts
