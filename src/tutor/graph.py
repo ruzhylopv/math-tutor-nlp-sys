@@ -2,6 +2,8 @@
 
 from typing import Literal
 
+from langchain_core.messages import HumanMessage
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
@@ -53,8 +55,27 @@ def route_from_orchestrator(state: TutorState) -> Literal["diagnosis", "hint", "
     return "__end__"
 
 
-def build_main_graph() -> CompiledStateGraph[TutorState, None, TutorState, TutorState]:
+def new_turn(student_id: str, text: str) -> TutorState:
+    """The input for one student message: the text, and the stage that starts a run.
+
+    One `invoke` is one message. The stage must be reset on every run, because the checkpointer
+    restores the last run's `stage` (`hinted` or `diagnosed`) and the orchestrator would otherwise
+    start in the wrong mode.
+    """
+    return {
+        "student_id": student_id,
+        "messages": [HumanMessage(content=text)],
+        "stage": "new_message",
+    }
+
+
+def build_main_graph(
+    checkpointer: BaseCheckpointSaver[str] | None = None,
+) -> CompiledStateGraph[TutorState, None, TutorState, TutorState]:
     """parse_input -> orchestrator <-> diagnosis / hint. Both always return to the orchestrator.
+
+    With a checkpointer the state is saved after each run, keyed by `thread_id` in the invoke
+    config, so `hint_level` and `misconceptions_seen` carry over to the next message.
 
     `parse_input` runs once per student message, before the orchestrator; the orchestrator's loop
     (diagnosis or hint, then back) does not run it again.
@@ -69,4 +90,4 @@ def build_main_graph() -> CompiledStateGraph[TutorState, None, TutorState, Tutor
     graph.add_conditional_edges("orchestrator", route_from_orchestrator)
     graph.add_edge("diagnosis", "orchestrator")
     graph.add_edge("hint", "orchestrator")
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)
