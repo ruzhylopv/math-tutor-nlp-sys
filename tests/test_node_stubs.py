@@ -8,7 +8,6 @@ from pydantic import TypeAdapter
 from tutor.nodes.finish_diagnosis import finish_diagnosis
 from tutor.nodes.hint import hint
 from tutor.nodes.orchestrator import orchestrator
-from tutor.nodes.retrieve import retrieve
 from tutor.nodes.verify import verify
 from tutor.state import TutorState
 
@@ -16,14 +15,12 @@ Node = Callable[[TutorState], dict[str, Any]]
 
 DECLARED_WRITES: dict[str, set[str]] = {
     "verify": {"is_correct", "step_verdicts"},
-    "retrieve": {"misconception_candidates", "misconception"},
     "finish_diagnosis": {"stage"},
     "hint": {"hint_text", "stage"},
     "orchestrator": {"next_action", "reply_text"},
 }
 NODES: dict[str, Node] = {
     "verify": verify,
-    "retrieve": retrieve,
     "finish_diagnosis": finish_diagnosis,
     "hint": hint,
     "orchestrator": orchestrator,
