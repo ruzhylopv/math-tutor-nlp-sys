@@ -146,10 +146,20 @@ class CatalogueEntry(BaseModel):
 
 
 class LearnerProfile(BaseModel):
-    """What the learner DB knows about a student. Shape is finalised with the DB tools (M6)."""
+    """What the learner DB knows about a student (`tools/learner_db.get_profile`)."""
 
+    # topics with recorded mistakes, most first
     weak_topics: list[str] = Field(default_factory=list)
+    # misconception id -> times seen
     misconception_counts: dict[str, int] = Field(default_factory=dict)
+
+
+class MisconceptionRecord(BaseModel):
+    """One misconception diagnosed in an attempt, as `record_attempt` stores it."""
+
+    misconception_id: str
+    error_type: ErrorType | None = None
+    focus_step: int | None = None
 
 
 class TutorState(TypedDict, total=False):
