@@ -81,7 +81,7 @@ def test_state_has_the_designed_fields() -> None:
     hints = get_type_hints(TutorState, include_extras=True)
     expected = {
         "messages", "student_id", "problem", "student_steps", "topic", "level", "is_correct",
-        "step_verdicts", "first_error_step", "focus_step", "error_type",
+        "step_verdicts", "first_error_step", "focus_step", "error_context", "error_type",
         "misconception_candidates", "misconception", "hint_level", "hint_text", "hint_retries",
         "stage", "next_action", "reply_text", "turns", "hints_used", "misconceptions_seen",
         "learner_profile",
@@ -104,6 +104,7 @@ def test_field_types_follow_the_design() -> None:
     assert hints["next_action"] == Action
     assert hints["first_error_step"] == int | None
     assert hints["focus_step"] == int | None
+    assert hints["level"] == int | None  # None after a new problem, until classify runs again
 
 
 def test_literals_match_the_architecture() -> None:

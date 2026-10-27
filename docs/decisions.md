@@ -527,3 +527,17 @@ queries wrapped in a larger expression, and the hand-written ones; the full eval
 - **Stack reviews run in parallel in detached worktrees** | reviewing layers one after another in the shared checkout |
   speed, and a reviewer once switched the shared checkout to `main`.
 
+
+## 2026-10-27 | M5 layer 1: the wrong step survives the reset
+Plan: `docs/plans/nodes/2026-10-27-m5-hint.md`. Settles the first OPEN item of "M3 decisions".
+- **`finish_diagnosis` copies the wrong step into `error_context`; `hint` reads only that** | (b) the reset also
+  clears the diagnosis fields (a follow-up question would lose the misconception); (c) reset only when a new attempt
+  arrives (a stale attempt stays in state and must be invalidated on a new problem and on a failed parse) | the
+  developer chose (a). Cost: one more state field, and `error_context` is a copy that can drift from `student_steps`
+  (it is rewritten on every diagnosis, and is None on a clean solution).
+- **Written in `finish_diagnosis`, not `localize`** | `localize` | `localize` does not run on the clean path, so a
+  context from an earlier diagnosis would survive a new, correct attempt. `finish_diagnosis` runs on both paths. It
+  stays a deterministic node with unit tests only.
+- **`parse_input` clears `topic` and `level` when the extracted problem differs from the stored one** | clearing in
+  `classify` on failure | it fixes the cause (the problem changed) and covers the paths where `classify` does not run.
+  `topic` and `level` are now `... | None`. Out-of-scope subjects stay an M6 decision.

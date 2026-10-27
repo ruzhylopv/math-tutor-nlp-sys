@@ -4,10 +4,11 @@ Runs on every message, before the orchestrator. It transcribes: it never solves,
 corrects. For a message without working it resets `student_steps` to an empty list (so steps from
 the previous attempt are not mistaken for a new one); for a message without a problem it keeps the
 stored `problem`. If there is no message, or the model fails twice, the steps are empty and the
-problem stays.
+problem stays. A problem that differs from the stored one also clears `topic` and `level`, which
+described the old problem.
 
 Reads: messages, problem
-Writes: problem, student_steps
+Writes: problem, student_steps, topic, level
 Eval metric: problem-extraction accuracy; claim exact match; step-split accuracy; SymPy parse rate
 """
 
@@ -50,4 +51,7 @@ def parse_input(state: TutorState) -> dict[str, Any]:
     update: dict[str, Any] = {"student_steps": parsed.steps}
     if parsed.problem is not None and parsed.problem.strip():
         update["problem"] = parsed.problem.strip()
+        if stored != "none" and update["problem"] != stored:
+            update["topic"] = None
+            update["level"] = None
     return update

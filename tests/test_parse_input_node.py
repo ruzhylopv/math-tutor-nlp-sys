@@ -46,6 +46,23 @@ def test_a_new_problem_replaces_the_stored_one(canned_llm: Callable[..., None]) 
     assert parse_input(_state("new one: x + 1 = 2", problem="3x = 9"))["problem"] == "x + 1 = 2"
 
 
+def test_a_new_problem_clears_the_topic_and_level_of_the_old_one(
+    canned_llm: Callable[..., None],
+) -> None:
+    canned_llm(ParsedInput=ParsedInput(problem="x + 1 = 2", steps=[]))
+    state = _state("new one: x + 1 = 2", problem="3x = 9")
+    result = parse_input({**state, "topic": "Algebra", "level": 2})
+    assert (result["topic"], result["level"]) == (None, None)
+
+
+def test_the_same_problem_or_the_first_one_keeps_topic_and_level(
+    canned_llm: Callable[..., None],
+) -> None:
+    canned_llm(ParsedInput=ParsedInput(problem="3x = 9", steps=[]))
+    assert "topic" not in parse_input(_state("again: 3x = 9", problem="3x = 9"))
+    assert "topic" not in parse_input(_state("3x = 9"))
+
+
 def test_a_blank_problem_from_the_model_counts_as_none(canned_llm: Callable[..., None]) -> None:
     canned_llm(ParsedInput=ParsedInput(problem="  ", steps=[]))
     assert "problem" not in parse_input(_state("hmm", problem="3x = 9"))
