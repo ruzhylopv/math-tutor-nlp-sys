@@ -7,7 +7,6 @@ from pydantic import TypeAdapter
 
 from tutor.nodes.finish_diagnosis import finish_diagnosis
 from tutor.nodes.hint import hint
-from tutor.nodes.orchestrator import orchestrator
 from tutor.nodes.verify import verify
 from tutor.state import ErrorContext, Step, TutorState
 
@@ -17,13 +16,11 @@ DECLARED_WRITES: dict[str, set[str]] = {
     "verify": {"is_correct", "step_verdicts"},
     "finish_diagnosis": {"stage", "error_context"},
     "hint": {"hint_text", "stage"},
-    "orchestrator": {"next_action", "reply_text"},
 }
 NODES: dict[str, Node] = {
     "verify": verify,
     "finish_diagnosis": finish_diagnosis,
     "hint": hint,
-    "orchestrator": orchestrator,
 }
 PROMPTS = Path(__file__).resolve().parents[1] / "src" / "tutor" / "prompts"
 
