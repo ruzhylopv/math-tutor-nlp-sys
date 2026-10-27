@@ -27,6 +27,6 @@ def _model(name: str) -> "SentenceTransformer":
 def embed(texts: Sequence[str]) -> NDArray[np.float32]:
     """One unit-length row per text, so a dot product is the cosine similarity."""
     vectors = _model(embedding_model_name()).encode(
-        list(texts), normalize_embeddings=True, convert_to_numpy=True
+        list(texts), normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False
     )
     return np.asarray(vectors, dtype=np.float32)

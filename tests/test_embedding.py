@@ -24,7 +24,12 @@ def test_embed_asks_the_model_for_unit_vectors_and_returns_float32(
     vectors = embedding.embed(["a", "b"])
     assert vectors.shape == (2, 2) and vectors.dtype == np.float32
     assert fake.calls == [
-        {"texts": ["a", "b"], "normalize_embeddings": True, "convert_to_numpy": True}
+        {
+            "texts": ["a", "b"],
+            "normalize_embeddings": True,
+            "convert_to_numpy": True,
+            "show_progress_bar": False,
+        }
     ]
 
 
