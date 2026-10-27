@@ -35,6 +35,7 @@ from evals.runner import (
     load_jsonl,
     parse_split_and_limit,
     setup_logging,
+    with_progress,
     write_result,
 )
 from tutor.config import load_config
@@ -216,7 +217,7 @@ def main() -> None:
     if limit is not None and limit < len(cases):
         note += f" SUBSET: {limit} of {len(cases)} messages, taken in turn from each kind."
         cases = stratified_sample(cases, limit)
-    metrics = evaluate(cases, [predict(case) for case in cases])
+    metrics = evaluate(cases, [predict(case) for case in with_progress(cases, "parse_input")])
     result = write_result(
         COMPONENT,
         split,
