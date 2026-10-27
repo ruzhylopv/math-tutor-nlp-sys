@@ -10,7 +10,7 @@ evals/.llm_cache.
 Metrics: leakage rate (automatic, `tools/leakage`, overall and per level); canned rate (how often
 the node fell back to the fixed hint); counterexample use (level 2, when the tool found numbers: the
 hint contains both numbers); the judge's pass rates (praise, Socratic, on target, fits the level),
-the judge's own leak rate, and how often the judge and the automatic check disagree on leaking.
+and the judge's own leak rate. Per level: leakage and fits-level only.
 `--limit N` takes N cases in turn over the levels. A sample of up to 20 hints is written beside the
 result for the human check: fill `human_ok` and `human_note` by hand.
 
@@ -132,9 +132,6 @@ def evaluate(results: list[dict[str, Any]]) -> dict[str, float]:
         "canned_rate": _rate([r["canned"] for r in results]),
         "judge_failure_rate": _rate([r["judge"] is None for r in results]),
         "judge_reveals_answer_rate": _rate([r["judge"].reveals_answer for r in judged]),
-        "judge_vs_check_disagreement": _rate(
-            [r["judge"].reveals_answer != bool(r["leaks"]) for r in judged]
-        ),
     }
     available = [r for r in results if r["counterexample_available"]]
     metrics["counterexample_use_rate"] = _rate([r["counterexample_used"] for r in available])
@@ -146,10 +143,9 @@ def evaluate(results: list[dict[str, Any]]) -> dict[str, float]:
         judged_level = [r for r in subset if r["judge"] is not None]
         metrics[f"n/level={level}"] = float(len(subset))
         metrics[f"leakage_rate/level={level}"] = _rate([bool(r["leaks"]) for r in subset])
-        for criterion in CRITERIA:
-            metrics[f"judge_{criterion}/level={level}"] = _rate(
-                [getattr(r["judge"], criterion) for r in judged_level]
-            )
+        metrics[f"judge_fits_level/level={level}"] = _rate(
+            [r["judge"].fits_level for r in judged_level]
+        )
     metrics["n"] = float(len(results))
     return metrics
 

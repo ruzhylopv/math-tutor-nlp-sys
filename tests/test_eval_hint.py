@@ -60,19 +60,8 @@ def test_leakage_and_judge_rates() -> None:
     assert metrics["leakage_rate/level=2"] == 0.5
     assert metrics["judge_reveals_answer_rate"] == 0.25
     assert metrics["judge_socratic"] == 0.75 and metrics["judge_on_target"] == 0.75
-    assert metrics["judge_socratic/level=2"] == 0.5
-    assert metrics["judge_vs_check_disagreement"] == 0.0
+    assert metrics["judge_fits_level/level=2"] == 1.0
     assert metrics["n"] == 4.0 and metrics["n/level=4"] == 0.0
-
-
-def test_judge_and_check_disagreements_are_counted() -> None:
-    results = [
-        _result(judge=_rubric(reveals_answer=True)),  # judge says leak, check says no
-        _result(leaks=["x"], judge=_rubric()),  # check says leak, judge says no
-        _result(judge=_rubric()),
-        _result(leaks=["x"], judge=_rubric(reveals_answer=True)),
-    ]
-    assert _module()["evaluate"](results)["judge_vs_check_disagreement"] == 0.5
 
 
 def test_a_failed_judge_is_counted_and_left_out_of_the_pass_rates() -> None:
