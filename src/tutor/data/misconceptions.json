@@ -357,7 +357,7 @@
     "category": "exponents_powers",
     "topic": "Algebra",
     "correct_rule": "x^0 = 1",
-    "example": "5^0 -> 0"
+    "example": "x^0 -> 0"
   },
   {
     "id": "M046",
