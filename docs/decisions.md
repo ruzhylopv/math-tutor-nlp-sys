@@ -457,3 +457,10 @@ The five reviews found five P1s; the stack had been merged before they could be 
   Eedi** | TF-IDF/BM25 or plain cosine over the catalogue as the only method | the developer chose embeddings; the
   lighter methods stay available as a first baseline if installation size is a problem. The dependency is added in
   the M4b PR.
+- **`localize` dataset: hand-written cases split by problem group, generated chains selected with `verify`, PRM800K
+  deferred** | alternating the hand-written cases within a kind (it put 6 problems in both dev and test); generated chains
+  without a filter; PRM800K step labels now | a whole problem group goes to one split by a deterministic greedy rule that
+  keeps both splits covering every error type and as many kinds as possible, so no problem leaks. An unfiltered chain
+  would include steps the checker cannot parse, which `localize` could not be scored on. The cost of the filter is
+  circularity (the generated accuracy is high by construction, noted in `evals/datasets/README.md`), so the per-source
+  accuracy is the headline and the blended number is not quoted alone. PRM800K stays deferred (see above).

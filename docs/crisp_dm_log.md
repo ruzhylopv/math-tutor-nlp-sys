@@ -46,8 +46,15 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 
 - 2026-10-27 | localize attempts | No public dataset has first-error labels for our `omission_extraneous_root` and
   `reasoning_result_mismatch` types (checked earlier, see `docs/architecture.md`), so the expected values come from
-  construction (mined MATH chains with one corrupted step) and from 29 hand-written attempts. Preview of the builder: dev 77
-  and test 72 attempts, the real build is pending the developer's run. Details and limits: `evals/datasets/README.md`.
+  construction (mined MATH chains with one corrupted step) and from 35 hand-written attempts (dev 18, test 17, split by
+  problem group so no problem is in both). With 60 generated attempts per split the build gives dev 78 and test 77 attempts;
+  the real build is pending the developer's run. Caveats: (1) report `case_accuracy/source=handwritten` and `generated` separately and never
+  the blended number alone, because in the real build only about 4 of 60 dev and 2 of 60 test generated problems are
+  equations, the rest are arithmetic or expression simplification (e.g. `sqrt(25 + 144)`); (2) the lost-solution cases were
+  `other` in the approved plan and were relabelled `algebraic_transformation` after probing `verify` showed `not_valid`,
+  so that label is a design choice (a step that is not a valid consequence of the previous one), not independent ground
+  truth; (3) the generated chains were selected with `verify`, so their accuracy is high by construction. Details and
+  limits: `evals/datasets/README.md`.
 
 ## Modeling
 - Planned build order: verify, classify, localize, retrieve, hint, orchestrator + graph, checkpointer
