@@ -550,3 +550,25 @@ Plan: `docs/plans/nodes/2026-10-27-m5-hint.md`. Reverses "No score threshold" of
   them cleanly. 0.85 keeps 91% answered at 96% precision. Cost: the number is not measured on off-catalogue steps; revisit
   when real student steps exist. `hint` with no misconception writes a generic Socratic hint.
 - **Still no LLM re-ranking.**
+
+## 2026-10-27 | M5 layer 3: counterexample, leakage check, canned hints
+Plan: `docs/plans/nodes/2026-10-27-m5-hint.md`. Settles "counterexample tool design", "leakage-check inputs" and "canned
+fallback hints" from the roadmap.
+- **Counterexample by changed side, not by truth value** | the plan's "first number where the two lines differ"
+  with truth values for equations | two different equations are both false at almost every whole number, and the
+  number that makes the line before true is the problem's answer (excluded). Instead: expressions get the two values;
+  an equation with one changed side gets the values of that side; an equation with both sides changed gets the value
+  of left - right in each line, unless the second is a scaled copy of the first (a valid rewrite, no counterexample).
+  Small whole numbers in a fixed order (2, 3, 4, -1, ...; not 0 or 1, which hide many wrong rules), never a solution
+  of the problem, never a value where a line is undefined. Cost: "balance" counterexamples are harder to word.
+- **Leakage: two checks on fragments in backticks, plus a bare `var = number`** | scanning all prose for math; string
+  matching only | the hint prompt will require math in backticks, so fragments are known. A hint leaks if it
+  states `variable = solution` or writes a form (the value, `expand`, `factor` or `simplify`) of a side of the problem or the
+  line before, unless the fragment is that side as written. SymPy distributes `3(x + 2)` into `3x + 6` while parsing, so
+  "as written" is decided on the text, the forms on SymPy. Limits: only these forms are caught (not every correct
+  next step), and unparsable fragments are ignored; the eval measures the leakage rate with this same check, so it
+  cannot see leaks it cannot see.
+- **`algebra.solution_set` and a public `algebra.guarded`** | a second copy of the SymPy guard and timeout in the
+  new tools | one place for the SymPy failure and timeout handling.
+- **Canned hints** hold no numbers and no math, so they cannot leak; they are used by the M6 orchestrator after a
+  second leak. Rejected: generating them per problem (would need a check again).
