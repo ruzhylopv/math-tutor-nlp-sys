@@ -55,6 +55,10 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   so that label is a design choice (a step that is not a valid consequence of the previous one), not independent ground
   truth; (3) the generated chains were selected with `verify`, so their accuracy is high by construction. Details and
   limits: `evals/datasets/README.md`.
+- 2026-10-27 | retrieve catalogue and queries | The Eedi catalogue could not be downloaded, so the catalogue is hand-written (119
+  school-algebra misconceptions in 13 categories, `src/tutor/data/misconceptions.json`) and the eval queries are
+  generated from 99 mechanical wrong rules (SymPy-confirmed) plus 42 hand-written ones. Dev 225 and test 213 queries
+  (204 + 21 and 192 + 21). Circular by design (same author); details and limits: `evals/datasets/README.md`.
 
 ## Modeling
 - Planned build order: verify, classify, localize, retrieve, hint, orchestrator + graph, checkpointer
@@ -109,6 +113,15 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   probed with `verify` first; the lost-solution label was revised, see above). Dev has few hand-written cases per type (4
   mismatch, 2 omission, 3 other, 1 control). Test split not run. Result file:
   `evals/results/localize/20261027T141132Z_178cc20.json`.
+- 2026-10-27 | retrieve | dev | recall@1=0.929, recall@5=0.991, map@5=0.956 (baseline; n=225; random 0.008 / 0.042) | 41975b6 | Hybrid of
+  string similarity and embedding cosine (MiniLM) on the shape of the rewrite (variables to `v`, numbers to `n`). Per
+  source: generated (204) 0.941 / 1.000 / 0.966, handwritten (21) 0.810 / 0.905 / 0.857. Lowest recall@1 by category:
+  absolute_value 0.62, inequalities 0.80, quadratics 0.80, exponents_powers 0.84. The first design (embed the description
+  plus example, query with topic, error type and raw lines) scored recall@1 0.16 on the same dev set and was replaced
+  after dev-only experiments (`docs/decisions.md`). Caveats: partly circular (same author for catalogue and queries);
+  plain string similarity alone is nearly as good, so the embedding model adds little here; 21 hand-written queries.
+  The test split's aggregate scores were seen once before tuning (no examples were read); test not run. Result file:
+  `evals/results/retrieve/20261027T152646Z_41975b6.json`.
 
 ## Deployment
 - Planned: runnable Streamlit app and a demo video using scenarios A and B.

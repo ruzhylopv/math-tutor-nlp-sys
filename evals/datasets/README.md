@@ -152,3 +152,40 @@ hand-written cases are the discriminating ones, and there are few of them per ty
 - The generated errors are single-token edits, easier than student errors.
 - A failed check line is information, not an error (see the `localize` docstring).
 
+## retrieve.jsonl (M4b)
+One line per query: the state `retrieve` reads at the moment of a wrong step. Built by
+`uv run python -m evals.builders.build_retrieve` (no outside data). The catalogue it searches is
+`src/tutor/data/misconceptions.json` (119 hand-written entries).
+
+| Field | Meaning |
+|---|---|
+| `id` | `gen/<entry>#<n>` (generated) or `hand/<nnn>` |
+| `problem`, `steps`, `focus_step`, `error_type`, `topic` | the state: `problem` is the line before the focus step for a generated query |
+| `expected` | the catalogue entry id that the wrong step shows |
+| `category` | the entry's category |
+| `source` | `generated` or `handwritten` |
+
+Where the labels come from:
+- `generated`: 99 mechanical wrong rules (`evals/builders/misconception_rules.py`), a few draws each. A rule turns
+  a correct line into the line a student with that misconception would write, with random numbers and variable
+  letters; SymPy confirmed each wrong line is really wrong. So the true misconception is known by construction. They
+  are single-rule rewrites, easier than a student's real work. M118 has no rule (SymPy sees its wrong step as
+  `implies`).
+- `handwritten`: 21 queries per split (42 in all), worked out by reading, for the entries without a rule (inequalities,
+  translations, the reasons for rejecting roots, ...) and some paraphrases of mechanical ones. The developer
+  spot-checks a sample (`spot_check: pending`).
+- Entries alternate between dev and test by id (M001 dev, M002 test, ...), each with its queries, so no entry is in
+  both splits and both cover every category.
+
+How much to trust a metric:
+- Recall@k is optimistic. The same author wrote the catalogue examples and the rules in the same shapes, and `retrieve`
+  compares shapes, so the match is partly circular. Plain string similarity on the shapes is nearly as good as the
+  embedding model on this data.
+- Quote per-source numbers: the hand-written queries are the discriminating ones, and there are only 21 per split (one
+  query is about 5 points).
+- Entries about inequalities, a bare plus-or-minus and the reasons for rejecting roots cannot be reached in the full
+  pipeline: `verify` cannot parse those steps, so `localize` gives `other` and `retrieve` returns nothing. Here
+  `retrieve` is evaluated on its own.
+- The test split's aggregate scores were printed once while the builder was being previewed, before tuning. No test
+  example was read and all choices were made on dev, but the test numbers are not untouched (`docs/decisions.md`).
+
