@@ -145,5 +145,17 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   `human_ok`), a full dev run when the rate limit allows, then the test split once (the developer builds
   `test/hint.jsonl`). Result: `evals/results/hint/20261027T163059Z_6271572.json` (+ `_samples.jsonl`).
 
+- **M6 layers 1-4, orchestration (2026-10-27)**: learner DB tools, `orchestrator` (three modes), SQLite checkpointer,
+  scenarios A and B as YAML with a replay runner, `eval_orchestrator.py`. **No live metrics yet.** With the model
+  scripted, both scenarios replay through the real graph (real verify, localize, leakage check, checkpointer and learner
+  DB) and meet every expectation: A asks for steps, hints at level 1, then records a correct solution and offers
+  practice at the third occurrence; B hints at levels 1, 2 and 1 (the level resets for the new misconception) and ends
+  correct. That checks the wiring and the rules, not the model. The live replay was started and stopped: the free
+  model returned HTTP 429 on every orchestrator call, which fell back to the step rule, so its numbers would mean
+  nothing; no result file was written. The routing eval has no dataset: 32 unlabelled candidate turns are in
+  `evals/datasets/review/orchestrator_candidates.jsonl` for the developer to label. Next: label the candidates
+  (`dev/orchestrator.jsonl`), run `--part routing` and `--part scenarios` when the rate limit allows, then fill in
+  this entry with the numbers.
+
 ## Deployment
 - Planned: runnable Streamlit app and a demo video using scenarios A and B.

@@ -48,8 +48,9 @@ structure (is there a problem, are there steps) and not only on raw text. For a 
 it resets `student_steps` to empty; for a message without a problem it keeps the stored `problem`.
 DECIDED (M5, 2026-10-27): `finish_diagnosis` copies the wrong step into `error_context` (step number, the line
 before, the claim, the earlier correct claims), and `hint` reads only that, so the reset above does not matter to it.
-`parse_input` clears `topic` and `level` when the problem changes. What the orchestrator does with an out-of-scope
-subject is still OPEN (M6). See "M5 layer 1" in `docs/decisions.md`.
+`parse_input` clears `topic` and `level` when the problem changes. DECIDED (M6, 2026-10-27): for an out-of-scope
+subject the orchestrator declines after the diagnosis, with no hint and no `record_attempt`. The orchestrator resets the
+per-problem fields when `topic` is None while an old diagnosis is stored. See "M6" in `docs/decisions.md`.
 
 ### Diagnosis subgraph
 Fixed order, compiled separately so evals can call it without the chat layer.
