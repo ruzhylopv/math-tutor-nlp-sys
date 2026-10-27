@@ -90,7 +90,7 @@ invalid step, therefore goes on to `localize` (error type `reasoning_result_mism
 | parse_input | LLM, structured output (main graph, before the orchestrator) | Turn the student's raw text into our structure: the problem text and the attempt as `Step`s (claim, justification, optional justification claim, operation tag). Keeps the stored problem when the message has none. | latest student message, stored problem | problem, student_steps | problem-extraction accuracy; step-split accuracy; SymPy parse rate of claims |
 | classify | LLM | Tag topic and level | problem | topic, level | topic accuracy / macro-F1 |
 | verify | deterministic (SymPy) | Solve the original; check the final answer; check each step as equivalent / implies / narrows / not_valid / unparsable; evaluate arithmetic claims in justifications | problem, student_steps | is_correct, step_verdicts | answer-check accuracy; step-verdict accuracy |
-| localize | rules on SymPy verdicts, LLM only for interpretation | First wrong step or error type; check that the justification matches what happened | step_verdicts, student_steps | first_error_step, focus_step, error_type | first-error-step accuracy; error-type accuracy; mismatch detection rate |
+| localize | rules on SymPy verdicts (v1: rules only; an LLM interpretation of justifications is a later option) | First wrong step or error type; check that the justification matches what happened | step_verdicts, student_steps | first_error_step, focus_step, error_type | first-error-step accuracy; error-type accuracy; mismatch detection rate |
 | retrieve | retrieval | Query: problem + wrong step + topic + error type; search the misconception catalogue | above | misconception_candidates, misconception | Recall@k, MAP@k |
 | finish_diagnosis | deterministic | Last node of the diagnosis subgraph; marks the diagnosis as finished | none | stage | none (unit test only; see OPEN in decisions.md) |
 | hint | LLM | Socratic hint grounded in the misconception, at `hint_level`; praise what was right; never give the answer | misconception, wrong step, hint_level, profile, counterexample values (from a SymPy tool) | hint_text, stage | answer-leakage rate (automatic); rubric judge and a small human check |
@@ -161,6 +161,8 @@ the LLM only words the hint. OPEN: the tool's design (how it chooses the value, 
   added roots that were never rejected. `first_error_step` is None.
 - `reasoning_result_mismatch`: the math is right but the stated justification is wrong
   (for example "-2 and -9 add to 11").
+- `other`: a fallback so that cases the three types do not cover are visible in the eval and not forced into a
+  wrong type: an unparsable step, a lost solution (a `narrows` step) or an incomplete answer. Added in M4a.
 - `final_answer_only`: no steps given. Not produced by `localize`: `parse_input` finds zero steps and the
   orchestrator routes to `ask`, so diagnosis does not continue.
 

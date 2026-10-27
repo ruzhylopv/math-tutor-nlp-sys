@@ -434,3 +434,21 @@ The five reviews found five P1s; the stack had been merged before they could be 
   LaTeX problem text while in use `classify` receives `parse_input`'s plain text (a known gap, noted in the result file).
 - **`classify` returning `{}` on failure leaves a stale `topic` and `level` in a thread** | clearing them in `classify` |
   open, see the OPEN items in "M3 decisions" above.
+
+## 2026-10-27 | M4a decisions (`localize`)
+- **Error types: the three we have plus `other`** | keeping three and forcing every case into one of them; a separate
+  `unparsable_step` type now | the taxonomy was OPEN (see "OPEN: error-type taxonomy"); a fallback makes the cases
+  the three do not cover visible in the eval without committing to a finer split before there is data. Covers
+  unparsable steps, lost solutions (a `narrows` step) and incomplete answers. Still open: lost solutions as their own
+  type, several errors in one solution (only the first is reported), wrong method.
+- **`localize` is rules only in v1, no LLM** | an LLM classifying the error type | the verdicts already say where and
+  roughly what; a model on this path would add latency and could contradict SymPy. A later iteration may add an LLM
+  reading of justifications if the eval shows the rules miss it.
+- **An `unparsable` step gives `first_error_step` None and `focus_step` = that step** | blaming the step as
+  `algebraic_transformation` | SymPy could not judge it; the tutor can still ask the student to rewrite it.
+- **`error_type` is optional in `TutorState` (None when nothing is wrong)** | a sentinel value `none` in `ErrorType` |
+  an absent error is not an error type, and the stale-field problem (M3 OPEN items) is easier to see with None.
+- **PRM800K step labels are not used in v1** | using them as a second opinion now | its solutions are prose and LaTeX
+  that need a conversion to plain-text steps which does not exist, and `-1` does not mean "algebraically invalid".
+- **For M4b, PyTorch (sentence-transformers) and FAISS are approved by the developer**, and the developer downloads
+  the Eedi dataset. The dependency is added in the M4b plan's PR, not here.
