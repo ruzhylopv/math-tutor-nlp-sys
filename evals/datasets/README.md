@@ -152,3 +152,45 @@ hand-written cases are the discriminating ones, and there are few of them per ty
 - The generated errors are single-token edits, easier than student errors.
 - A failed check line is information, not an error (see the `localize` docstring).
 
+## retrieve.jsonl (M4b)
+One line per query: the state `retrieve` reads at the moment of a wrong step. Built by
+`uv run python -m evals.builders.build_retrieve` (no outside data). The catalogue it searches is
+`src/tutor/data/misconceptions.json` (119 hand-written entries).
+
+| Field | Meaning |
+|---|---|
+| `id` | `gen/<entry>#<n>`, `wrap/<entry>#<n>` or `hand/<nnn>` |
+| `problem`, `steps`, `focus_step`, `error_type`, `topic` | the state: `problem` is the line before the focus step for a generated query |
+| `expected` | the catalogue entry id that the wrong step shows |
+| `category` | the entry's category |
+| `source` | `generated`, `generated_wrapped` or `handwritten` |
+
+Where the labels come from:
+- `generated`: 99 mechanical wrong rules (`evals/builders/misconception_rules.py`), four draws each. A rule turns a
+  correct line into the line a student with that misconception would write, with random numbers and variable
+  letters; SymPy confirmed each wrong line is really wrong. So the true misconception is known by construction.
+  **These are near-copies of the catalogue examples**: `retrieve` compares shapes (numbers and variables abstracted),
+  and for 89 of the 99 rules the query's shape equals the example's. The same author wrote both, so a high score here
+  is close to a lookup and says little.
+- `generated_wrapped`: the same rules with both lines inside the same larger expression (a term added to both sides of
+  an equation, or a term added to or a factor multiplying an expression), two draws per rule, so the shape is no
+  longer the example's. This is the first, mild perturbation; rules whose lines contain `or` or `+-` are not
+  wrapped. The wrapped number is the more honest one for generated queries.
+- `handwritten`: 38 queries (20 dev, 18 test), worked out by reading, for the entries without a rule (inequalities,
+  translations, ...) and some paraphrases of mechanical ones. The developer spot-checks a sample (`spot_check:
+  pending`).
+- `M064`, `M067` and `M068` have no query: they are about a root accepted without a check or rejected for a wrong
+  reason, which no single step's shape shows (`UNREACHABLE` in `handwritten_queries.py`).
+- Entries alternate between dev and test by id (M001 dev, M002 test, ...), each with its queries, so no entry is in
+  both splits and both cover every category. Sibling entries (`M037`/`M038`, `M078`/`M079`, ...) fall on opposite
+  sides, so tuning on dev transfers to test more than it would for a split by family.
+
+How much to trust a metric:
+- Quote per-source numbers, mainly `generated_wrapped` and `handwritten`. The hand-written set is small (20 in dev; one
+  query is 5 points).
+- Recall@k is optimistic: one author wrote the catalogue and the queries, and nothing here is real student work.
+- Entries about inequalities and a bare plus-or-minus cannot be reached in the full pipeline: `verify` cannot parse
+  those steps, so `localize` gives `other` and `retrieve` returns nothing. Here `retrieve` is evaluated on its own.
+- The test split is no longer untouched. Its aggregate scores were printed once while the builder was previewed,
+  before tuning, and a reviewer later ran `retrieve` over it and looked at the misses to diagnose labels. No example
+  was used to tune anything, but the test number should be reported with this caveat (`docs/decisions.md`).

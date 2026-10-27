@@ -9,7 +9,7 @@ reviews PRs and merges.
 - The plan gate stays: plans are approved in chat first.
 - Stacked PRs via `gh stack` (installed, stacked PRs enabled on the repo).
 - `add-node.md` and `run-eval.md` move to `<name>/SKILL.md`.
-- Review loop: at most 2 passes.
+- Review loop: at most 2 passes (superseded 2026-10-27 by one review pass, a fix only for P0/P1: docs/plans/workflow/2026-10-27-single-review-pass.md).
 
 ## Severity tiers
 - P0 blocker: secrets/.env access, edits to test datasets or labels, broken build, failing

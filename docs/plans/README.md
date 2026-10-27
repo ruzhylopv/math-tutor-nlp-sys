@@ -20,8 +20,9 @@ Path: `docs/plans/<area>/YYYY-MM-DD-<topic>.md`.
 | 2026-10-25 | [address-review: hardening](workflow/2026-10-25-address-review-hardening.md) | implemented |
 | 2026-10-25 | [Design handoff to docs](design/2026-10-25-design-handoff.md) | implemented |
 | 2026-10-25 | [Design gaps (PR #11 review)](design/2026-10-25-design-gaps.md) | implemented (docs) |
-| 2026-10-27 | [One review pass](workflow/2026-10-27-single-review-pass.md) | implemented |
-| 2026-10-27 | [M4a localize](nodes/2026-10-27-m4a-localize.md) | approved, in progress |
+| 2026-10-27 | [One review pass](workflow/2026-10-27-single-review-pass.md) | in review |
+| 2026-10-27 | [M4b retrieve](nodes/2026-10-27-m4b-retrieve.md) | approved, in progress |
+| 2026-10-27 | [M4a localize](nodes/2026-10-27-m4a-localize.md) | merged |
 | 2026-10-26 | [M3 input layer](nodes/2026-10-26-m3-input-layer.md) | merged |
 | 2026-10-26 | [M2 verify](nodes/2026-10-26-m2-verify.md) | approved, in progress |
 | 2026-10-25 | [Roadmap M1-M7](design/2026-10-25-roadmap.md) | draft, awaiting review |

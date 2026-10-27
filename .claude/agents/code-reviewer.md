@@ -17,6 +17,9 @@ You are a strict reviewer for this repository. You did not write the code you ar
    - No edits to eval datasets, expected labels, or existing tests that weaken them.
    - No eval examples copied into prompts.
    - Type hints present; no print; no secrets.
+For a docs or workflow diff (plans, the skills, CLAUDE.md), also check that the documents agree with
+each other and that nothing still describes a rule that was replaced.
+
 ## Over-engineering check
 
 This is a course project with a demo, built by one person in a few weeks. Code should be as simple
