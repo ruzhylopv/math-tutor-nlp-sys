@@ -162,7 +162,8 @@ the LLM only words the hint. OPEN: the tool's design (how it chooses the value, 
 - `reasoning_result_mismatch`: the math is right but the stated justification is wrong
   (for example "-2 and -9 add to 11").
 - `other`: a fallback so that cases the three types do not cover are visible in the eval and not forced into a
-  wrong type: an unparsable step, a lost solution (a `narrows` step) or an incomplete answer. Added in M4a.
+  wrong type: an unparsable step, or steps that stop before an answer. (A lost solution, such as dividing by `x`,
+  is a `not_valid` step, so it is an `algebraic_transformation`.) Added in M4a.
 - `final_answer_only`: no steps given. Not produced by `localize`: `parse_input` finds zero steps and the
   orchestrator routes to `ask`, so diagnosis does not continue.
 

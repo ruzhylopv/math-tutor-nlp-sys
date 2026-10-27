@@ -29,8 +29,8 @@ Rules, in this order. The node scans the steps once, in order; the first step wi
    `first_error_step` = None, `focus_step` = the first `implies` step; `error_type` = `omission_extraneous_root`.
    Rule 4 takes priority over rule 5 on purpose: an `implies` step with a wrong answer is treated as an omitted
    root.
-5. No such step, `is_correct` False, no `implies` step (for example a lost solution through a `narrows` step, or an
-   incomplete answer): `first_error_step` = None, `focus_step` = None, `error_type` = `other`.
+5. No such step, `is_correct` False, no `implies` step (for example steps that stop before an answer):
+   `first_error_step` = None, `focus_step` = None, `error_type` = `other`.
 6. A clean state (nothing found): `first_error_step`, `focus_step` and `error_type` are all None. The graph does not
    call `localize` then; the node is still defined for it. `error_type` becomes optional in `TutorState`.
 - A check line that fails (`check_holds` False) is information, not an error (it is how a student rejects an
@@ -52,8 +52,8 @@ Rules, in this order. The node scans the steps once, in order; the first step wi
   label is `algebraic_transformation` at that index. Only chains where `verify` finds every uncorrupted step valid
   are kept (the selection uses the code under test, as in the `verify` dataset; noted in the README).
 - Hand-written, with the expected values worked out by reading each case: `omission_extraneous_root` (squaring
-  without checking), `reasoning_result_mismatch` (right math, wrong stated sum), unparsable steps, a lost solution,
-  several errors, a correct answer reached through an invalid step, a failed check line that rejects a root.
+  without checking), `reasoning_result_mismatch` (right math, wrong stated sum), unparsable steps, a lost solution
+  (`verify` reports it as `not_valid`, so it is an `algebraic_transformation`), steps that stop early, several errors, a correct answer reached through an invalid step, a failed check line that rejects a root.
   The developer spot-checks a sample.
 - PRM800K human step labels as a second opinion: not in v1. Its prose-and-LaTeX solutions need a conversion to
   plain-text steps that does not exist yet, and its `-1` means "everything else", not "algebraically invalid"

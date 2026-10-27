@@ -441,8 +441,9 @@ The five reviews found five P1s; the stack had been merged before they could be 
 - **Error types: the three we have plus `other`** | keeping three and forcing every case into one of them; a separate
   `unparsable_step` type now | the taxonomy was OPEN (see "OPEN: error-type taxonomy"); a fallback makes the cases
   the three do not cover visible in the eval without committing to a finer split before there is data. Covers
-  unparsable steps, lost solutions (a `narrows` step) and incomplete answers. Still open: lost solutions as their own
-  type, several errors in one solution (only the first is reported), wrong method.
+  unparsable steps and steps that stop before an answer. A lost solution turned out to be `not_valid` in `verify`
+  (checked on `x^2 = 3x`), so it is an `algebraic_transformation`. Still open: lost solutions as their own type,
+  several errors in one solution (only the first is reported), wrong method.
 - **`localize` is rules only in v1, no LLM** | an LLM classifying the error type | the verdicts already say where and
   roughly what; a model on this path would add latency and could contradict SymPy. A later iteration may add an LLM
   reading of justifications if the eval shows the rules miss it.

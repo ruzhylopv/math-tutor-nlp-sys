@@ -9,7 +9,7 @@ first step with a problem decides:
 - a valid step whose justification claim is false: that step, `reasoning_result_mismatch`.
 If every step is fine but the final answer is wrong: a non-reversible (`implies`) step means
 roots may have been added and never rejected (`omission_extraneous_root`, the first such step is
-the focus); otherwise `other` (for example a lost solution through a `narrows` step). With
+the focus); otherwise `other` (for example steps that stop before an answer). With
 nothing wrong all three fields are None.
 
 A failed check line (`check_holds` False) is information, not an error: it is how a student
