@@ -36,6 +36,11 @@ def _latest_student_message(state: TutorState) -> str:
     return ""
 
 
+def _squash(text: str) -> str:
+    """Remove all whitespace, so `3x=9` and `3x = 9` count as the same problem."""
+    return "".join(text.split())
+
+
 def parse_input(state: TutorState) -> dict[str, Any]:
     """Ask the model to split the latest message into a problem and steps."""
     message = _latest_student_message(state)
@@ -51,7 +56,7 @@ def parse_input(state: TutorState) -> dict[str, Any]:
     update: dict[str, Any] = {"student_steps": parsed.steps}
     if parsed.problem is not None and parsed.problem.strip():
         update["problem"] = parsed.problem.strip()
-        if stored != "none" and update["problem"] != stored:
+        if stored != "none" and _squash(update["problem"]) != _squash(stored):
             update["topic"] = None
             update["level"] = None
     return update
