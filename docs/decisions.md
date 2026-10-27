@@ -527,3 +527,62 @@ queries wrapped in a larger expression, and the hand-written ones; the full eval
 - **Stack reviews run in parallel in detached worktrees** | reviewing layers one after another in the shared checkout |
   speed, and a reviewer once switched the shared checkout to `main`.
 
+
+## 2026-10-27 | M5 layer 1: the wrong step survives the reset
+Plan: `docs/plans/nodes/2026-10-27-m5-hint.md`. Settles the first OPEN item of "M3 decisions".
+- **`finish_diagnosis` copies the wrong step into `error_context`; `hint` reads only that** | (b) the reset also
+  clears the diagnosis fields (a follow-up question would lose the misconception); (c) reset only when a new attempt
+  arrives (a stale attempt stays in state and must be invalidated on a new problem and on a failed parse) | the
+  developer chose (a). Cost: one more state field, and `error_context` is a copy that can drift from `student_steps`
+  (it is rewritten on every diagnosis, and is None on a clean solution).
+- **Written in `finish_diagnosis`, not `localize`** | `localize` | `localize` does not run on the clean path, so a
+  context from an earlier diagnosis would survive a new, correct attempt. `finish_diagnosis` runs on both paths. It
+  stays a deterministic node with unit tests only.
+- **`parse_input` clears `topic` and `level` when the extracted problem differs from the stored one** | clearing in
+  `classify` on failure | it fixes the cause (the problem changed) and covers the paths where `classify` does not run.
+  `topic` and `level` are now `... | None`. Out-of-scope subjects stay an M6 decision.
+
+## 2026-10-27 | M5 layer 2: abstention in `retrieve`
+Plan: `docs/plans/nodes/2026-10-27-m5-hint.md`. Reverses "No score threshold" of M4b for the threshold only.
+- **`MIN_SCORE = 0.85`: below it `misconception` is None, candidates are kept** | no threshold (a confidently wrong
+  top-1 would mislead `hint`); a higher one (0.90 gives answered 0.87, precision 0.982) | the dev queries are near-copies
+  of catalogue examples, so right matches mostly score 1.0 and the 33 wrong top-1s sit at 0.75-0.96; no value separates
+  them cleanly. 0.85 keeps 91% answered at 96% precision. Cost: the number is not measured on off-catalogue steps; revisit
+  when real student steps exist. `hint` with no misconception writes a generic Socratic hint.
+- **Still no LLM re-ranking.**
+
+## 2026-10-27 | M5 layer 3: counterexample, leakage check, canned hints
+Plan: `docs/plans/nodes/2026-10-27-m5-hint.md`. Settles "counterexample tool design", "leakage-check inputs" and "canned
+fallback hints" from the roadmap.
+- **Counterexample by changed side, not by truth value** | the plan's "first number where the two lines differ"
+  with truth values for equations | two different equations are both false at almost every whole number, and the
+  number that makes the line before true is the problem's answer (excluded). Instead: expressions get the two values;
+  an equation with one changed side gets the values of that side; an equation with both sides changed gets the value
+  of left - right in each line, unless the second is a scaled copy of the first (a valid rewrite, no counterexample).
+  Small whole numbers in a fixed order (2, 3, 4, -1, ...; not 0 or 1, which hide many wrong rules), never a solution
+  of the problem, never a value where a line is undefined. Cost: "balance" counterexamples are harder to word.
+- **Leakage: two checks on fragments in backticks, plus a bare `var = number`** | scanning all prose for math; string
+  matching only | the hint prompt will require math in backticks, so fragments are known. A hint leaks if it
+  states `variable = solution` or writes a form (the value, `expand`, `factor` or `simplify`) of a side of the problem or the
+  line before, unless the fragment is that side as written. SymPy distributes `3(x + 2)` into `3x + 6` while parsing, so
+  "as written" is decided on the text, the forms on SymPy. Limits: only these forms are caught (not every correct
+  next step), and unparsable fragments are ignored; the eval measures the leakage rate with this same check, so it
+  cannot see leaks it cannot see.
+- **`algebra.solution_set` and a public `algebra.guarded`** | a second copy of the SymPy guard and timeout in the
+  new tools | one place for the SymPy failure and timeout handling.
+- **Canned hints** hold no numbers and no math, so they cannot leak; they are used by the M6 orchestrator after a
+  second leak. Rejected: generating them per problem (would need a check again).
+
+## 2026-10-27 | M5 layers 4-5: the `hint` node and its eval
+- **`hint` never fails to return a hint** | returning nothing so the orchestrator decides | with no `error_context` or
+  when the model fails, it returns the canned hint for the level; the orchestrator (M6) still runs the leakage check and
+  can retry. Cost: a canned hint hides model failures from the student, so the eval reports `canned_rate`.
+- **The general rule (`correct_rule`) is given to the model at level 4 only; the misconception description at every level** |
+  the rule at levels 3 and 4 | the rule often is the corrected step for a single-rule problem. Even so a level-4 hint
+  can leak (dev: "x * x = x^2" for the problem x * x); the check flags it and the orchestrator would retry it.
+- **Eval: gold misconception, not `retrieve`'s output** | running the whole diagnosis | it measures the hint alone; the
+  cost is that it does not show a wrong misconception misleading the hint.
+- **Judge = the writer's model** | a second model | no budget for one; the human check of a 20-hint sample is the
+  counterweight. Metrics also compare the judge's `reveals_answer` with the automatic check.
+- **Eval data: option A, 60 dev cases from `retrieve.jsonl`** (all 20 hand-written + generated in turn), levels dealt in
+  turn. The test file is for the developer to build.

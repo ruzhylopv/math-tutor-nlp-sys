@@ -24,7 +24,7 @@ from evals.runner import (
     write_result,
 )
 from tutor.config import embedding_model_name
-from tutor.nodes.retrieve import TOP_K, retrieve
+from tutor.nodes.retrieve import MIN_SCORE, TOP_K, retrieve
 from tutor.state import Step, TutorState
 from tutor.tools.catalogue import load_catalogue
 
@@ -38,8 +38,8 @@ NOTE = (
 )
 
 
-def predict(case: dict[str, Any]) -> list[str]:
-    """The ids `retrieve` returns for a case, best first."""
+def run_node(case: dict[str, Any]) -> dict[str, Any]:
+    """What `retrieve` returns for a case."""
     state: TutorState = {
         "problem": case["problem"],
         "student_steps": [
@@ -50,7 +50,28 @@ def predict(case: dict[str, Any]) -> list[str]:
         "error_type": case["error_type"],
         "topic": case["topic"],
     }
-    return [match.id for match in retrieve(state)["misconception_candidates"]]
+    return retrieve(state)
+
+
+def predict(case: dict[str, Any]) -> list[str]:
+    """The ids `retrieve` returns for a case, best first."""
+    return [match.id for match in run_node(case)["misconception_candidates"]]
+
+
+def abstention(cases: list[dict[str, Any]], answers: list[str | None]) -> dict[str, float]:
+    """How often `retrieve` commits to a misconception (MIN_SCORE), and how often it is right."""
+    given = [(case["expected"], answer) for case, answer in zip(cases, answers, strict=True)]
+    answered = [(expected, answer) for expected, answer in given if answer is not None]
+    return {
+        "answered_rate": len(answered) / len(cases),
+        "answered_precision": (
+            sum(1 for expected, answer in answered if expected == answer) / len(answered)
+            if answered
+            else 0.0
+        ),
+        "recall@1_if_forced": sum(1 for expected, answer in given if expected == answer)
+        / len(cases),
+    }
 
 
 def _rank(expected: str, ranking: list[str]) -> int | None:
@@ -92,9 +113,16 @@ def main() -> None:
         logger.info("Dataset %s is missing. No labels are invented; add the dataset first.", path)
         return
     cases = load_jsonl(path)
-    rankings = [predict(case) for case in with_progress(cases, "retrieve")]
+    outputs = [run_node(case) for case in with_progress(cases, "retrieve")]
+    rankings = [[match.id for match in out["misconception_candidates"]] for out in outputs]
     metrics = evaluate(cases, rankings, len(load_catalogue()))
-    note = f"{NOTE} Embedding model: {embedding_model_name()}; top {TOP_K} returned."
+    answers = [out["misconception"].id if out["misconception"] else None for out in outputs]
+    metrics.update(abstention(cases, answers))
+    note = (
+        f"{NOTE} Embedding model: {embedding_model_name()}; top {TOP_K} returned; "
+        f"MIN_SCORE {MIN_SCORE}. Dev queries are near-copies of catalogue examples, so they "
+        "rarely score low: the abstention numbers are optimistic for real off-catalogue steps."
+    )
     result = write_result(COMPONENT, split, len(cases), metrics, note=note)
     logger.info("retrieve (%s): n=%d, model %s", split, len(cases), embedding_model_name())
     for source in ("handwritten", "generated_wrapped", "generated"):
@@ -112,6 +140,12 @@ def main() -> None:
         "  random       recall@1=%.3f  recall@5=%.3f",
         metrics["random_recall@1"],
         metrics["random_recall@5"],
+    )
+    logger.info(
+        "  abstention   MIN_SCORE=%.2f  answered=%.3f  precision=%.3f",
+        MIN_SCORE,
+        metrics["answered_rate"],
+        metrics["answered_precision"],
     )
     logger.info("Wrote %s", result)
 

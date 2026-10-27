@@ -194,3 +194,12 @@ How much to trust a metric:
 - The test split is no longer untouched. Its aggregate scores were printed once while the builder was previewed,
   before tuning, and a reviewer later ran `retrieve` over it and looked at the misses to diagnose labels. No example
   was used to tune anything, but the test number should be reported with this caveat (`docs/decisions.md`).
+
+## hint.jsonl (M5)
+Built from `retrieve.jsonl` by `uv run python -m evals.builders.build_hint [--splits dev test]`; no new labels. Each line
+is a retrieve query (`id`, `problem`, `steps`, `focus_step`, `error_type`, `topic`, `expected` = the catalogue entry the
+wrong step shows, `category`, `source`, `provenance`) plus `level`, the hint level 1-4 to write. All hand-written
+queries are kept; the rest (up to 60 cases in all) are generated queries taken in turn over categories, alternating
+`generated_wrapped` and `generated`. Levels are dealt in turn, so each has a quarter of the cases. The eval gives
+`hint` the gold misconception, so it measures the hint and not `retrieve`. The wrong steps are single-rule rewrites,
+easier than real student work. `test/hint.jsonl` is protected: the developer runs the builder for it.

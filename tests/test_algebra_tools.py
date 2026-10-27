@@ -153,3 +153,14 @@ def test_incorrect_answers(answer: str, truth: str) -> None:
 
 def test_unparsable_answer() -> None:
     assert check_answer("see above", "9") == "unparsable"
+
+
+def test_solution_set_of_an_equation_in_one_variable() -> None:
+    from tutor.tools.algebra import solution_set
+
+    found = solution_set("x^2 - 5x + 6 = 0")
+    assert found is not None and found.contains(2) and found.contains(3)
+    assert solution_set("x + 1") is None  # an expression
+    assert solution_set("2 = 2") is None  # a closed statement
+    assert solution_set("x + y = 3") is None  # two variables
+    assert solution_set("solve it") is None

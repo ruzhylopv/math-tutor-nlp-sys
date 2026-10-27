@@ -71,6 +71,35 @@ class Classification(BaseModel):
     level: int = Field(ge=1, le=5)
 
 
+class ErrorContext(BaseModel):
+    """The wrong step, copied at diagnosis time so `hint` does not depend on `student_steps`.
+
+    `parse_input` clears `student_steps` on a message without working (a question after a
+    diagnosis), and `focus_step` indexes into them, so `hint` reads this instead.
+    """
+
+    step_number: int = Field(ge=1)
+    before: str  # the line before the wrong step; the problem for step 1
+    after: str  # the claim the student wrote at the wrong step
+    correct_steps: list[str] = Field(default_factory=list)  # the claims before it, for praise
+
+
+class HintText(BaseModel):
+    """What `hint` asks the model for: the hint, as text for the student."""
+
+    text: str = Field(min_length=1)
+
+
+class HintRubric(BaseModel):
+    """The eval judge's grades for one hint (see src/tutor/prompts/hint_judge.md)."""
+
+    praises_correct_work: bool  # acknowledges what was right, or encourages when nothing was
+    socratic: bool  # leads the student to find the fix instead of stating it
+    on_target: bool  # points at the wrong step and the idea behind the mistake
+    fits_level: bool  # as direct as the level allows, no more and no less
+    reveals_answer: bool  # states the corrected line or the final answer
+
+
 class Decision(BaseModel):
     """The orchestrator's structured decision for a new student message."""
 
@@ -130,12 +159,13 @@ class TutorState(TypedDict, total=False):
     student_id: str
     problem: str
     student_steps: list[Step]
-    topic: Topic
-    level: int
+    topic: Topic | None  # None after a new problem, until `classify` runs again
+    level: int | None
     is_correct: bool
     step_verdicts: list[StepVerdict]
     first_error_step: int | None
     focus_step: int | None
+    error_context: ErrorContext | None
     error_type: ErrorType | None
     misconception_candidates: list[Misconception]
     misconception: Misconception | None

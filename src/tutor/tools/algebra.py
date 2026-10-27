@@ -113,6 +113,9 @@ def _guarded[T](default: T) -> Callable[[Callable[P, T]], Callable[P, T]]:
     return decorate
 
 
+guarded = _guarded  # public: the hint tools (counterexample, leakage) share this SymPy guard
+
+
 @dataclass(frozen=True)
 class Expression:
     value: sp.Expr
@@ -403,6 +406,21 @@ def claim_truth(text: str) -> bool | None:
         return None
     if isinstance(statement, Equations) and statement.is_closed():
         return statement.is_true()
+    return None
+
+
+_NO_SET: sp.Set | None = None
+
+
+@_guarded(_NO_SET)
+def solution_set(text: str) -> sp.Set | None:
+    """The real solutions of an equation in one variable; None for anything else or on failure."""
+    try:
+        statement = parse_statement(text)
+    except UnparsableError:
+        return None
+    if isinstance(statement, Equations) and not statement.is_closed():
+        return _solutions(statement)
     return None
 
 

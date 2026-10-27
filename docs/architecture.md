@@ -46,19 +46,10 @@ to the orchestrator (see "Orchestrator modes").
 `parse_input` runs on every student message, before the orchestrator, so the orchestrator routes on a
 structure (is there a problem, are there steps) and not only on raw text. For a message without working
 it resets `student_steps` to empty; for a message without a problem it keeps the stored `problem`.
-OPEN (M5, before `hint` and the orchestrator are built): this reset conflicts with the hint path. `hint`
-reads the wrong step, and `focus_step`, `first_error_step` and `step_verdicts` index into `student_steps`; a
-question after a diagnosis (scenario B T2, required behaviour 2) goes to `hint` with no new diagnosis, and
-after the reset those fields point at nothing. The same happens when the model fails twice, and the
-`is_clean_solution` path then sees verdicts for steps that no longer exist. Options: (a) at diagnosis time
-store the wrong step's claim in a field `parse_input` does not reset, and `hint` reads that; (b) the reset
-also clears `first_error_step`, `focus_step`, `step_verdicts`, `error_type` and `misconception`, and `hint`
-does not depend on them after a question; (c) reset only when the message contains a new attempt (steps
-found), or when no diagnosis is outstanding. Proposal, awaiting the developer: (a). Related OPEN hazard:
-`classify` returns `{}` on failure or an empty problem, so `topic` and `level` keep the value of an earlier
-problem in the same thread; the orchestrator (or `parse_input` when `problem` changes) must clear them.
-A third OPEN item: what the orchestrator does when `classify` tags an out-of-scope subject is not yet decided.
-See "M3 decisions" in `docs/decisions.md`.
+DECIDED (M5, 2026-10-27): `finish_diagnosis` copies the wrong step into `error_context` (step number, the line
+before, the claim, the earlier correct claims), and `hint` reads only that, so the reset above does not matter to it.
+`parse_input` clears `topic` and `level` when the problem changes. What the orchestrator does with an out-of-scope
+subject is still OPEN (M6). See "M5 layer 1" in `docs/decisions.md`.
 
 ### Diagnosis subgraph
 Fixed order, compiled separately so evals can call it without the chat layer.
@@ -132,8 +123,9 @@ rejects a hint containing the final answer or the key correct intermediate expre
 ### Counterexamples
 Numbers in a hint (for example the level-2 numeric counterexample) are never computed by the LLM. A
 SymPy-based function in `src/tutor/tools/` produces them and the `hint` node passes them into the prompt;
-the LLM only words the hint. OPEN: the tool's design (how it chooses the value, its interface, when
-`hint` calls it).
+the LLM only words the hint. DECIDED (M5): `tools/counterexample.py` returns small whole numbers (never a solution of the
+problem) and the values of the changed side of the lines, or of left - right; `hint` calls it at level 2 only. See "M5
+layer 3" in `docs/decisions.md`.
 
 ### Conventions
 - Step numbers are 1-based. Step 1's predecessor is the problem statement.
