@@ -21,6 +21,7 @@ ErrorType = Literal[
     "algebraic_transformation",
     "omission_extraneous_root",
     "reasoning_result_mismatch",
+    "other",
 ]
 Stage = Literal["new_message", "diagnosed", "hinted"]
 Topic = Literal[
@@ -107,7 +108,7 @@ class TutorState(TypedDict, total=False):
     step_verdicts: list[StepVerdict]
     first_error_step: int | None
     focus_step: int | None
-    error_type: ErrorType
+    error_type: ErrorType | None
     misconception_candidates: list[Misconception]
     misconception: Misconception | None
     hint_level: int  # 1-4, capped (see docs/architecture.md)
