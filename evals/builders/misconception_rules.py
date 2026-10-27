@@ -96,10 +96,7 @@ def _rules() -> dict[str, Rule]:
             f"sqrt({x} + {a + b}) = {x} - {b}",
             f"{x} + {a + b} = {x}^2 - {b * b}",
         ),
-        "M065": lambda a, b, c, d, x, y: (
-            f"sqrt({x} + {a + b}) = {x} - {b}",
-            f"sqrt({x} + {a + b}) = ({x} - {b})^2",
-        ),
+        "M065": lambda a, b, c, d, x, y: (f"sqrt({x}) = {a}", f"sqrt({x}) = {a * a}"),
         "M066": lambda a, b, c, d, x, y: (
             f"sqrt({x}) + {a} = {a + b}",
             f"{x} + {a} = {(a + b) ** 2}",

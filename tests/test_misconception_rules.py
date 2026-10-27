@@ -2,7 +2,7 @@ import random
 
 import pytest
 
-from evals.builders.misconception_rules import RULES, draw
+from evals.builders.misconception_rules import RULES, draw, draw_wrapped
 from tutor.tools.algebra import step_relation
 from tutor.tools.catalogue import load_catalogue
 
@@ -43,3 +43,33 @@ def test_draws_do_not_copy_the_catalogues_example_text() -> None:
 def test_a_rule_that_never_gives_a_wrong_line_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(RULES, "M001", lambda a, b, c, d, x, y: ("1 + 1", "2"))
     assert draw("M001", random.Random(0)) is None
+
+
+@pytest.mark.parametrize("rule_id", sorted(RULES))
+def test_a_wrapped_draw_is_really_wrong_or_not_wrappable(rule_id: str) -> None:
+    pair = draw_wrapped(rule_id, random.Random(f"wrap:{rule_id}"))
+    if pair is not None:
+        assert step_relation(*pair) == "not_valid"
+        assert pair != draw(rule_id, random.Random(f"wrap:{rule_id}"))
+
+
+def test_wrapped_lines_sit_in_a_larger_expression_with_the_same_context() -> None:
+    previous, wrong = draw_wrapped("M037", random.Random(1)) or ("", "")
+    assert previous != "" and previous.endswith(")") or "(" in previous
+    assert len(previous) > len("(x + 3)^2") - 2
+    equation = draw_wrapped("M003", random.Random(1))
+    assert equation is not None and equation[0].count("=") == 1 and "+" in equation[0].split("=")[0]
+
+
+@pytest.mark.parametrize("rule_id", ["M071", "M076", "M072", "M102"])
+def test_lines_with_or_or_plus_minus_are_not_wrapped(rule_id: str) -> None:
+    assert draw_wrapped(rule_id, random.Random(2)) is None
+
+
+def test_the_numbers_of_a_draw_are_never_equal_where_a_rule_uses_two() -> None:
+    for i in range(30):
+        previous, _ = draw("M071", random.Random(i)) or ("", "")
+        assert (
+            previous.split(")(")[0].split("- ")[-1]
+            != previous.split(")(")[1].split("-")[1].split(")")[0].strip()
+        )

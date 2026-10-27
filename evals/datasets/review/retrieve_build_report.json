@@ -1,53 +1,61 @@
 {
   "seed": 0,
   "per_rule": 4,
+  "wrapped_per_rule": 2,
   "catalogue_entries": 119,
   "entries_with_a_rule": 99,
   "entries_without_any_query": [],
+  "unreachable_entries": [
+    "M064",
+    "M067",
+    "M068"
+  ],
   "dev": {
-    "n": 225,
-    "entries": 60,
+    "n": 324,
+    "entries": 59,
     "by_source": {
       "generated": 204,
-      "handwritten": 21
+      "generated_wrapped": 100,
+      "handwritten": 20
     },
     "by_category": {
-      "absolute_value": 13,
-      "distribution": 16,
-      "exponents_powers": 25,
-      "factoring": 21,
-      "fractions": 19,
+      "absolute_value": 19,
+      "distribution": 24,
+      "exponents_powers": 37,
+      "factoring": 31,
+      "fractions": 27,
       "inequalities": 5,
-      "like_terms_order": 16,
-      "quadratics": 20,
-      "radicals": 13,
-      "rational_expressions": 17,
-      "signs_negatives": 21,
-      "solving_equations": 26,
-      "squaring_extraneous": 13
+      "like_terms_order": 24,
+      "quadratics": 26,
+      "radicals": 19,
+      "rational_expressions": 25,
+      "signs_negatives": 31,
+      "solving_equations": 44,
+      "squaring_extraneous": 12
     }
   },
   "test": {
-    "n": 213,
-    "entries": 59,
+    "n": 300,
+    "entries": 57,
     "by_source": {
       "generated": 192,
-      "handwritten": 21
+      "generated_wrapped": 90,
+      "handwritten": 18
     },
     "by_category": {
-      "absolute_value": 12,
-      "distribution": 18,
-      "exponents_powers": 25,
-      "factoring": 17,
-      "fractions": 20,
+      "absolute_value": 16,
+      "distribution": 26,
+      "exponents_powers": 37,
+      "factoring": 25,
+      "fractions": 30,
       "inequalities": 4,
-      "like_terms_order": 19,
-      "quadratics": 20,
-      "radicals": 21,
-      "rational_expressions": 9,
-      "signs_negatives": 16,
-      "solving_equations": 21,
-      "squaring_extraneous": 11
+      "like_terms_order": 28,
+      "quadratics": 26,
+      "radicals": 31,
+      "rational_expressions": 13,
+      "signs_negatives": 24,
+      "solving_equations": 28,
+      "squaring_extraneous": 12
     }
   }
 }

@@ -159,33 +159,38 @@ One line per query: the state `retrieve` reads at the moment of a wrong step. Bu
 
 | Field | Meaning |
 |---|---|
-| `id` | `gen/<entry>#<n>` (generated) or `hand/<nnn>` |
+| `id` | `gen/<entry>#<n>`, `wrap/<entry>#<n>` or `hand/<nnn>` |
 | `problem`, `steps`, `focus_step`, `error_type`, `topic` | the state: `problem` is the line before the focus step for a generated query |
 | `expected` | the catalogue entry id that the wrong step shows |
 | `category` | the entry's category |
-| `source` | `generated` or `handwritten` |
+| `source` | `generated`, `generated_wrapped` or `handwritten` |
 
 Where the labels come from:
-- `generated`: 99 mechanical wrong rules (`evals/builders/misconception_rules.py`), a few draws each. A rule turns
-  a correct line into the line a student with that misconception would write, with random numbers and variable
-  letters; SymPy confirmed each wrong line is really wrong. So the true misconception is known by construction. They
-  are single-rule rewrites, easier than a student's real work. M118 has no rule (SymPy sees its wrong step as
-  `implies`).
-- `handwritten`: 21 queries per split (42 in all), worked out by reading, for the entries without a rule (inequalities,
-  translations, the reasons for rejecting roots, ...) and some paraphrases of mechanical ones. The developer
-  spot-checks a sample (`spot_check: pending`).
+- `generated`: 99 mechanical wrong rules (`evals/builders/misconception_rules.py`), four draws each. A rule turns a
+  correct line into the line a student with that misconception would write, with random numbers and variable
+  letters; SymPy confirmed each wrong line is really wrong. So the true misconception is known by construction.
+  **These are near-copies of the catalogue examples**: `retrieve` compares shapes (numbers and variables abstracted),
+  and for 89 of the 99 rules the query's shape equals the example's. The same author wrote both, so a high score here
+  is close to a lookup and says little.
+- `generated_wrapped`: the same rules with both lines inside the same larger expression (a term added to both sides of
+  an equation, or a term added to or a factor multiplying an expression), two draws per rule, so the shape is no
+  longer the example's. This is the first, mild perturbation; rules whose lines contain `or` or `+-` are not
+  wrapped. The wrapped number is the more honest one for generated queries.
+- `handwritten`: 38 queries (20 dev, 18 test), worked out by reading, for the entries without a rule (inequalities,
+  translations, ...) and some paraphrases of mechanical ones. The developer spot-checks a sample (`spot_check:
+  pending`).
+- `M064`, `M067` and `M068` have no query: they are about a root accepted without a check or rejected for a wrong
+  reason, which no single step's shape shows (`UNREACHABLE` in `handwritten_queries.py`).
 - Entries alternate between dev and test by id (M001 dev, M002 test, ...), each with its queries, so no entry is in
-  both splits and both cover every category.
+  both splits and both cover every category. Sibling entries (`M037`/`M038`, `M078`/`M079`, ...) fall on opposite
+  sides, so tuning on dev transfers to test more than it would for a split by family.
 
 How much to trust a metric:
-- Recall@k is optimistic. The same author wrote the catalogue examples and the rules in the same shapes, and `retrieve`
-  compares shapes, so the match is partly circular. Plain string similarity on the shapes is nearly as good as the
-  embedding model on this data.
-- Quote per-source numbers: the hand-written queries are the discriminating ones, and there are only 21 per split (one
-  query is about 5 points).
-- Entries about inequalities, a bare plus-or-minus and the reasons for rejecting roots cannot be reached in the full
-  pipeline: `verify` cannot parse those steps, so `localize` gives `other` and `retrieve` returns nothing. Here
-  `retrieve` is evaluated on its own.
-- The test split's aggregate scores were printed once while the builder was being previewed, before tuning. No test
-  example was read and all choices were made on dev, but the test numbers are not untouched (`docs/decisions.md`).
-
+- Quote per-source numbers, mainly `generated_wrapped` and `handwritten`. The hand-written set is small (20 in dev; one
+  query is 5 points).
+- Recall@k is optimistic: one author wrote the catalogue and the queries, and nothing here is real student work.
+- Entries about inequalities and a bare plus-or-minus cannot be reached in the full pipeline: `verify` cannot parse
+  those steps, so `localize` gives `other` and `retrieve` returns nothing. Here `retrieve` is evaluated on its own.
+- The test split is no longer untouched. Its aggregate scores were printed once while the builder was previewed,
+  before tuning, and a reviewer later ran `retrieve` over it and looked at the misses to diagnose labels. No example
+  was used to tune anything, but the test number should be reported with this caveat (`docs/decisions.md`).

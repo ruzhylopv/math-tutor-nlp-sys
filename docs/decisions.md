@@ -509,6 +509,10 @@ queries wrapped in a larger expression, and the hand-written ones; the full eval
   by about 700 lines. `.github/workflows/address-review.yml` runs a plain `uv sync`, so the Actions runner downloads
   it too. The developer approved the dependency; if the final eval shows no benefit over string similarity it can be
   dropped.
+- **Final dev eval of this design** (`evals/results/retrieve/20261027T155456Z_859537a.json`, 324 queries, after M065's
+  rule was made cheap for SymPy and the datasets were rebuilt): Recall@1 / Recall@5 plain generated 0.936 / 0.980,
+  wrapped 0.820 / 0.980, hand-written 0.900 / 0.950. The experiment's wrapped numbers above (0.86 / 1.00) were measured
+  on the earlier build and are slightly higher; the eval's numbers are the ones to quote.
 - **Process notes**: (1) while building the preview I printed the test split's aggregate scores once, before tuning;
   (2) a reviewer later ran `retrieve` over the test split and looked at which queries missed, to diagnose labels. No
   choice was tuned on test, but the test split is no longer untouched.
