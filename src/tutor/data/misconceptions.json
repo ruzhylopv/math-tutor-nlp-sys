@@ -641,11 +641,11 @@
   },
   {
     "id": "M081",
-    "description": "Swaps the roles of the sum and the product when factorising x^2 + bx + c",
+    "description": "Writes the constant term as the sum of the two numbers instead of their product when expanding (x + a)(x + b)",
     "category": "factoring",
     "topic": "Algebra",
-    "correct_rule": "The numbers multiply to c and add to b",
-    "example": "x^2 + 7x + 10 -> (x + 7)(x + 3)"
+    "correct_rule": "(x + a)(x + b) = x^2 + (a + b)x + ab",
+    "example": "(x + 2)(x + 3) -> x^2 + 5x + 5"
   },
   {
     "id": "M082",
