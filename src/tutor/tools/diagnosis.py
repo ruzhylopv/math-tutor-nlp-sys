@@ -11,7 +11,7 @@ def is_clean_solution(state: TutorState) -> bool:
     A step is valid when it is equivalent to, or implied by, the previous one, or when it narrows
     the solution set to the original problem's own solution set (rejecting an extraneous root).
     Unparsable and not_valid steps are not valid, so they send the run on to `localize`, which
-    has no dedicated error type for unparsable steps yet (taxonomy decision, M4). With no steps
+    gives unparsable steps the error type `other`. With no steps
     at all the answer alone decides; `parse_input` routes a final answer without working to
     `ask` before this runs.
     """

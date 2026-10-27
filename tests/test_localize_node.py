@@ -34,6 +34,15 @@ def test_an_unparsable_step_has_no_first_error_but_is_the_focus() -> None:
     assert localize(state) == _result(None, 2, "other")
 
 
+def test_after_an_unparsable_step_the_first_problem_wins_over_later_errors() -> None:
+    state = _state(
+        _verdict(1, "unparsable"),
+        _verdict(2, "not_valid"),
+        _verdict(3, "equivalent", justification_claims_ok=False),
+    )
+    assert localize(state) == _result(None, 1, "other")
+
+
 def test_the_order_of_the_steps_decides_between_unparsable_and_not_valid() -> None:
     state = _state(_verdict(1, "not_valid"), _verdict(2, "unparsable"))
     assert localize(state) == _result(1, 1, "algebraic_transformation")

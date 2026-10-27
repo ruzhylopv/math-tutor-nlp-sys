@@ -15,6 +15,12 @@ nothing wrong all three fields are None.
 A failed check line (`check_holds` False) is information, not an error: it is how a student
 rejects an extraneous root. Only the first error is reported.
 
+Known limits:
+- After an unparsable step, later errors are not reported: the first problem wins.
+- A wrong arithmetic claim written as a check line is not flagged (`check_holds` is ignored).
+- The omission rule can fire when the student ran a check line but the answer is wrong for
+  another reason.
+
 Reads: step_verdicts, is_correct
 Writes: first_error_step, focus_step, error_type
 Eval metric: first-error-step accuracy; error-type accuracy; mismatch detection rate
@@ -22,10 +28,10 @@ Eval metric: first-error-step accuracy; error-type accuracy; mismatch detection 
 
 from typing import Any
 
-from tutor.state import StepVerdict, TutorState
+from tutor.state import ErrorType, StepVerdict, TutorState
 
 
-def _outcome(first: int | None, focus: int | None, error_type: str | None) -> dict[str, Any]:
+def _outcome(first: int | None, focus: int | None, error_type: ErrorType | None) -> dict[str, Any]:
     return {"first_error_step": first, "focus_step": focus, "error_type": error_type}
 
 
