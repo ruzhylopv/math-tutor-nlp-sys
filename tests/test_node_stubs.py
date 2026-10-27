@@ -48,7 +48,10 @@ def test_llm_node_prompt_has_the_required_sections(name: str) -> None:
 
 
 def test_finish_diagnosis_marks_the_stage() -> None:
-    assert finish_diagnosis({"stage": "new_message"})["stage"] == "diagnosed"
+    assert finish_diagnosis({"stage": "new_message"}) == {
+        "stage": "diagnosed",
+        "error_context": None,
+    }
 
 
 def test_finish_diagnosis_stores_the_wrong_step() -> None:
