@@ -84,6 +84,12 @@ class ErrorContext(BaseModel):
     correct_steps: list[str] = Field(default_factory=list)  # the claims before it, for praise
 
 
+class HintText(BaseModel):
+    """What `hint` asks the model for: the hint, as text for the student."""
+
+    text: str = Field(min_length=1)
+
+
 class Decision(BaseModel):
     """The orchestrator's structured decision for a new student message."""
 

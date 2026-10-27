@@ -36,6 +36,19 @@ class Counterexample:
     after_value: str
     where: str = ""  # "left" or "right" for kind "side"
 
+    def describe(self) -> str:
+        """One plain sentence with the numbers, for the hint prompt."""
+        numbers = ", ".join(f"{name} = {value}" for name, value in self.assignment.items())
+        target = {
+            "expression": "the expression",
+            "side": f"the {self.where} side",
+            "balance": "the left side minus the right side",
+        }[self.kind]
+        return (
+            f"With {numbers}, {target} is {self.before_value} in the line before "
+            f"and {self.after_value} in the student's line."
+        )
+
 
 def _finite(value: sp.Expr) -> bool:
     return bool(value.is_number) and not value.has(sp.zoo, sp.nan, sp.oo, -sp.oo)
