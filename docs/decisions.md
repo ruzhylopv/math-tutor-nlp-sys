@@ -97,7 +97,8 @@ against real student work. Published sources exist (see `docs/architecture.md`, 
   datasets onto ours and count what does not fit. Decide after that mapping.
 - **Add a fallback value** (`other` / `unclassified`) so unmatched cases are visible. (Resolved 2026-10-27, see
   M4a decisions: `other` was added. It now covers unparsable steps and steps that stop early (incomplete answers),
-  and, in the current rules, a lost solution through a `narrows` step. The other cases below stay open.)
+  (A lost solution, such as dividing by `x`, is a `not_valid` step in `verify`, so it is an
+  `algebraic_transformation`.) The other cases below stay open.)
 - **Cases the four types do not cover:**
   - lost solutions (for example dividing by `x` loses `x = 0`), the opposite of `omission_extraneous_root`;
   - several errors in one solution (`first_error_step` names only the first);
