@@ -72,6 +72,14 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   mined pairs (99.2%) and parses 90.1% of 1251; the 9 disagreements are author typos or condition-dependent lines.
   Rare relations are small in dev (implies 8, narrows 6, unparsable 12) and smaller in test (4, 2, 5). Test split
   not run.
+- 2026-10-27 | parse_input | dev, SUBSET 15 of 170 (taken in turn from each kind) | case_accuracy=0.933 (baseline; 14 of 15) | e42d774 | Model
+  `nvidia/nemotron-3.5-super-vl:free`, prompt hash cd937f44ed21. failure_rate 0, sympy_parse_rate 1.0, no_working_accuracy 1.0
+  (7 cases), claim_recall_canonical 0.882 (15 of 17 claims; strict equals canonical). Both deliberately wrong steps were
+  transcribed unchanged. The one miss (`full`, `expression`, `connectors`, `unicode`): the model kept the first step inside the
+  problem (`((1/2))^3 . (1/2)*(1/2)*(1/2)`) and so dropped it as a step; the lone `.` the renderer puts between the problem
+  and the first step may have read as a multiplication dot (a guess). Partly an ambiguous message, partly a prompt gap. n=15, so the 95% Wilson interval for 14/15 is about 0.70-0.99:
+  a smoke check, not an estimate. Not tuned on this miss; the full dev run is the next step. Result file:
+  `evals/results/parse_input/20261027T132533Z_e42d774.json`.
 - 2026-10-27 | classify | dev, SUBSET 15 of 420 (taken in turn from each subject) | topic_accuracy=0.667 (baseline; 10 of 15), in_scope_accuracy=0.800, level_accuracy=0.133, level_within_one=0.533 | b178d94 | Model
   `nvidia/nemotron-3.5-super-vl:free`, prompt hash 96a9483b4d2f, failure_rate 0. Per-subject recall: 1.0 for Algebra, Counting &
   Probability, Number Theory, Precalculus; 0.5 Geometry; 0.0 Intermediate Algebra and Prealgebra (2 problems each). The 5 misses
