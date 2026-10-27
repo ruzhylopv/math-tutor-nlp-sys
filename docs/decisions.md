@@ -71,7 +71,7 @@ Format: decision | rejected alternative | why.
   dependency) | the developer does not want to pay for tokens. Consequence: likely `langchain-openai`
   with a `base_url` replacing `langchain-anthropic`; the change needs approval and goes in the first
   LLM node's plan. Free models vary in structured-output support; to be checked then.
-- **Retrieval: in-memory sentence-transformers + FAISS** | a LangChain vector store; a vector DB server
+- **Retrieval: in-memory sentence-transformers + FAISS** (Superseded 2026-10-27, see M4b decisions: numpy, no FAISS) | a LangChain vector store; a vector DB server
   | fewer layers than a server or a framework store. The catalogue size is UNVERIFIED (earlier text
   said "a few hundred"; that had no source). New dependencies need approval.
 - **`localize`: rules on SymPy verdicts first, LLM only to interpret and check justifications** |
@@ -455,7 +455,7 @@ The five reviews found five P1s; the stack had been merged before they could be 
 - **PRM800K step labels are not used in v1** | using them as a second opinion now | its solutions are prose and LaTeX
   that need a conversion to plain-text steps which does not exist, and `-1` does not mean "algebraically invalid".
 - **For M4b the developer approved a PyTorch-based embedding stack (sentence-transformers, FAISS) and will download
-  Eedi** | TF-IDF/BM25 or plain cosine over the catalogue as the only method | the developer chose embeddings; the
+  Eedi** (Superseded 2026-10-27, see M4b decisions: no FAISS, hand-written catalogue) | TF-IDF/BM25 or plain cosine over the catalogue as the only method | the developer chose embeddings; the
   lighter methods stay available as a first baseline if installation size is a problem. The dependency is added in
   the M4b PR.
 - **`localize` dataset: hand-written cases split by problem group, generated chains selected with `verify`, PRM800K
@@ -467,6 +467,8 @@ The five reviews found five P1s; the stack had been merged before they could be 
   accuracy is the headline and the blended number is not quoted alone. PRM800K stays deferred (see above).
 
 ## 2026-10-27 | M4b decisions (`retrieve`)
+This entry supersedes the 2026-10-26 FAISS / Eedi entries above.
+
 - **A hand-written catalogue of about 120 school-algebra misconceptions** | the Eedi "Mining Misconceptions in
   Mathematics" catalogue | the developer could not download Eedi. Cost: the agent writes both the catalogue and the eval
   queries, so Recall@k is optimistic (circular) and the entries are not teacher-validated. Mitigations: the developer
@@ -478,4 +480,3 @@ The five reviews found five P1s; the stack had been merged before they could be 
   description alone | an embedding model reads a wrong rewrite's structure better from an example than from prose.
 - **No score threshold and no LLM re-ranking in v1** | abstaining below a threshold; a structured-output re-rank of the
   top 5 | both are decided from the dev eval (open items in the plan).
-

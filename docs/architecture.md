@@ -91,7 +91,7 @@ invalid step, therefore goes on to `localize` (error type `reasoning_result_mism
 | classify | LLM | Tag topic and level | problem | topic, level | topic accuracy / macro-F1 |
 | verify | deterministic (SymPy) | Solve the original; check the final answer; check each step as equivalent / implies / narrows / not_valid / unparsable; evaluate arithmetic claims in justifications | problem, student_steps | is_correct, step_verdicts | answer-check accuracy; step-verdict accuracy |
 | localize | rules on SymPy verdicts (v1: rules only; an LLM interpretation of justifications is a later option) | First wrong step or error type; check that the justification matches what happened | step_verdicts, is_correct | first_error_step, focus_step, error_type | first-error-step accuracy; error-type accuracy; mismatch detection rate |
-| retrieve | retrieval | Query: problem + wrong step + topic + error type; search the misconception catalogue | above | misconception_candidates, misconception | Recall@k, MAP@k |
+| retrieve | retrieval | Query: topic, error type, the previous line and the line written at `focus_step`; search the hand-written misconception catalogue (embeddings, cosine) | above | misconception_candidates, misconception | Recall@k, MAP@k |
 | finish_diagnosis | deterministic | Last node of the diagnosis subgraph; marks the diagnosis as finished | none | stage | none (unit test only; see OPEN in decisions.md) |
 | hint | LLM | Socratic hint grounded in the misconception, at `hint_level`; praise what was right; never give the answer | misconception, wrong step, hint_level, profile, counterexample values (from a SymPy tool) | hint_text, stage | answer-leakage rate (automatic); rubric judge and a small human check |
 
@@ -196,7 +196,7 @@ Formats and licences are not yet verified; check each before use and do not assu
 | Topic / level classification | MATH (topic and level labels) | filter to algebra-relevant subjects |
 | Final-answer checking | GSM8K, MATH | ground-truth answers |
 | First-error localization | ProcessBench, PRM800K | labelled first wrong step |
-| Misconception catalogue and retrieval eval | Eedi "Mining Misconceptions in Mathematics" (Kaggle); a paper reports 1,857 questions with four expert-written options each ([MISTAKE](https://arxiv.org/pdf/2510.11502)); the number of distinct misconceptions is unverified | question + wrong answer -> misconception id; its fields differ from our query (problem + wrong step), so a query mapping is needed. Check Kaggle terms |
+| Misconception catalogue and retrieval eval | a hand-written catalogue of about 120 school-algebra misconceptions (the Eedi download did not work; Eedi stays possible later as a second test set); queries generated from mechanical wrong rules (about 100 of 119 entries) and hand-written for the rest | query (topic, error type, previous line, written line) -> misconception id; circular, since the agent writes both sides, so Recall@k is reported per source (see `docs/plans/nodes/2026-10-27-m4b-retrieve.md`) |
 | Equivalence vs implication | hand-made, about 20-30 radical / rational cases | public sets do not label this |
 | Reasoning-result mismatch | hand-made, about 20-30 cases | report as a limitation |
 | Routing | hand-made labelled turns (ask / diagnose / hint / reply) | include question-vs-attempt cases |
@@ -247,7 +247,7 @@ support and have rate limits; the first LLM node must check that structured outp
 1. `verify` (no LLM; its tests use hand-built `Step` lists)
 2. `parse_input` and `classify`
 3. `localize`
-4. `retrieve` (needs the Eedi catalogue)
+4. `retrieve` (needs the hand-written catalogue)
 5. `hint` and the leakage check
 6. `orchestrator`, main graph, learner DB tools
 7. Checkpointer and multi-turn scenarios
