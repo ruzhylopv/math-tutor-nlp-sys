@@ -628,8 +628,17 @@ fallback hints" from the roadmap.
   a new chat | all chats belong to one person (developer's decision).
 - **Separate `CHECKPOINT_DB_PATH` (default `data/checkpoints.db`)** | sharing the `LEARNER_DB_PATH` file | two schemas in
   one file; cost: one more setting.
-- **A failed run shows a fixed apology instead of a traceback** (`ui.send` catches any exception and logs it) |
+- **A failed run shows a fixed apology instead of a traceback** (`ui.send_stream` catches any exception and logs it) |
   letting Streamlit show the error | a rate-limited free model should not end the demo; cost: a bug in a node looks like
   a model hiccup in the UI, so read the log.
 - **No eval script for the app** | one anyway | it is not a node (CLAUDE.md asks for evals per node); the scenario replay
   covers the behaviour behind it.
+
+## M7 progress display (2026-10-28)
+- **Progress from langgraph's `tasks` stream mode (a node start), labels in a dict by node name** | printing the node
+  that just finished (`updates` only) | the label then says what is running now, not what already ran; cost: a node
+  without a label shows nothing, so a new node needs a line in `PROGRESS_LABELS` to be visible.
+- **The failed message is kept in `session_state` and shown with the error** | writing it to the checkpoint | a failed
+  run must not leave a half-run in the graph state; cost: the message is lost if the page is reloaded.
+- **Streaming the reply token by token: not done** | streaming | the orchestrator checks a hint for leaks before it is
+  published, so partial text could show a leak that the check would have replaced.

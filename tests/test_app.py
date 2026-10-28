@@ -1,11 +1,12 @@
 """Smoke test of app.py with Streamlit's AppTest; the tutor is built on an in-memory saver."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from tutor import ui
 from tutor.state import Decision
 
 APP = Path(__file__).resolve().parent.parent / "app.py"
@@ -47,3 +48,19 @@ def test_missing_setup_shows_a_message(app: AppTest, monkeypatch: pytest.MonkeyP
     monkeypatch.delenv("MODEL_NAME")
     app.run()
     assert any("Setup needed" in e.value for e in app.error)
+
+
+def test_a_failed_run_keeps_the_message_visible(
+    app: AppTest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def failing(*args: object, **kwargs: object) -> Iterator[ui.TurnView]:
+        yield ui.TurnView(reply=ui.ERROR_REPLY, error=True)
+
+    monkeypatch.setattr(ui, "send_stream", failing)
+    app.run()
+    app.text_input[0].set_value("Ada").run()
+    app.button[0].click().run()
+    app.chat_input[0].set_value("2x = 4").run()
+    assert any(ui.ERROR_REPLY in e.value for e in app.error)
+    assert any("2x = 4" in str(m.markdown[0].value) for m in app.chat_message)
+    assert app.session_state.failed_text == "2x = 4"

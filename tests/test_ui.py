@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,12 @@ def _greeting(canned_llm: Callable[..., None]) -> None:
     canned_llm(Decision=Decision(action="reply", reason="greeting", reply_text="Hello!"))
 
 
+def _send(tutor: ui.Tutor, student_id: str, chat: int, text: str) -> ui.TurnView:
+    *_, view = ui.send_stream(tutor, student_id, chat, text)
+    assert isinstance(view, ui.TurnView)  # the stream always ends with one
+    return view
+
+
 @pytest.fixture
 def tutor() -> ui.Tutor:
     return ui.build_tutor(":memory:")
@@ -21,7 +28,7 @@ def tutor() -> ui.Tutor:
 def test_send_returns_the_reply_and_the_visited_nodes(
     tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    view = ui.send(tutor, "ada", 1, "hi")
+    view = _send(tutor, "ada", 1, "hi")
     assert view.reply == "Hello!"
     assert view.hint_level is None
     assert not view.error
@@ -31,7 +38,7 @@ def test_send_returns_the_reply_and_the_visited_nodes(
 def test_history_comes_from_the_checkpoint(
     tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    ui.send(tutor, "ada", 1, "hi")
+    _send(tutor, "ada", 1, "hi")
     assert ui.load_history(tutor, "ada", 1) == [("user", "hi"), ("assistant", "Hello!")]
     assert ui.load_history(tutor, "ada", 2) == []  # another chat
     assert ui.load_history(tutor, "bob", 1) == []  # another name
@@ -44,7 +51,7 @@ def test_a_failed_run_becomes_a_friendly_reply(
         raise RuntimeError("429")
 
     monkeypatch.setattr(tutor.graph, "stream", boom)
-    view = ui.send(tutor, "ada", 1, "hi")
+    view = _send(tutor, "ada", 1, "hi")
     assert view.error
     assert view.reply == ui.ERROR_REPLY
 
@@ -54,11 +61,11 @@ def test_new_chat_is_a_new_thread_and_latest_chat_finds_the_newest(
 ) -> None:
     assert ui.latest_chat(tutor, "ada") == 1
     assert ui.next_chat(tutor, "ada") == 1
-    ui.send(tutor, "ada", 1, "first")
+    _send(tutor, "ada", 1, "first")
     assert ui.next_chat(tutor, "ada") == 2
-    ui.send(tutor, "ada", 2, "second")
-    ui.send(tutor, "ada", 3, "third")
-    ui.send(tutor, "adam", 9, "someone else")
+    _send(tutor, "ada", 2, "second")
+    _send(tutor, "ada", 3, "third")
+    _send(tutor, "adam", 9, "someone else")
     assert ui.latest_chat(tutor, "ada") == 3
     assert ui.next_chat(tutor, "ada") == 4
     assert ui.load_history(tutor, "ada", 2) == [("user", "second"), ("assistant", "Hello!")]
@@ -96,3 +103,59 @@ def test_sidebar_without_a_learner_db_has_no_profile(
 
 def test_names_are_trimmed_and_collapsed() -> None:
     assert ui.normalise_name("  Ada   Lovelace ") == "Ada Lovelace"
+
+
+def test_send_stream_yields_progress_then_the_turn(tutor: ui.Tutor) -> None:
+    events = list(ui.send_stream(tutor, "ada", 1, "hi"))
+    *progress, view = events
+    assert [event.text for event in progress if isinstance(event, ui.Progress)] == [
+        ui.PROGRESS_LABELS["parse_input"],
+        ui.PROGRESS_LABELS["orchestrator"],
+    ]
+    assert isinstance(view, ui.TurnView)
+    assert view.reply == "Hello!"
+
+
+def test_a_node_without_a_label_shows_nothing(
+    tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ui, "PROGRESS_LABELS", {"orchestrator": "Deciding…"})
+    events = list(ui.send_stream(tutor, "ada", 1, "hi"))
+    assert [e.text for e in events if isinstance(e, ui.Progress)] == ["Deciding…"]
+
+
+def test_a_failed_stream_ends_with_an_error_turn(
+    tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("429")
+
+    monkeypatch.setattr(tutor.graph, "stream", boom)
+    events = list(ui.send_stream(tutor, "ada", 1, "hi"))
+    assert events == [ui.TurnView(reply=ui.ERROR_REPLY, error=True)]
+
+
+def test_a_published_hint_sets_the_hint_level(
+    tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Graph:
+        def stream(self, *args: object, **kwargs: object) -> list[tuple[tuple[()], str, object]]:
+            return [((), "updates", {"hint": {}})]
+
+        def get_state(self, config: object) -> object:
+            return type("S", (), {"values": {"reply_text": "Try again", "hint_level": 2}})()
+
+    view = _send(replace(tutor, graph=Graph()), "ada", 1, "x")  # type: ignore[arg-type]
+    assert (view.hint_level, view.reply, view.error) == (2, "Try again", False)
+
+
+def test_an_empty_reply_is_an_error(tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch) -> None:
+    class Graph:
+        def stream(self, *args: object, **kwargs: object) -> list[object]:
+            return []
+
+        def get_state(self, config: object) -> object:
+            return type("S", (), {"values": {}})()
+
+    view = _send(replace(tutor, graph=Graph()), "ada", 1, "x")  # type: ignore[arg-type]
+    assert view.error and view.reply == ui.ERROR_REPLY
