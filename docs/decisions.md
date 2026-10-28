@@ -616,3 +616,20 @@ fallback hints" from the roadmap.
   remembered, and the warning is easy to miss.
 - **Eval: `--part routing` (default) and `--part scenarios`** | one run doing both | with the routing dataset missing
   the default has to stop at once, and a scenario replay is many slow model calls.
+
+## M7 app (2026-10-27)
+- **Chat history is the checkpoint** (`load_history` reads `messages` from the graph state) | a second history in
+  `st.session_state` | it cannot drift from what the graph knows, and a returning name sees the old chat; cost: a failed
+  run that saved nothing leaves no trace, so the error is kept in `session_state` and shown once.
+- **One chat = one thread `<name>|<n>`; the newest is reopened on login, "New chat" takes the next number** | a random id
+  per chat | the numbers can be found again from the checkpointer, a random id could not; cost: `latest_chat` scans the
+  saved checkpoints (fine for a demo, slow for many users).
+- **The sidebar reads the profile only through `get_profile` and "New chat" never changes it** | clearing the profile on
+  a new chat | all chats belong to one person (developer's decision).
+- **Separate `CHECKPOINT_DB_PATH` (default `data/checkpoints.db`)** | sharing the `LEARNER_DB_PATH` file | two schemas in
+  one file; cost: one more setting.
+- **A failed run shows a fixed apology instead of a traceback** (`ui.send` catches any exception and logs it) |
+  letting Streamlit show the error | a rate-limited free model should not end the demo; cost: a bug in a node looks like
+  a model hiccup in the UI, so read the log.
+- **No eval script for the app** | one anyway | it is not a node (CLAUDE.md asks for evals per node); the scenario replay
+  covers the behaviour behind it.

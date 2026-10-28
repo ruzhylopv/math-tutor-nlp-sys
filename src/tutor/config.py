@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+DEFAULT_CHECKPOINT_DB_PATH = "data/checkpoints.db"
 
 
 class ConfigError(RuntimeError):
@@ -42,3 +43,9 @@ def embedding_model_name() -> str:
     """
     load_dotenv()
     return os.environ.get("EMBEDDING_MODEL") or DEFAULT_EMBEDDING_MODEL
+
+
+def checkpoint_db_path() -> str:
+    """The SQLite file the app saves graph state to (CHECKPOINT_DB_PATH, else the default)."""
+    load_dotenv()
+    return os.environ.get("CHECKPOINT_DB_PATH") or DEFAULT_CHECKPOINT_DB_PATH
