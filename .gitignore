@@ -27,3 +27,6 @@ evals/.llm_cache/
 
 # Setup instructions
 repo_setup.md
+
+# App data (chats and learner DB)
+data/

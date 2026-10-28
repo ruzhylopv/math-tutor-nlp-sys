@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -96,3 +97,59 @@ def test_sidebar_without_a_learner_db_has_no_profile(
 
 def test_names_are_trimmed_and_collapsed() -> None:
     assert ui.normalise_name("  Ada   Lovelace ") == "Ada Lovelace"
+
+
+def test_send_stream_yields_progress_then_the_turn(tutor: ui.Tutor) -> None:
+    events = list(ui.send_stream(tutor, "ada", 1, "hi"))
+    *progress, view = events
+    assert [event.text for event in progress if isinstance(event, ui.Progress)] == [
+        ui.PROGRESS_LABELS["parse_input"],
+        ui.PROGRESS_LABELS["orchestrator"],
+    ]
+    assert isinstance(view, ui.TurnView)
+    assert view.reply == "Hello!"
+
+
+def test_a_node_without_a_label_shows_nothing(
+    tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ui, "PROGRESS_LABELS", {"orchestrator": "Deciding…"})
+    events = list(ui.send_stream(tutor, "ada", 1, "hi"))
+    assert [e.text for e in events if isinstance(e, ui.Progress)] == ["Deciding…"]
+
+
+def test_a_failed_stream_ends_with_an_error_turn(
+    tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("429")
+
+    monkeypatch.setattr(tutor.graph, "stream", boom)
+    events = list(ui.send_stream(tutor, "ada", 1, "hi"))
+    assert events == [ui.TurnView(reply=ui.ERROR_REPLY, error=True)]
+
+
+def test_a_published_hint_sets_the_hint_level(
+    tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Graph:
+        def stream(self, *args: object, **kwargs: object) -> list[tuple[tuple[()], str, object]]:
+            return [((), "updates", {"hint": {}})]
+
+        def get_state(self, config: object) -> object:
+            return type("S", (), {"values": {"reply_text": "Try again", "hint_level": 2}})()
+
+    view = ui.send(replace(tutor, graph=Graph()), "ada", 1, "x")  # type: ignore[arg-type]
+    assert (view.hint_level, view.reply, view.error) == (2, "Try again", False)
+
+
+def test_an_empty_reply_is_an_error(tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch) -> None:
+    class Graph:
+        def stream(self, *args: object, **kwargs: object) -> list[object]:
+            return []
+
+        def get_state(self, config: object) -> object:
+            return type("S", (), {"values": {}})()
+
+    view = ui.send(replace(tutor, graph=Graph()), "ada", 1, "x")  # type: ignore[arg-type]
+    assert view.error and view.reply == ui.ERROR_REPLY

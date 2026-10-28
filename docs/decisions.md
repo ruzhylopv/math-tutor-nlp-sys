@@ -633,3 +633,14 @@ fallback hints" from the roadmap.
   a model hiccup in the UI, so read the log.
 - **No eval script for the app** | one anyway | it is not a node (CLAUDE.md asks for evals per node); the scenario replay
   covers the behaviour behind it.
+
+## M7 progress display (2026-10-28)
+- **Progress from langgraph's `tasks` stream mode (a node start), labels in a dict by node name** | printing the node
+  that just finished (`updates` only) | the label then says what is running now, not what already ran; cost: a node
+  without a label shows nothing, so a new node needs a line in `PROGRESS_LABELS` to be visible.
+- **`send` kept as a wrapper over `send_stream`** | changing every caller | the first tests and any script that does not
+  need progress keep one call; cost: one more function.
+- **The failed message is kept in `session_state` and shown with the error** | writing it to the checkpoint | a failed
+  run must not leave a half-run in the graph state; cost: the message is lost if the page is reloaded.
+- **Streaming the reply token by token: not done** | streaming | the orchestrator checks a hint for leaks before it is
+  published, so partial text could show a leak that the check would have replaced.

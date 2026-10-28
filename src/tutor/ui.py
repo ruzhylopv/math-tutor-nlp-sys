@@ -6,8 +6,10 @@ second copy. The learner profile is read only (`get_profile`); starting a new ch
 """
 
 import logging
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
@@ -23,6 +25,24 @@ from tutor.tools.learner_db import get_profile, learner_db_path
 logger = logging.getLogger(__name__)
 
 ERROR_REPLY = "Sorry, something went wrong on my side. Please send your message again."
+
+# What the student sees while a node runs. A node missing here (a subgraph's inner nodes, or one
+# added later) simply shows no new label.
+PROGRESS_LABELS = {
+    "parse_input": "Reading your message…",
+    "orchestrator": "Deciding what to do next…",
+    "verify": "Checking your steps…",
+    "localize": "Finding the first wrong step…",
+    "retrieve": "Looking for the likely misconception…",
+    "hint": "Writing a hint…",
+}
+
+
+@dataclass(frozen=True)
+class Progress:
+    """A node has started; `text` is what to show while it runs."""
+
+    text: str
 
 
 @dataclass(frozen=True)
@@ -101,27 +121,53 @@ def load_history(tutor: Tutor, student_id: str, chat: int) -> list[tuple[str, st
     return history
 
 
-def send(tutor: Tutor, student_id: str, chat: int, text: str) -> TurnView:
-    """One student message is one run of the graph. A failure becomes a friendly reply."""
+def send_stream(
+    tutor: Tutor, student_id: str, chat: int, text: str
+) -> Iterator[Progress | TurnView]:
+    """One student message is one run of the graph: `Progress` events, then one `TurnView`.
+
+    A failure ends the stream with a friendly `TurnView` (error=True) instead of raising.
+    """
     config = _config(student_id, chat)
     visited: list[str] = []
+    shown = ""
     try:
-        for _, update in tutor.graph.stream(
-            new_turn(student_id, text), config, stream_mode="updates", subgraphs=True
-        ):
-            visited.extend(update)
+        # with several modes and subgraphs each chunk is (namespace, mode, data); the stub types
+        # do not say so
+        chunks: Iterator[Any] = tutor.graph.stream(
+            new_turn(student_id, text),
+            config,
+            stream_mode=["tasks", "updates"],
+            subgraphs=True,
+        )
+        for _, mode, data in chunks:
+            if mode == "updates":
+                visited.extend(data)
+            elif "result" not in data and "error" not in data:  # a node starts
+                label = PROGRESS_LABELS.get(data["name"])
+                if label and label != shown:
+                    shown = label
+                    yield Progress(label)
         state = tutor.graph.get_state(config).values
     except Exception:  # the UI must survive a model, network or config failure
         logger.exception("ui: the graph run failed")
-        return TurnView(reply=ERROR_REPLY, error=True)
+        yield TurnView(reply=ERROR_REPLY, error=True)
+        return
     reply = state.get("reply_text") or ERROR_REPLY
     published = "hint" in visited and bool(state.get("reply_text"))
-    return TurnView(
+    yield TurnView(
         reply=reply,
         hint_level=state.get("hint_level") if published else None,
         visited=visited,
         error=not state.get("reply_text"),
     )
+
+
+def send(tutor: Tutor, student_id: str, chat: int, text: str) -> TurnView:
+    """`send_stream` without the progress: the final `TurnView`."""
+    *_, view = send_stream(tutor, student_id, chat, text)
+    assert isinstance(view, TurnView)  # the stream always ends with one
+    return view
 
 
 def sidebar_info(tutor: Tutor, student_id: str, chat: int) -> SidebarInfo:
