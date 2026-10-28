@@ -163,13 +163,6 @@ def send_stream(
     )
 
 
-def send(tutor: Tutor, student_id: str, chat: int, text: str) -> TurnView:
-    """`send_stream` without the progress: the final `TurnView`."""
-    *_, view = send_stream(tutor, student_id, chat, text)
-    assert isinstance(view, TurnView)  # the stream always ends with one
-    return view
-
-
 def sidebar_info(tutor: Tutor, student_id: str, chat: int) -> SidebarInfo:
     """Hint level and hints used for this chat, and the person's profile across all chats."""
     values = tutor.graph.get_state(_config(student_id, chat)).values
