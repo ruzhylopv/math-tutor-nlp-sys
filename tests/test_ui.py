@@ -105,23 +105,47 @@ def test_names_are_trimmed_and_collapsed() -> None:
     assert ui.normalise_name("  Ada   Lovelace ") == "Ada Lovelace"
 
 
-def test_send_stream_yields_progress_then_the_turn(tutor: ui.Tutor) -> None:
-    events = list(ui.send_stream(tutor, "ada", 1, "hi"))
-    *progress, view = events
-    assert [event.text for event in progress if isinstance(event, ui.Progress)] == [
-        ui.PROGRESS_LABELS["parse_input"],
-        ui.PROGRESS_LABELS["orchestrator"],
+def test_send_stream_logs_each_step_with_its_time(tutor: ui.Tutor) -> None:
+    *steps, view = list(ui.send_stream(tutor, "ada", 1, "hi"))
+    assert steps == [
+        ui.StepStarted("parse_input", ui.PROGRESS_LABELS["parse_input"]),
+        ui.StepFinished("parse_input", ui.PROGRESS_LABELS["parse_input"], steps[1].seconds),
+        ui.StepStarted("orchestrator", ui.PROGRESS_LABELS["orchestrator"]),
+        ui.StepFinished("orchestrator", ui.PROGRESS_LABELS["orchestrator"], steps[3].seconds),
     ]
+    assert all(s.seconds >= 0 for s in steps if isinstance(s, ui.StepFinished))
     assert isinstance(view, ui.TurnView)
     assert view.reply == "Hello!"
 
 
-def test_a_node_without_a_label_shows_nothing(
+def test_step_time_is_measured_from_start_to_result(
+    tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Graph:
+        def stream(self, *args: object, **kwargs: object) -> list[tuple[tuple[()], str, object]]:
+            return [
+                ((), "tasks", {"id": "a", "name": "hint", "input": {}, "triggers": []}),
+                ((), "tasks", {"id": "a", "name": "hint", "result": {}, "error": None}),
+            ]
+
+        def get_state(self, config: object) -> object:
+            return type("S", (), {"values": {"reply_text": "Try again"}})()
+
+    clock = iter([10.0, 12.5])
+    monkeypatch.setattr(ui.time, "monotonic", lambda: next(clock))
+    events = list(ui.send_stream(replace(tutor, graph=Graph()), "ada", 1, "x"))  # type: ignore[arg-type]
+    assert ui.StepFinished("hint", ui.PROGRESS_LABELS["hint"], 2.5) in events
+
+
+def test_a_node_without_a_label_is_logged_by_its_name(
     tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(ui, "PROGRESS_LABELS", {"orchestrator": "Deciding…"})
     events = list(ui.send_stream(tutor, "ada", 1, "hi"))
-    assert [e.text for e in events if isinstance(e, ui.Progress)] == ["Deciding…"]
+    assert [e.label for e in events if isinstance(e, ui.StepFinished)] == [
+        "parse_input",
+        "Deciding…",
+    ]
 
 
 def test_a_failed_stream_ends_with_an_error_turn(

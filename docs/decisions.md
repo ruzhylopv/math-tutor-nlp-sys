@@ -642,3 +642,11 @@ fallback hints" from the roadmap.
   run must not leave a half-run in the graph state; cost: the message is lost if the page is reloaded.
 - **Streaming the reply token by token: not done** | streaming | the orchestrator checks a hint for leaks before it is
   published, so partial text could show a leak that the check would have replaced.
+
+## M7 step log (2026-11-02)
+- **Two events per step (`StepStarted`, `StepFinished` with seconds)** | one event per step carrying its duration |
+  the running step must be visible while it runs (parse_input alone can take 20 s); cost: the UI pairs events by task.
+- **A node without a label is shown by its name** | showing nothing (the 2026-10-28 rule) | a log with gaps hides where
+  the time went; cost: an unlabelled node shows a code name to the student.
+- **The last turn's log lives in `session_state`** | saving it in the checkpoint | timings are UI data, not tutor state;
+  cost: it is lost on reload and only the last turn has one.

@@ -1,12 +1,14 @@
 """Streamlit chat for the math tutor. Run: `uv run streamlit run app.py`."""
 
 import logging
+import time
 
 import streamlit as st
 
 from tutor.config import ConfigError, load_config
 from tutor.ui import (
-    Progress,
+    StepFinished,
+    StepStarted,
     TurnView,
     Tutor,
     build_tutor,
@@ -33,9 +35,10 @@ def show_sidebar(tutor: Tutor, student_id: str, chat: int) -> bool:
         if st.button("New chat"):
             st.session_state.chat = next_chat(tutor, student_id)
             st.session_state.pop("last_turn", None)
+            st.session_state.pop("step_log", None)
             st.rerun()
         if st.button("Switch name"):
-            for key in ("student_id", "chat", "last_turn", "failed_text"):
+            for key in ("student_id", "chat", "last_turn", "failed_text", "step_log"):
                 st.session_state.pop(key, None)
             st.rerun()
         info = sidebar_info(tutor, student_id, chat)
@@ -50,22 +53,36 @@ def show_sidebar(tutor: Tutor, student_id: str, chat: int) -> bool:
         return st.toggle("Show visited nodes")
 
 
+def show_step_log(lines: list[str], summary: str) -> None:
+    with st.expander(summary):
+        for line in lines:
+            st.write(line)
+
+
 def run_turn(tutor: Tutor, student_id: str, chat: int, text: str) -> TurnView:
-    """Send one message, showing what the tutor is doing while it works."""
+    """Send one message; the status shows the running step and logs each finished one with its time.
+
+    The log is kept in `session_state.step_log` so it stays visible after the rerun.
+    """
     view: TurnView | None = None
+    lines: list[str] = []
+    start = time.monotonic()
     with st.chat_message("assistant"):
-        with st.status("Thinking…") as status:
+        with st.status("Thinking…", expanded=True) as status:
             for event in send_stream(tutor, student_id, chat, text):
-                if isinstance(event, Progress):
-                    status.update(label=event.text)
+                if isinstance(event, StepStarted):
+                    status.update(label=event.label)
+                elif isinstance(event, StepFinished):
+                    lines.append(f"✓ {event.label.rstrip('…')} — {event.seconds:.1f}s")
+                    st.write(lines[-1])
                 else:
                     view = event
             assert view is not None  # the stream always ends with a TurnView
-            status.update(
-                label="Failed" if view.error else "Done",
-                state="error" if view.error else "complete",
-            )
+            total = time.monotonic() - start
+            summary = f"Failed after {total:.1f}s" if view.error else f"Done in {total:.1f}s"
+            status.update(label=summary, state="error" if view.error else "complete")
         st.write(view.reply)
+    st.session_state.step_log = (lines, summary)
     return view
 
 
@@ -101,6 +118,8 @@ def main() -> None:
             with st.chat_message("user"):
                 st.write(failed)
         st.error(last.reply)
+    if step_log := st.session_state.get("step_log"):
+        show_step_log(*step_log)
     if debug and last is not None:
         st.caption("Visited: " + " → ".join(last.visited))
 
