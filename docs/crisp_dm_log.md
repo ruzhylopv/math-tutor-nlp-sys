@@ -164,6 +164,13 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   and is open tech debt** (developer's decision); no result file was written. Next: run
   `eval_parse_input --split dev --limit 15` (about 45 calls) before layer 3 relies on `kind`.
 
+- **Flexible input layer 3, `verify` (2026-11-02)**: definitions (`t = x + 1`, recognised by form) are substituted
+  into later lines; reason/other lines SymPy cannot read are not compared; an answer in a defined letter is not an
+  answer. Dev: pairs unchanged against the last run (accuracy 0.9975, macro recall 0.9990, n=1621); new hand-written
+  chains (14 chains, 53 steps, spot check pending): step accuracy 1.000, chain accuracy 1.000, is_correct accuracy
+  1.000. The chains were written knowing the rules, so 1.000 shows the rules do what was meant, not that they cover
+  real students. Result: `evals/results/verify/20261102T163721Z_2a8e19b.json`.
+
 ## Deployment
 - **M7 app (2026-10-27)**: Streamlit chat (`app.py`, `src/tutor/ui.py`): name field, chat bubbles on the checkpointed
   history, "New chat" (same person, same profile), sidebar with hint level, hints used and the `get_profile` summary,

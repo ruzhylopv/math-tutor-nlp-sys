@@ -11,6 +11,10 @@ What it does and does not cover: a single pair per case, so the multi-step logic
 unparsable lines in a chain, predecessor choice), `is_correct` and the justification claims are
 tested only in tests/test_verify_node.py. Accuracy on these splits is high by construction; see
 evals/datasets/README.md.
+
+Chains (`chain/...`): evals/datasets/<split>/verify_chains.jsonl, when it exists, holds whole
+hand-written solutions (definitions, reason lines, answers in a new letter). Every step's relation
+is scored (`chain/step_accuracy`, recall per relation), and so is `is_correct`.
 """
 
 import logging
@@ -72,6 +76,51 @@ def evaluate(cases: list[dict[str, Any]]) -> dict[str, float]:
     return metrics
 
 
+def predict_chain(case: dict[str, Any]) -> tuple[list[str], bool]:
+    """The relation of every step and `is_correct` for one chain."""
+    steps = [Step(claim=step["claim"], kind=step["kind"]) for step in case["steps"]]
+    result = verify({"problem": case["problem"], "student_steps": steps})
+    relations = [
+        "not_valid" if verdict.check_holds is False else str(verdict.relation)
+        for verdict in result["step_verdicts"]
+    ]
+    return relations, bool(result["is_correct"])
+
+
+def evaluate_chains(cases: list[dict[str, Any]]) -> dict[str, float]:
+    """Step and `is_correct` accuracy over whole chains."""
+    predictions = [predict_chain(case) for case in cases]
+    pairs = [
+        (true, pred)
+        for case, (relations, _) in zip(cases, predictions, strict=True)
+        for true, pred in zip(case["expected_relations"], relations, strict=True)
+    ]
+    metrics: dict[str, float] = {
+        "chain/step_accuracy": sum(t == p for t, p in pairs) / len(pairs) if pairs else 0.0,
+        "chain/chain_accuracy": sum(
+            case["expected_relations"] == relations
+            for case, (relations, _) in zip(cases, predictions, strict=True)
+        )
+        / len(cases),
+        "chain/is_correct_accuracy": sum(
+            case["expected_is_correct"] == correct
+            for case, (_, correct) in zip(cases, predictions, strict=True)
+        )
+        / len(cases),
+        "chain/n": float(len(cases)),
+        "chain/n_steps": float(len(pairs)),
+    }
+    for relation in RELATIONS:
+        support = sum(1 for true, _ in pairs if true == relation)
+        if support:
+            hits = sum(1 for true, pred in pairs if true == pred == relation)
+            metrics[f"chain/recall/{relation}"] = hits / support
+    for (true, pred), count in sorted(Counter(pairs).items()):
+        if true != pred:
+            metrics[f"chain/confusion/{true}->{pred}"] = float(count)
+    return metrics
+
+
 def _share(items: list[tuple[str, str, str]], keep: Any) -> float:
     return sum(1 for item in items if keep(*item)) / len(items) if items else 0.0
 
@@ -85,7 +134,13 @@ def main() -> None:
         return
     cases = load_jsonl(path)
     metrics = evaluate(cases)
-    result = write_result(COMPONENT, split, len(cases), metrics, note=NOTE)
+    chains_path = dataset_path(COMPONENT + "_chains", split)
+    note = NOTE
+    if chains_path.exists():
+        chains = load_jsonl(chains_path)
+        metrics.update(evaluate_chains(chains))
+        note += f" Plus {len(chains)} hand-written chains (chain/...), labels spot-check pending."
+    result = write_result(COMPONENT, split, len(cases), metrics, note=note)
     logger.info("%s (%s): n=%d accuracy=%.4f macro_recall=%.4f", COMPONENT, split, len(cases),
                 metrics["accuracy"], metrics["macro_recall"])  # fmt: skip
     for relation in RELATIONS:
@@ -93,8 +148,11 @@ def main() -> None:
         logger.info("  %-11s support=%-4d recall=%.3f precision=%s", relation,
                     metrics[f"support/{relation}"], metrics[f"recall/{relation}"],
                     "n/a" if precision is None else f"{precision:.3f}")  # fmt: skip
+    for name in ("chain/step_accuracy", "chain/chain_accuracy", "chain/is_correct_accuracy"):
+        if name in metrics:
+            logger.info("  %-26s %.3f", name, metrics[name])
     for name, value in sorted(metrics.items()):
-        if name.startswith("confusion/"):
+        if "confusion/" in name:
             logger.info("  %s: %d", name, value)
     logger.info("Wrote %s", result)
 

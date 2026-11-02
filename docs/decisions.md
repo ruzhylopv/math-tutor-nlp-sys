@@ -673,3 +673,16 @@ fallback hints" from the roadmap.
 - **Layer 2: the line-kind and intent cases have their own source, `flexible`, dev only** | appended to the
   hand-written list | that list sends every third case to the protected test split and the builder tests count it;
   cost: a second hand-written module.
+- **Layer 3: a definition is recognised by its form, not by `Step.kind`** | trusting `kind == "definition"` | parse_input's
+  kind accuracy is not measured yet, and a mislabelled `t = x + 1` compared as an equation is the step-1 bug again;
+  cost: any new letter set to an expression in known letters is a definition, whatever the student meant.
+- **Layer 3: a `reason`/`other` line that SymPy can read is still checked** | skipping every line with that label |
+  a wrong equation labelled `reason` would otherwise never be checked (the plan's main risk); cost: a sentence that
+  happens to parse ("x is 5" reads as x*i*s*5) is compared and may be flagged.
+- **Layer 3: an answer that uses a defined letter is not an answer** | substituting the definitions into the final
+  line | the answer check ignores variable names, so `t = 4 or t = -3` could match the x-solutions by coincidence;
+  cost: none expected, the student has not finished.
+- **Layer 3: verify's chain cases live in their own file (`verify_chains.jsonl`)** | adding a chain format to
+  `verify_steps.jsonl` | the pair file's format and its build are unchanged; cost: a second dataset file.
+- **Considered and not taken (developer, 2026-11-02): one general verify rule ("compare what parses, skip the rest")
+  and dropping `Step.kind`** | the per-kind rules of this plan | the developer chose the plan as written.
