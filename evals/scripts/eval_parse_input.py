@@ -10,7 +10,15 @@ the same over the expected claims: the dataset has correct transcriptions the ch
 (`x = 2 or x = 3`), so read the first against the second.
 
 Use `--limit N` for a quick run on N messages taken in turn from each kind (the result file
-says so).
+says so). The cases labelled with line kinds and intent (`expected_intent`) are always run in full.
+
+Line kinds and intent: `kind_accuracy` is per expected step, by position (a missing step is wrong),
+and `intent_accuracy` per message, both over the labelled cases only.
+
+Topic and level (merged from `classify`): the MATH problems of
+evals/datasets/<split>/classify.jsonl are sent as the student's message, and the node's topic and
+level are scored against MATH's labels (`topic/...`). `--limit N` takes N problems in turn from
+each subject.
 
 A case is right when the new problem is the expected one (or both are absent) and the claims match
 in number, order and text. Two match rules are reported:
@@ -27,7 +35,7 @@ from collections.abc import Callable
 from typing import Any
 from unittest.mock import patch
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from evals.runner import (
     EVALS_DIR,
@@ -40,7 +48,7 @@ from evals.runner import (
 )
 from tutor.config import load_config
 from tutor.nodes.parse_input import parse_input
-from tutor.state import TutorState
+from tutor.state import IN_SCOPE_TOPICS, TutorState
 from tutor.tools import structured
 from tutor.tools.algebra import UnparsableError, parse_statement
 
@@ -51,9 +59,13 @@ NOTE = (
     "Messages are rendered from known steps (mined from MATH solutions, some made wrong on "
     "purpose) in a layout and a notation, plus hand-written messages; the expected parse is known "
     "from the rendering, not from a model. Claims are compared as text, so a corrected step fails. "
-    "Justifications and operations are not evaluated."
+    "Justifications and operations are not evaluated. Line kinds and intent are scored on "
+    "hand-written dev cases only; topic and level on MATH problems sent as the message (LaTeX "
+    "text, likely in the model's training data)."
 )
 Prediction = tuple[str | None, list[str], bool]  # new problem, claims, the model call failed
+Reading = tuple[Prediction, list[str], str | None]  # also the kinds and the intent (None: failed)
+TopicPrediction = tuple[str | None, int | None, bool]  # topic, level, the model call failed
 
 
 def norm(text: str) -> str:
@@ -71,11 +83,8 @@ def canon(text: str) -> str:
     return text
 
 
-def predict(case: dict[str, Any]) -> Prediction:
-    """The node's new problem, its claims, and whether the model call failed, for one case."""
-    state: TutorState = {"messages": [HumanMessage(case["message"])]}
-    if case.get("stored_problem"):
-        state["problem"] = case["stored_problem"]
+def _run(state: TutorState) -> tuple[dict[str, Any], bool]:
+    """The node's update for a state, and whether the model call failed."""
     failures: list[bool] = []
     real = structured.call_structured
 
@@ -86,8 +95,26 @@ def predict(case: dict[str, Any]) -> Prediction:
 
     with patch.object(structured, "call_structured", spy):
         result = parse_input(state)
-    claims = [step.claim for step in result["student_steps"]]
-    return result.get("problem"), claims, any(failures)
+    return result, any(failures)
+
+
+def predict(case: dict[str, Any]) -> Reading:
+    """The node's new problem, claims, failure flag, line kinds and intent for one case."""
+    state: TutorState = {"messages": [HumanMessage(case["message"])]}
+    if case.get("tutor_message"):
+        state["messages"] = [AIMessage(case["tutor_message"]), HumanMessage(case["message"])]
+    if case.get("stored_problem"):
+        state["problem"] = case["stored_problem"]
+    result, failed = _run(state)
+    steps = result["student_steps"]
+    prediction = (result.get("problem"), [step.claim for step in steps], failed)
+    return prediction, [step.kind for step in steps], result.get("intent")
+
+
+def predict_topic(case: dict[str, Any]) -> TopicPrediction:
+    """The topic and level the node gives a MATH problem sent as the message."""
+    result, failed = _run({"messages": [HumanMessage(case["problem"])]})
+    return result.get("topic"), result.get("level"), failed
 
 
 def _same(expected: str | None, predicted: str | None, form: Callable[[str], str]) -> bool:
@@ -183,6 +210,77 @@ def evaluate(cases: list[dict[str, Any]], predictions: list[Prediction]) -> dict
     return metrics
 
 
+def evaluate_labels(cases: list[dict[str, Any]], readings: list[Reading]) -> dict[str, float]:
+    """Line-kind and intent accuracy over the cases labelled with an intent."""
+    pairs = [(c, r) for c, r in zip(cases, readings, strict=True) if "expected_intent" in c]
+    kind_hits = [
+        not r[0][2] and i < len(r[1]) and r[1][i] == kind
+        for c, r in pairs
+        for i, kind in enumerate(c["expected_kinds"])
+    ]
+    metrics = {
+        "kind_accuracy": _share(kind_hits),
+        "intent_accuracy": _share([not r[0][2] and r[2] == c["expected_intent"] for c, r in pairs]),
+        "n/labelled": float(len(pairs)),
+        "n/labelled_steps": float(len(kind_hits)),
+    }
+    for intent in sorted({c["expected_intent"] for c, _ in pairs}):
+        flags = [r[2] == intent for c, r in pairs if c["expected_intent"] == intent]
+        metrics[f"intent_recall/{intent}"] = _share(flags)
+    return metrics
+
+
+def _f1(true: list[str], pred: list[str], label: str) -> float:
+    hits = sum(1 for t, p in zip(true, pred, strict=True) if t == p == label)
+    predicted = sum(1 for p in pred if p == label)
+    support = sum(1 for t in true if t == label)
+    precision = hits / predicted if predicted else 0.0
+    recall = hits / support if support else 0.0
+    return 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+
+
+def evaluate_topics(
+    cases: list[dict[str, Any]], predictions: list[TopicPrediction]
+) -> dict[str, float]:
+    """Topic and level against MATH's labels; a missing topic or a failed call is wrong."""
+    true = [case["subject"] for case in cases]
+    topics = [topic or "(none)" for topic, _, _ in predictions]
+    labels = sorted(set(true))
+    pairs = list(zip(cases, predictions, strict=True))
+    return {
+        "topic/accuracy": _share([t == p for t, p in zip(true, topics, strict=True)]),
+        "topic/macro_f1": sum(_f1(true, topics, label) for label in labels) / len(labels)
+        if labels
+        else 0.0,
+        "topic/in_scope_accuracy": _share(
+            [
+                p != "(none)" and (t in IN_SCOPE_TOPICS) == (p in IN_SCOPE_TOPICS)
+                for t, p in zip(true, topics, strict=True)
+            ]
+        ),
+        "topic/level_accuracy": _share([c["level"] == p[1] for c, p in pairs]),
+        "topic/level_within_one": _share(
+            [p[1] is not None and abs(c["level"] - p[1]) <= 1 for c, p in pairs]
+        ),
+        "topic/failure_rate": _share([p[2] for p in predictions]),
+        "topic/n": float(len(cases)),
+    }
+
+
+def topic_sample(cases: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    """`limit` MATH problems taken in turn from each subject (deterministic, like the other)."""
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for case in sorted(cases, key=lambda case: hashlib.sha256(case["id"].encode()).hexdigest()):
+        groups.setdefault(case["subject"], []).append(case)
+    queues = [groups[subject] for subject in sorted(groups)]
+    chosen: list[dict[str, Any]] = []
+    while len(chosen) < limit and any(queues):
+        for queue in queues:
+            if queue and len(chosen) < limit:
+                chosen.append(queue.pop(0))
+    return sorted(chosen, key=lambda case: str(case["id"]))
+
+
 def stratified_sample(cases: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
     """`limit` cases, taken in turn from each kind of message (hand-written ones are a kind).
 
@@ -214,10 +312,25 @@ def main() -> None:
     config = load_config()
     cases = load_jsonl(path)
     note = NOTE
-    if limit is not None and limit < len(cases):
-        note += f" SUBSET: {limit} of {len(cases)} messages, taken in turn from each kind."
-        cases = stratified_sample(cases, limit)
-    metrics = evaluate(cases, [predict(case) for case in with_progress(cases, "parse_input")])
+    labelled = [case for case in cases if "expected_intent" in case]
+    rest = [case for case in cases if "expected_intent" not in case]
+    if limit is not None and limit < len(rest):
+        note += (
+            f" SUBSET: {limit} of {len(rest)} messages, taken in turn from each kind, plus all "
+            f"{len(labelled)} labelled with kinds and intent."
+        )
+        cases = sorted(stratified_sample(rest, limit) + labelled, key=lambda c: str(c["id"]))
+    readings = [predict(case) for case in with_progress(cases, "parse_input")]
+    metrics = evaluate(cases, [reading[0] for reading in readings])
+    metrics.update(evaluate_labels(cases, readings))
+    topic_path = dataset_path("classify", split)
+    if topic_path.exists():
+        problems = load_jsonl(topic_path)
+        if limit is not None and limit < len(problems):
+            note += f" TOPIC SUBSET: {limit} of {len(problems)} problems, in turn by subject."
+            problems = topic_sample(problems, limit)
+        topics = [predict_topic(case) for case in with_progress(problems, "parse_input topics")]
+        metrics.update(evaluate_topics(problems, topics))
     result = write_result(
         COMPONENT,
         split,
@@ -241,8 +354,15 @@ def main() -> None:
         "sympy_parse_rate",
         "gold_parse_rate",
         "failure_rate",
+        "kind_accuracy",
+        "intent_accuracy",
+        "topic/accuracy",
+        "topic/macro_f1",
+        "topic/level_within_one",
+        "topic/failure_rate",
     ):
-        logger.info("  %-24s %.3f", name, metrics[name])
+        if name in metrics:
+            logger.info("  %-24s %.3f", name, metrics[name])
     logger.info("Wrote %s", result)
 
 

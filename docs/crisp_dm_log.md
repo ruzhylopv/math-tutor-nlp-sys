@@ -157,6 +157,13 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   (`dev/orchestrator.jsonl`), run `--part routing` and `--part scenarios` when the rate limit allows, then fill in
   this entry with the numbers.
 
+- **Flexible input layer 2, `parse_input` (2026-11-02)**: the node gets the tutor's last message and writes `intent`,
+  each step's `kind`, and `topic`/`level` (merged from classify; classify stays until layer 6). The eval adds
+  `kind_accuracy`, `intent_accuracy` (15 new hand-written dev cases, `flex/`, spot check pending) and `topic/*` metrics
+  (classify's dev problems sent as the message). **No live metrics yet: the dev run was stopped to save model calls
+  and is open tech debt** (developer's decision); no result file was written. Next: run
+  `eval_parse_input --split dev --limit 15` (about 45 calls) before layer 3 relies on `kind`.
+
 ## Deployment
 - **M7 app (2026-10-27)**: Streamlit chat (`app.py`, `src/tutor/ui.py`): name field, chat bubbles on the checkpointed
   history, "New chat" (same person, same profile), sidebar with hint level, hints used and the `get_profile` summary,

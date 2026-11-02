@@ -12,6 +12,7 @@ from tutor.state import ParsedInput, Step
 from tutor.tools import structured
 
 SCRIPT = Path(__file__).resolve().parents[1] / "evals" / "scripts" / "eval_parse_input.py"
+NO_TUTOR = "\n\nTutor's last message:\nnone\n\nStudent message:\n"
 
 
 def _module() -> dict[str, Any]:
@@ -157,10 +158,10 @@ def test_the_script_runs_the_node_and_writes_a_result(
         "".join(json.dumps(c) + "\n" for c in cases), encoding="utf-8"
     )
     answers = {
-        "Stored problem: none\n\nStudent message:\nSolve 2x = 4\nx = 2": ParsedInput(
+        f"Stored problem: none{NO_TUTOR}Solve 2x = 4\nx = 2": ParsedInput(
             problem="2x = 4", steps=[Step(claim="x = 2")]
         ),
-        "Stored problem: 2x = 4\n\nStudent message:\nwhy?": ParsedInput(),
+        f"Stored problem: 2x = 4{NO_TUTOR}why?": ParsedInput(),
     }  # the third message gets None: a failed call
 
     def fake(prompt: str, schema: type[BaseModel], text: str, retries: int = 1) -> Any:
@@ -232,3 +233,94 @@ def test_the_script_runs_a_limited_subset_and_says_so(
     (result,) = (tmp_path / "results" / "parse_input").glob("*.json")
     data = json.loads(result.read_text(encoding="utf-8"))
     assert data["n_examples"] == 2 and "SUBSET: 2 of 6" in data["note"]
+
+
+def _labelled(kinds: list[str], intent: str, steps: list[str] | None = None) -> dict[str, Any]:
+    claims = steps if steps is not None else [f"s{i} = 0" for i in range(len(kinds))]
+    return {**_case(None, claims), "expected_kinds": kinds, "expected_intent": intent}
+
+
+def test_kind_and_intent_accuracy_count_only_the_labelled_cases() -> None:
+    cases = [
+        _labelled(["definition", "equation"], "stuck"),
+        _labelled(["reason"], "check_work"),
+        _case(None, ["x = 1"]),
+    ]
+    readings = [
+        ((None, ["a", "b"], False), ["definition", "reason"], "stuck"),
+        ((None, [], False), [], "check_work"),  # a missing step is a wrong kind
+        ((None, ["x = 1"], False), ["equation"], "explain"),  # unlabelled: not counted
+    ]
+    metrics = _module()["evaluate_labels"](cases, readings)
+    assert metrics["kind_accuracy"] == pytest.approx(1 / 3)
+    assert metrics["intent_accuracy"] == 1.0
+    assert metrics["n/labelled"] == 2.0 and metrics["n/labelled_steps"] == 3.0
+    assert metrics["intent_recall/stuck"] == 1.0
+
+
+def test_a_failed_call_is_a_wrong_kind_and_intent() -> None:
+    readings = [((None, [], True), [], None)]
+    metrics = _module()["evaluate_labels"]([_labelled([], "other")], readings)
+    assert metrics["intent_accuracy"] == 0.0
+
+
+def test_topic_metrics_against_math_labels() -> None:
+    cases = [
+        {"id": "a", "problem": "p", "subject": "Algebra", "level": 2},
+        {"id": "b", "problem": "q", "subject": "Geometry", "level": 4},
+        {"id": "c", "problem": "r", "subject": "Prealgebra", "level": 1},
+    ]
+    predictions = [("Algebra", 3, False), ("Algebra", 4, False), (None, None, True)]
+    metrics = _module()["evaluate_topics"](cases, predictions)
+    assert metrics["topic/accuracy"] == pytest.approx(1 / 3)
+    assert metrics["topic/in_scope_accuracy"] == pytest.approx(1 / 3)
+    assert metrics["topic/level_accuracy"] == pytest.approx(1 / 3)
+    assert metrics["topic/level_within_one"] == pytest.approx(2 / 3)
+    assert metrics["topic/failure_rate"] == pytest.approx(1 / 3)
+    assert metrics["topic/macro_f1"] == pytest.approx((2 / 3) / 3)  # only Algebra scores
+
+
+def test_the_script_passes_the_tutor_message_and_scores_topics(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    (tmp_path / "datasets" / "dev").mkdir(parents=True)
+    case = {
+        **_labelled(["equation"], "answer", ["2x = 4"]),
+        "id": "flex/000",
+        "message": "2x = 4",
+        "stored_problem": "2x + 1 = 5",
+        "tutor_message": "What do you get?",
+        "source": "flexible",
+    }
+    (tmp_path / "datasets" / "dev" / "parse_input.jsonl").write_text(
+        json.dumps(case) + "\n", encoding="utf-8"
+    )
+    problem = {"id": "m", "problem": "Solve 3x = 9.", "subject": "Prealgebra", "level": 1}
+    (tmp_path / "datasets" / "dev" / "classify.jsonl").write_text(
+        json.dumps(problem) + "\n", encoding="utf-8"
+    )
+    answers = {
+        "Stored problem: 2x + 1 = 5\n\nTutor's last message:\nWhat do you get?\n\n"
+        "Student message:\n2x = 4": ParsedInput(steps=[Step(claim="2x = 4")], intent="answer"),
+        f"Stored problem: none{NO_TUTOR}Solve 3x = 9.": ParsedInput(
+            problem="3x = 9", topic="Prealgebra", level=1
+        ),
+    }
+
+    def fake(prompt: str, schema: type[BaseModel], text: str, retries: int = 1) -> Any:
+        return answers.get(text)
+
+    monkeypatch.setattr(structured, "call_structured", fake)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    monkeypatch.setenv("MODEL_NAME", "some/model")
+    monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setattr(runner, "DATASETS_DIR", tmp_path / "datasets")
+    monkeypatch.setattr(runner, "RESULTS_DIR", tmp_path / "results")
+    monkeypatch.setattr(sys, "argv", ["eval_parse_input.py"])
+    runpy.run_path(str(SCRIPT), run_name="__main__")
+    (result,) = (tmp_path / "results" / "parse_input").glob("*.json")
+    metrics = json.loads(result.read_text(encoding="utf-8"))["metrics"]
+    assert metrics["case_accuracy"] == 1.0
+    assert metrics["kind_accuracy"] == metrics["intent_accuracy"] == 1.0
+    assert metrics["topic/accuracy"] == 1.0 and metrics["topic/level_accuracy"] == 1.0

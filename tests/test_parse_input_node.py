@@ -77,7 +77,7 @@ def test_a_question_resets_the_steps(canned_llm: Callable[..., None]) -> None:
     canned_llm(ParsedInput=ParsedInput(problem=None, steps=[]))
     state = _state("why can't I add the exponents?", problem="x^2 * x^3")
     state["student_steps"] = [Step(claim="old step")]
-    assert parse_input(state) == {"student_steps": []}
+    assert parse_input(state) == {"student_steps": [], "intent": "other"}
 
 
 def test_the_model_sees_the_stored_problem_and_the_latest_message(
@@ -96,7 +96,11 @@ def test_the_model_sees_the_stored_problem_and_the_latest_message(
     }
     parse_input(state)
     assert seen == [
-        ("parse_input", "ParsedInput", "Stored problem: 3x = 9\n\nStudent message:\nx = 3")
+        (
+            "parse_input",
+            "ParsedInput",
+            "Stored problem: 3x = 9\n\nTutor's last message:\na hint\n\nStudent message:\nx = 3",
+        )
     ]
 
 
@@ -160,4 +164,70 @@ def test_a_failing_model_gives_no_steps_and_keeps_the_problem(
 
 def test_only_the_declared_fields_are_returned(canned_llm: Callable[..., None]) -> None:
     canned_llm(ParsedInput=ATTEMPT)
-    assert set(parse_input(_state("x"))) <= {"problem", "student_steps"}
+    assert set(parse_input(_state("x"))) <= {
+        "problem",
+        "student_steps",
+        "intent",
+        "topic",
+        "level",
+    }
+
+
+def test_the_intent_is_taken_from_the_model_answer(canned_llm: Callable[..., None]) -> None:
+    canned_llm(ParsedInput=ParsedInput(problem=None, steps=[], intent="stuck"))
+    assert parse_input(_state("what do I do next?", problem="3x = 9"))["intent"] == "stuck"
+
+
+def _seen_text(monkeypatch: pytest.MonkeyPatch, state: TutorState) -> str:
+    seen: list[str] = []
+
+    def fake(prompt: str, schema: type[BaseModel], text: str, retries: int = 1) -> Any:
+        seen.append(text)
+        return ParsedInput()
+
+    monkeypatch.setattr(structured, "call_structured", fake)
+    parse_input(state)
+    return seen[0]
+
+
+def test_with_no_tutor_message_the_model_is_told_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert "Tutor's last message:\nnone\n" in _seen_text(monkeypatch, _state("hello"))
+
+
+def test_the_tutor_message_is_the_one_before_the_latest_student_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state: TutorState = {
+        "messages": [
+            AIMessage("old hint"),
+            HumanMessage("x = 3"),
+            AIMessage("What must be true of A?"),
+            HumanMessage("it has to be zero"),
+        ]
+    }
+    assert "Tutor's last message:\nWhat must be true of A?\n" in _seen_text(monkeypatch, state)
+
+
+def test_two_student_messages_in_a_row_have_no_tutor_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state: TutorState = {
+        "messages": [AIMessage("a hint"), HumanMessage("x = 3"), HumanMessage("sorry, x = 4")]
+    }
+    assert "Tutor's last message:\nnone\n" in _seen_text(monkeypatch, state)
+
+
+def test_a_stated_problem_with_a_topic_sets_topic_and_level(
+    canned_llm: Callable[..., None],
+) -> None:
+    canned_llm(ParsedInput=ParsedInput(problem="x^2 = 4", topic="Algebra", level=2))
+    result = parse_input(_state("solve x^2 = 4"))
+    assert (result["topic"], result["level"]) == ("Algebra", 2)
+
+
+def test_a_message_without_a_problem_keeps_the_stored_topic(
+    canned_llm: Callable[..., None],
+) -> None:
+    canned_llm(ParsedInput=ParsedInput(problem=None, intent="explain", topic="Algebra", level=2))
+    state = _state("what is a coefficient?", problem="3x = 9")
+    assert "topic" not in parse_input({**state, "topic": "Prealgebra", "level": 1})

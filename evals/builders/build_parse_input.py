@@ -7,7 +7,8 @@ The expected parse is known before the message exists. A step chain is mined fro
 (`evals.builders.mine_math`), its first line is the problem and the rest are the student's steps.
 For some messages one step is made wrong on purpose (`corrupt.py`), because the parser must
 transcribe a mistake, not fix it. The chain is then written as a message in a layout and a notation
-(`render_message.py`). Hand-written messages (`handwritten_messages.py`) are added on top. The kind
+(`render_message.py`). Hand-written messages (`handwritten_messages.py`) are added on top, and the
+line-kind and intent messages (`flexible_messages.py`) to dev only. The kind
 of message is fixed by position: problem and steps, steps only (the problem is stored), the problem
 only, an answer only, a question only.
 
@@ -31,6 +32,7 @@ from typing import Any
 
 from evals.builders.build_verify import load_math, write_jsonl
 from evals.builders.corrupt import corrupt_pair
+from evals.builders.flexible_messages import flexible_records
 from evals.builders.handwritten_messages import HANDWRITTEN
 from evals.builders.mine_math import (
     Chain,
@@ -216,6 +218,7 @@ def build(math_dir: Path, out_dir: Path, per_split: int, seed: int) -> dict[str,
             splits[split].append(_record_from_chain(uid, chain, KINDS[position % len(KINDS)], seed))
     for split, record in handwritten_records():
         splits[split].append(record)
+    splits["dev"].extend(flexible_records())  # line kinds and intent, dev only
     for split, records in splits.items():
         write_jsonl(out_dir / split / "parse_input.jsonl", records)
     review = out_dir / "review"
