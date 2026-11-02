@@ -13,7 +13,7 @@ never turned into a verdict.
 import re
 import signal
 import threading
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import wraps
@@ -269,16 +269,81 @@ def _proper_subset(inner: sp.Set, outer: sp.Set) -> bool:
     return bool(inner.is_subset(outer) is True and not _same_set(inner, outer))
 
 
+def _names(statement: Statement) -> set[str]:
+    if isinstance(statement, Expression):
+        return {symbol.name for symbol in statement.value.free_symbols}
+    return {s.name for lhs, rhs in statement.pairs for s in lhs.free_symbols | rhs.free_symbols}
+
+
+def _substitute(statement: Statement, definitions: Mapping[str, str]) -> Statement:
+    """Replace each defined letter by its expression, in order (one may use an earlier one)."""
+    replacements: dict[sp.Basic, sp.Basic] = {}
+    for name, rhs in definitions.items():
+        replacements[sp.Symbol(name, real=True)] = _parse_expression(rhs).xreplace(replacements)
+    if isinstance(statement, Expression):
+        return Expression(statement.value.xreplace(replacements))
+    return Equations(
+        tuple(
+            (lhs.xreplace(replacements), rhs.xreplace(replacements)) for lhs, rhs in statement.pairs
+        )
+    )
+
+
+_NO_DEFINITION: tuple[str, str] | None = None
+
+
+@_guarded(_NO_DEFINITION)
+def definition_of(line: str, problem: str, known: Mapping[str, str]) -> tuple[str, str] | None:
+    """`(letter, expression)` when the line defines a new letter (`t = x + 1`), else None.
+
+    Recognised by form, not by the parser's `kind` label: one equation whose left side is a single
+    letter that is neither in the problem nor already defined, and whose right side uses only the
+    problem's letters and earlier definitions (at least one of them). `x + 1 = t` is not recognised.
+    """
+    try:
+        statement, source = parse_statement(line), parse_statement(problem)
+    except UnparsableError:
+        return None
+    if not isinstance(statement, Equations) or len(statement.pairs) != 1:
+        return None
+    lhs, rhs = statement.pairs[0]
+    if not isinstance(lhs, sp.Symbol):
+        return None
+    allowed = _names(source) | set(known)
+    used = {symbol.name for symbol in rhs.free_symbols}
+    if lhs.name in allowed or not used or not used <= allowed:
+        return None
+    return lhs.name, line.translate(_UNICODE).split("=", 1)[1].strip()
+
+
+_NO_NAMES: frozenset[str] = frozenset()
+
+
+@_guarded(_NO_NAMES)
+def letters(text: str) -> frozenset[str]:
+    """The variable names in a statement; empty if it does not parse."""
+    try:
+        return frozenset(_names(parse_statement(text)))
+    except UnparsableError:
+        return frozenset()
+
+
 @_guarded(_UNPARSABLE_RELATION)
-def step_relation(prev: str, curr: str, original: str | None = None) -> Relation:
+def step_relation(
+    prev: str, curr: str, original: str | None = None, definitions: Mapping[str, str] | None = None
+) -> Relation:
     """How `curr` relates to `prev`: equivalent, implies, narrows, not_valid or unparsable.
 
     `original` is the problem's own equation; it is only needed to recognise `narrows`
     (rejecting an extraneous root). A closed statement (no variables) is valid if it is true,
     whatever `prev` is. Callers compare a line with the previous line that is not a check.
+    `definitions` (letter -> expression, from `definition_of`) are substituted into both lines
+    before they are compared, so `t^2 = 4` after `t = x + 1` is read as `(x + 1)^2 = 4`.
     """
     try:
         before, after = parse_statement(prev), parse_statement(curr)
+        if definitions:
+            before, after = _substitute(before, definitions), _substitute(after, definitions)
         if isinstance(after, Equations) and after.is_closed():
             return "equivalent" if after.is_true() else "not_valid"
         if isinstance(before, Expression) and isinstance(after, Expression):

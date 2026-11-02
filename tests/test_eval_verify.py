@@ -2,11 +2,13 @@ import json
 import runpy
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import pytest
 
 from evals import runner
+from evals.builders.verify_chains import OUT, chain_records
+from tutor.state import Relation, Step
 
 SCRIPT = Path(__file__).resolve().parents[1] / "evals" / "scripts" / "eval_verify.py"
 CASES = [
@@ -84,3 +86,46 @@ def test_a_missing_dataset_is_reported_and_nothing_is_written(
     caplog.set_level("INFO")
     runpy.run_path(str(SCRIPT), run_name="__main__")
     assert "missing" in caplog.text and not (tmp_path / "results").exists()
+
+
+CHAIN = {
+    "problem": "(x+1)^2 = 4",
+    "steps": [
+        {"claim": "t = x + 1", "kind": "definition"},
+        {"claim": "t^2 = 4", "kind": "equation"},
+        {"claim": "t = 2 or t = -2", "kind": "equation"},
+    ],
+    "expected_relations": ["equivalent", "equivalent", "equivalent"],
+    "expected_is_correct": False,  # stopped in the new letter
+}
+
+
+def test_chain_metrics_score_every_step_and_is_correct() -> None:
+    metrics = _module()["evaluate_chains"]([CHAIN])
+    assert metrics["chain/step_accuracy"] == metrics["chain/chain_accuracy"] == 1.0
+    assert metrics["chain/is_correct_accuracy"] == 1.0
+    assert metrics["chain/n_steps"] == 3.0 and metrics["chain/recall/equivalent"] == 1.0
+
+
+def test_a_wrong_chain_label_shows_in_the_confusion() -> None:
+    wrong = {**CHAIN, "expected_relations": ["equivalent", "not_valid", "equivalent"]}
+    metrics = _module()["evaluate_chains"]([wrong])
+    assert metrics["chain/step_accuracy"] == pytest.approx(2 / 3)
+    assert metrics["chain/chain_accuracy"] == 0.0
+    assert metrics["chain/confusion/not_valid->equivalent"] == 1.0
+
+
+def test_the_hand_written_chains_are_well_formed() -> None:
+    records = chain_records()
+    assert len({r["id"] for r in records}) == len(records)
+    for record in records:
+        assert len(record["steps"]) == len(record["expected_relations"]), record["id"]
+        assert all(rel in get_args(Relation) for rel in record["expected_relations"])
+        for step in record["steps"]:
+            Step(**step)  # a valid kind
+        assert record["provenance"] == {"spot_check": "pending"}
+
+
+def test_the_dev_chain_file_matches_the_builder() -> None:
+    lines = OUT.read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line) for line in lines] == chain_records()
