@@ -64,3 +64,18 @@ def test_a_failed_run_keeps_the_message_visible(
     assert any(ui.ERROR_REPLY in e.value for e in app.error)
     assert any("2x = 4" in str(m.markdown[0].value) for m in app.chat_message)
     assert app.session_state.failed_text == "2x = 4"
+
+
+def test_the_step_log_stays_after_the_reply(app: AppTest) -> None:
+    app.run()
+    app.text_input[0].set_value("Ada").run()
+    app.button[0].click().run()
+    app.chat_input[0].set_value("hi").run()
+    (log,) = [e for e in app.expander if e.label.startswith("Done in")]
+    lines = [m.value for m in log.markdown]
+    assert [line.split(" — ")[0] for line in lines] == [
+        "✓ Reading your message",
+        "✓ Deciding what to do next",
+    ]
+    next(b for b in app.sidebar.button if b.label == "New chat").click().run()
+    assert not [e for e in app.expander if e.label.startswith("Done in")]

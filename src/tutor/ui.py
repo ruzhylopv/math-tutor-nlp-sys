@@ -6,6 +6,7 @@ second copy. The learner profile is read only (`get_profile`); starting a new ch
 """
 
 import logging
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,23 +27,40 @@ logger = logging.getLogger(__name__)
 
 ERROR_REPLY = "Sorry, something went wrong on my side. Please send your message again."
 
-# What the student sees while a node runs. A node missing here (a subgraph's inner nodes, or one
-# added later) simply shows no new label.
+# What the student sees while a node runs. A node missing here (one added later) is shown by its
+# own name, so every step still gets a line in the log.
 PROGRESS_LABELS = {
     "parse_input": "Reading your message…",
     "orchestrator": "Deciding what to do next…",
+    "diagnosis": "Diagnosing your solution…",
+    "classify": "Working out the topic…",
     "verify": "Checking your steps…",
     "localize": "Finding the first wrong step…",
     "retrieve": "Looking for the likely misconception…",
+    "finish_diagnosis": "Wrapping up the diagnosis…",
     "hint": "Writing a hint…",
 }
 
 
-@dataclass(frozen=True)
-class Progress:
-    """A node has started; `text` is what to show while it runs."""
+def step_label(node: str) -> str:
+    return PROGRESS_LABELS.get(node, node)
 
-    text: str
+
+@dataclass(frozen=True)
+class StepStarted:
+    """A node has started; `label` is what to show while it runs."""
+
+    node: str
+    label: str
+
+
+@dataclass(frozen=True)
+class StepFinished:
+    """A node has finished after `seconds` (wall clock, measured in the UI layer)."""
+
+    node: str
+    label: str
+    seconds: float
 
 
 @dataclass(frozen=True)
@@ -123,14 +141,15 @@ def load_history(tutor: Tutor, student_id: str, chat: int) -> list[tuple[str, st
 
 def send_stream(
     tutor: Tutor, student_id: str, chat: int, text: str
-) -> Iterator[Progress | TurnView]:
-    """One student message is one run of the graph: `Progress` events, then one `TurnView`.
+) -> Iterator[StepStarted | StepFinished | TurnView]:
+    """One student message is one run of the graph: a `StepStarted` and a `StepFinished` per node
+    run (a node that runs twice is logged twice), then one `TurnView`.
 
     A failure ends the stream with a friendly `TurnView` (error=True) instead of raising.
     """
     config = _config(student_id, chat)
     visited: list[str] = []
-    shown = ""
+    started: dict[str, float] = {}  # task id -> start time
     try:
         # with several modes and subgraphs each chunk is (namespace, mode, data); the stub types
         # do not say so
@@ -143,11 +162,15 @@ def send_stream(
         for _, mode, data in chunks:
             if mode == "updates":
                 visited.extend(data)
-            elif "result" not in data and "error" not in data:  # a node starts
-                label = PROGRESS_LABELS.get(data["name"])
-                if label and label != shown:
-                    shown = label
-                    yield Progress(label)
+                continue
+            node, label = data["name"], step_label(data["name"])
+            if "result" not in data and "error" not in data:  # a node starts
+                started[data["id"]] = time.monotonic()
+                yield StepStarted(node, label)
+            elif data["id"] in started:  # the same task has finished
+                seconds = time.monotonic() - started.pop(data["id"])
+                logger.info("ui: %s took %.2fs", node, seconds)
+                yield StepFinished(node, label, seconds)
         state = tutor.graph.get_state(config).values
     except Exception:  # the UI must survive a model, network or config failure
         logger.exception("ui: the graph run failed")
