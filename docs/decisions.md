@@ -650,3 +650,17 @@ fallback hints" from the roadmap.
   the time went; cost: an unlabelled node shows a code name to the student.
 - **The last turn's log lives in `session_state`** | saving it in the checkpoint | timings are UI data, not tutor state;
   cost: it is lost on reload and only the last turn has one.
+
+## Flexible student input (2026-11-02)
+- **Keep the pipeline; let the LLM nodes read more (line kinds, intent) and remove non-NLP nodes (classify merged into
+  parse_input, finish_diagnosis)** | one LLM "understand" node, a SymPy "check" node and one "respond" node | the
+  per-node NLP components and their evals are the substance of the project; cost: more nodes to keep in step.
+- **The hint model judges a student's reply to its own hint question, also when it has math** | SymPy checks the reply
+  when it contains math | replies are mostly short sentences ("it has to be zero"), not checkable lines; cost: an
+  exception to the CLAUDE.md math rule, so a wrong judgement can approve a wrong reply. Submitted steps stay with SymPy.
+- **An unreadable equation line stays the focus** | an LLM step in localize | one more call per diagnosis; cost: an
+  unreadable but correct line still gets a hint.
+- **New `ErrorType` `incomplete`** | `other` with a focus | retrieve must skip a solution with no error; cost: one more
+  value in the taxonomy and in the localize eval.
+- **A definition line is `equivalent` with a note** | a `defines` relation | no change to the shared `Relation` type;
+  cost: the verdict alone does not tell a definition from a derivation.
