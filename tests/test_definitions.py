@@ -52,3 +52,10 @@ def test_substitution_follows_earlier_definitions() -> None:
 def test_letters() -> None:
     assert letters("t = 5 or t = -2") == {"t"}
     assert letters("not math at all") == frozenset()
+
+
+def test_a_definition_with_a_unicode_minus_is_stored_parseable() -> None:
+    assert definition_of("t = x − 1", PROBLEM, {}) == ("t", "x - 1")
+    defs = {"t": "x - 1"}
+    assert step_relation(PROBLEM, "(t+2)^2 - 3(t+2) - 10 = 0", definitions=defs) == "equivalent"
+    assert step_relation(PROBLEM, "(t+2)^2 - 3(t+2) + 10 = 0", definitions=defs) == "not_valid"

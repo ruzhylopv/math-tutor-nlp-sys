@@ -313,7 +313,7 @@ def definition_of(line: str, problem: str, known: Mapping[str, str]) -> tuple[st
     used = {symbol.name for symbol in rhs.free_symbols}
     if lhs.name in allowed or not used or not used <= allowed:
         return None
-    return lhs.name, line.split("=", 1)[1].strip()
+    return lhs.name, line.translate(_UNICODE).split("=", 1)[1].strip()
 
 
 _NO_NAMES: frozenset[str] = frozenset()
