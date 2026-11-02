@@ -664,3 +664,12 @@ fallback hints" from the roadmap.
   value in the taxonomy and in the localize eval.
 - **A definition line is `equivalent` with a note** | a `defines` relation | no change to the shared `Relation` type;
   cost: the verdict alone does not tell a definition from a derivation.
+- **Layer 2: `classify` stays in the graph until layer 6** | delete it in layer 2 | deleting it touches `graph.py`,
+  `ui.py` and four test files, layer 6's scope (one component per session); cost: for one layer classify runs after
+  parse_input and overwrites its topic, one extra LLM call per diagnosis.
+- **Layer 2: a question to the tutor and a reply in words are not steps** | `other` / `reason` steps | the existing
+  labels treat questions as no working, and hint reads the reply text itself (layer 5); cost: a reply sentence that
+  argues the math is not checked by verify.
+- **Layer 2: the line-kind and intent cases have their own source, `flexible`, dev only** | appended to the
+  hand-written list | that list sends every third case to the protected test split and the builder tests count it;
+  cost: a second hand-written module.
