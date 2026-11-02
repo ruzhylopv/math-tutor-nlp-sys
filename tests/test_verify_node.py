@@ -1,5 +1,5 @@
 from tutor.nodes.verify import verify
-from tutor.state import Step, TutorState
+from tutor.state import Step, StepKind, TutorState
 
 
 def _state(problem: str, *lines: str, **claims: str) -> TutorState:
@@ -111,3 +111,69 @@ def test_an_expression_task_is_correct_when_the_last_line_is_equivalent() -> Non
 
 def test_a_final_answer_without_variable_name_counts() -> None:
     assert verify(_state("3x = 9", "3"))["is_correct"] is True
+
+
+def _kinds(problem: str, *lines: tuple[str, StepKind]) -> TutorState:
+    return {"problem": problem, "student_steps": [Step(claim=c, kind=k) for c, k in lines]}
+
+
+def test_a_substitution_chain_is_compared_through_the_definition() -> None:
+    result = verify(
+        _kinds(
+            "(x+1)^2 - 3(x+1) - 10 = 0",
+            ("t = x + 1", "equation"),  # recognised by its form, whatever the label
+            ("t^2 - 3t - 10 = 0", "equation"),
+            ("t = 5 or t = -2", "equation"),
+            ("x = 4 or x = -3", "equation"),
+        )
+    )
+    assert _relations(result) == ["equivalent"] * 4
+    assert result["step_verdicts"][0].notes == "definition"
+    assert result["is_correct"] is True
+
+
+def test_a_wrong_line_after_a_definition_is_not_valid() -> None:
+    result = verify(
+        _kinds(
+            "(x+1)^2 - 3(x+1) - 10 = 0",
+            ("t = x + 1", "definition"),
+            ("t^2 - 3t + 10 = 0", "equation"),
+        )
+    )
+    assert _relations(result) == ["equivalent", "not_valid"]
+
+
+def test_an_answer_in_the_defined_letter_is_not_an_answer() -> None:
+    result = verify(
+        _kinds(
+            "(x+1)^2 - 3(x+1) - 10 = 0",
+            ("t = x + 1", "definition"),
+            ("t = 4 or t = -3", "equation"),
+        )
+    )
+    assert result["is_correct"] is False  # the values would match x, but the letter is t
+
+
+def test_a_reason_line_is_not_compared_and_not_the_predecessor() -> None:
+    result = verify(
+        _kinds(
+            "5(x + 2) = 0",
+            ("x + 2 = 0", "equation"),
+            ("5 is not zero", "reason"),
+            ("x = -2", "equation"),
+        )
+    )
+    assert _relations(result) == ["equivalent", "unparsable", "equivalent"]
+    assert result["step_verdicts"][1].notes == "reason line, not compared"
+    assert result["is_correct"] is True  # the reason line is not the final answer
+
+
+def test_a_reason_line_that_parses_is_still_checked() -> None:
+    result = verify(_kinds("2x + 3 = 11", ("2x = 8", "equation"), ("x = 5", "reason")))
+    assert _relations(result) == ["equivalent", "not_valid"]
+    assert result["is_correct"] is False
+
+
+def test_an_unreadable_equation_line_keeps_its_old_treatment() -> None:
+    result = verify(_kinds("2x + 3 = 11", ("2x is 8", "equation"), ("x = 4", "equation")))
+    assert _relations(result) == ["unparsable", "equivalent"]
