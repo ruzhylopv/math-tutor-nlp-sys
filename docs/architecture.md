@@ -154,8 +154,10 @@ layer 3" in `docs/decisions.md`.
   added roots that were never rejected. `first_error_step` is None.
 - `reasoning_result_mismatch`: the math is right but the stated justification is wrong
   (for example "-2 and -9 add to 11").
-- `other`: a fallback so that cases the three types do not cover are visible in the eval and not forced into a
-  wrong type: an unparsable step, or steps that stop before an answer. (A lost solution, such as dividing by `x`,
+- `incomplete`: every checked line is valid but there is no final answer; the focus is the last valid line and
+  `retrieve` skips it (no misconception). Added 2026-11-02 (docs/plans/design/2026-11-02-flexible-input.md).
+- `other`: a fallback so that cases the other types do not cover are visible in the eval and not forced into a
+  wrong type: an unparsable step. (A lost solution, such as dividing by `x`,
   is a `not_valid` step, so it is an `algebraic_transformation`.) Added in M4a.
 - `final_answer_only`: no steps given. Not produced by `localize`: `parse_input` finds zero steps and the
   orchestrator routes to `ask`, so diagnosis does not continue.

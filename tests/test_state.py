@@ -10,6 +10,8 @@ from tutor.state import (
     Classification,
     Decision,
     ErrorType,
+    HintText,
+    Intent,
     LearnerProfile,
     Misconception,
     Operation,
@@ -17,6 +19,7 @@ from tutor.state import (
     Relation,
     Stage,
     Step,
+    StepKind,
     StepVerdict,
     TutorState,
 )
@@ -80,9 +83,10 @@ def test_learner_profile_defaults_are_not_shared() -> None:
 def test_state_has_the_designed_fields() -> None:
     hints = get_type_hints(TutorState, include_extras=True)
     expected = {
-        "messages", "student_id", "problem", "student_steps", "topic", "level", "is_correct",
-        "step_verdicts", "first_error_step", "focus_step", "error_context", "error_type",
-        "misconception_candidates", "misconception", "hint_level", "hint_text", "hint_retries",
+        "messages", "student_id", "problem", "student_steps", "intent", "topic", "level",
+        "is_correct", "step_verdicts", "first_error_step", "focus_step", "error_context",
+        "error_type", "misconception_candidates", "misconception", "hint_level", "hint_text",
+        "reply_moves_forward", "hint_retries",
         "stage", "next_action", "reply_text", "turns", "hints_used", "misconceptions_seen",
         "learner_profile",
     }  # fmt: skip
@@ -124,6 +128,31 @@ def test_literals_match_the_architecture() -> None:
 def test_parsed_input_defaults_to_no_problem_and_no_steps() -> None:
     parsed = ParsedInput()
     assert parsed.problem is None and parsed.steps == []
+
+
+def test_step_kind_defaults_to_equation() -> None:
+    assert Step(claim="x = 1").kind == "equation"  # old checkpoints and datasets have no kind
+    assert get_args(StepKind) == ("equation", "definition", "reason", "check", "other")
+    with pytest.raises(ValidationError):
+        Step(claim="x = 1", kind="sentence")  # type: ignore[arg-type]
+
+
+def test_parsed_input_carries_intent_and_classification() -> None:
+    parsed = ParsedInput()
+    assert (parsed.intent, parsed.topic, parsed.level) == ("other", None, None)
+    assert "answer" in get_args(Intent)
+    assert ParsedInput(intent="answer", topic="Algebra", level=2).level == 2
+    with pytest.raises(ValidationError):
+        ParsedInput(level=6)
+
+
+def test_incomplete_is_an_error_type() -> None:
+    assert "incomplete" in get_args(ErrorType)
+
+
+def test_hint_reply_verdict_defaults_to_none() -> None:
+    assert HintText(text="What next?").reply_moves_forward is None
+    assert HintText(text="Yes!", reply_moves_forward=True).reply_moves_forward is True
 
 
 def test_classification_level_starts_at_one() -> None:
