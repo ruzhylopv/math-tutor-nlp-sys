@@ -21,8 +21,14 @@ ErrorType = Literal[
     "algebraic_transformation",
     "omission_extraneous_root",
     "reasoning_result_mismatch",
+    "incomplete",  # every checked line is valid but there is no final answer
     "other",
 ]
+# What a line of the student's working is. Only `equation` and `definition` lines are compared by
+# SymPy; a definition (`A = x + 2`, with `A` new) is substituted into the lines after it.
+StepKind = Literal["equation", "definition", "reason", "check", "other"]
+# What the student wants with this message. `answer`: a reply to the tutor's last question.
+Intent = Literal["check_work", "stuck", "answer", "explain", "new_problem", "other"]
 Stage = Literal["new_message", "diagnosed", "hinted"]
 Topic = Literal[
     "Prealgebra",
@@ -40,6 +46,7 @@ class Step(BaseModel):
     """One line of the student's attempt, split into claim and justification."""
 
     claim: str
+    kind: StepKind = "equation"
     justification: str = ""
     justification_claim: str | None = None
     operation: Operation = "other"
@@ -62,6 +69,9 @@ class ParsedInput(BaseModel):
 
     problem: str | None = None
     steps: list[Step] = Field(default_factory=list)
+    intent: Intent = "other"
+    topic: Topic | None = None  # from the classify merge; None when there is no problem
+    level: int | None = Field(default=None, ge=1, le=5)
 
 
 class Classification(BaseModel):
@@ -85,9 +95,14 @@ class ErrorContext(BaseModel):
 
 
 class HintText(BaseModel):
-    """What `hint` asks the model for: the hint, as text for the student."""
+    """What `hint` asks the model for: the hint, as text for the student.
+
+    `reply_moves_forward` judges the student's reply to the tutor's last question: None when the
+    message is not a reply (intent other than `answer`).
+    """
 
     text: str = Field(min_length=1)
+    reply_moves_forward: bool | None = None
 
 
 class HintRubric(BaseModel):
@@ -169,6 +184,7 @@ class TutorState(TypedDict, total=False):
     student_id: str
     problem: str
     student_steps: list[Step]
+    intent: Intent
     topic: Topic | None  # None after a new problem, until `classify` runs again
     level: int | None
     is_correct: bool
@@ -181,6 +197,9 @@ class TutorState(TypedDict, total=False):
     misconception: Misconception | None
     hint_level: int  # 1-4, capped (see docs/architecture.md)
     hint_text: str
+    reply_moves_forward: (
+        bool | None
+    )  # the hint's verdict on a reply; the orchestrator keeps the level
     hint_retries: int
     stage: Stage
     next_action: Action
