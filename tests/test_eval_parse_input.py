@@ -12,6 +12,7 @@ from tutor.state import ParsedInput, Step
 from tutor.tools import structured
 
 SCRIPT = Path(__file__).resolve().parents[1] / "evals" / "scripts" / "eval_parse_input.py"
+NO_TUTOR = "\n\nTutor's last message:\nnone\n\nStudent message:\n"
 
 
 def _module() -> dict[str, Any]:
@@ -157,10 +158,10 @@ def test_the_script_runs_the_node_and_writes_a_result(
         "".join(json.dumps(c) + "\n" for c in cases), encoding="utf-8"
     )
     answers = {
-        "Stored problem: none\n\nStudent message:\nSolve 2x = 4\nx = 2": ParsedInput(
+        f"Stored problem: none{NO_TUTOR}Solve 2x = 4\nx = 2": ParsedInput(
             problem="2x = 4", steps=[Step(claim="x = 2")]
         ),
-        "Stored problem: 2x = 4\n\nStudent message:\nwhy?": ParsedInput(),
+        f"Stored problem: 2x = 4{NO_TUTOR}why?": ParsedInput(),
     }  # the third message gets None: a failed call
 
     def fake(prompt: str, schema: type[BaseModel], text: str, retries: int = 1) -> Any:
