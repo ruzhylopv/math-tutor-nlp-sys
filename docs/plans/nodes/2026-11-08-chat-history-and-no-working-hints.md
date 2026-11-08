@@ -31,3 +31,8 @@ and ask first.
 
 Known limit: the leakage check reads backticked math and bare `x = 2`, not prose like "the roots are 2 and 3". A prompt
 rule covers it for now.
+
+Update after the developer's test (approved 2026-11-08): the prompt rule did not hold, and each clarifying question raised
+the level. For a student with no working: a "why" question gets a small task instead of a repeat of the claim; the method's
+conditions and candidate numbers are not stated; `explain` keeps the level; `find_leaks` also rejects a hint that names every
+solution as a number. The mistake-hint path is unchanged.

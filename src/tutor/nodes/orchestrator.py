@@ -7,7 +7,8 @@ new_message: an LLM `Decision` picks ask / diagnose / hint / reply; code guards 
     level stays for its own hint. A line using a letter that is not in the problem also goes to
     `hint`, because definitions from an earlier turn are not known to `verify` (a known limit).
     A student with a stored problem and no working may also get a `hint`, to help them begin; its
-    first one is level 1, and an out-of-scope subject is declined instead.
+    first one is level 1, a clarifying question keeps the level, and an out-of-scope subject is
+    declined instead.
 diagnosed: plain code. Out-of-scope subject: decline. Clean solution: record the attempt, maybe
     offer practice. Otherwise set the hint level (different misconception: 1, same: +1; partial
     progress keeps it unless the student is stuck) and hint. A reply keeps the level for its own
@@ -101,6 +102,18 @@ def _out_of_scope(state: TutorState) -> bool:
     return topic is not None and topic not in IN_SCOPE_TOPICS
 
 
+def _next_hint_level(state: TutorState, diagnosed: bool) -> int:
+    """One level up, except for help before any working: it starts at 1, and a clarifying
+    question there keeps the level, so asking why does not give more away."""
+    level = state.get("hint_level", 1)
+    if not diagnosed:
+        if state.get("hints_used", 0) == 0:
+            return 1
+        if state.get("intent") == "explain":
+            return level
+    return min(level + 1, MAX_LEVEL)
+
+
 def _new_message(state: TutorState) -> dict[str, Any]:
     update: dict[str, Any] = {"turns": state.get("turns", 0) + 1}
     path = _db_path()
@@ -141,10 +154,7 @@ def _new_message(state: TutorState) -> dict[str, Any]:
         update["stage"] = "diagnosed"  # the diagnosis subgraph returns here in this mode
     if action == "hint":
         if not is_reply:  # a reply's own hint keeps the level; `_hinted` applies its verdict
-            first_help = not diagnosed and state.get("hints_used", 0) == 0
-            update["hint_level"] = (
-                1 if first_help else min(state.get("hint_level", 1) + 1, MAX_LEVEL)
-            )
+            update["hint_level"] = _next_hint_level(state, diagnosed)
         update["hint_retries"] = 0
     return update
 
@@ -229,14 +239,19 @@ def _hinted(state: TutorState) -> dict[str, Any]:
         before = state.get("problem", "")
     else:
         before = context.after if stopped else context.before
-    leaks = find_leaks(text, state.get("problem", ""), before) if text else ["empty hint"]
+    no_working = is_no_working_help(state)
+    leaks = (
+        find_leaks(text, state.get("problem", ""), before, named_solutions=no_working)
+        if text
+        else ["empty hint"]
+    )
     retries = state.get("hint_retries", 0)
     if leaks and retries < MAX_RETRIES:
         logger.info("orchestrator: hint leaks (%s); retrying", leaks)
         return {"next_action": "hint", "hint_retries": retries + 1}
     if leaks:
         logger.info("orchestrator: hint leaks twice (%s); using the canned hint", leaks)
-        kind = NO_WORKING if is_no_working_help(state) else state.get("error_type")
+        kind = NO_WORKING if no_working else state.get("error_type")
         text = canned_hint(level, kind)
     update = _reply(text)
     update["hints_used"] = state.get("hints_used", 0) + 1

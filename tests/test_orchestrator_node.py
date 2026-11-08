@@ -571,3 +571,28 @@ def test_handing_over_the_problem_is_routed_by_the_model_and_can_get_a_hint(
     seen = _decide(monkeypatch, Decision(action="hint", reason="r"))
     out = orch.orchestrator(_no_working(intent="answer"))
     assert len(seen) == 1 and out["next_action"] == "hint" and out["hint_level"] == 1
+
+
+def test_a_clarifying_question_with_no_working_keeps_the_level(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_no_working(intent="explain", hint_level=2, hints_used=2))
+    assert out["next_action"] == "hint" and out["hint_level"] == 2
+
+
+def test_a_clarifying_question_after_a_diagnosis_still_escalates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    state = _no_working(intent="explain", hint_level=2, hints_used=2, error_context=_context())
+    assert orch.orchestrator(state)["hint_level"] == 3
+
+
+def test_a_no_working_hint_listing_every_solution_is_rejected() -> None:
+    state = _no_working(
+        stage="hinted",
+        problem="x^2 - 5x + 6 = 0",
+        hint_text="Try `1` and `6`, or `2` and `3`.",
+    )
+    assert orch.orchestrator(state) == {"next_action": "hint", "hint_retries": 1}

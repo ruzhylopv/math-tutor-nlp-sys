@@ -726,3 +726,9 @@ fallback hints" from the roadmap.
 - **The tutor coaches into a specific problem and does not teach algebra in general** | written explanations of a method |
   a guiding question makes no mathematical claim, while an explanation would be model-written math that SymPy never sees;
   cost: a student who wants a lesson does not get one.
+- **With no working, a clarifying question keeps the hint level** | raising it on every request, as for a diagnosed mistake |
+  a "why" question shows the student is trying to understand, and raising the level gave more away each time; cost: a student
+  who keeps asking "why" does not get a more direct hint unless they say they are stuck.
+- **With no working, a hint that names every solution is a leak, by code** | a prompt rule alone; applying it to every hint |
+  the prompt rule failed in a real chat, which listed the right numbers among candidates, and the mistake-hint path was left
+  alone so its leakage numbers stay comparable; cost: a stray digit equal to a solution can reject a good hint.
