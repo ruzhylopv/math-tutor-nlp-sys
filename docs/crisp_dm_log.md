@@ -183,9 +183,21 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 - **Flexible input layer 6, graph (2026-11-08)**: `classify` and `finish_diagnosis` removed, one model call fewer per diagnosis.
   `classify.jsonl` stays for the parse_input topic metrics, which have not been run. **Evals are debt for layers 4-6.**
 
+- **Chat history and hints before any working (2026-11-08)**: `orchestrator` and `hint` read the last 20 messages; a stuck student
+  with a stored problem and no working gets a guiding question from `hint` (code overrules an `ask` or `reply` from the model);
+  `find_leaks` rejects such a hint if it names every solution; a remark about the student's own situation is not a step; a 429
+  tells the student there is no quota. Checked by replaying a real student chat and by the developer's chats in the app, which
+  ended on one pinned free model after `openrouter/free` proved too inconsistent to judge prompts. **No eval run: evals are debt
+  (limited model credits, developer's decision).** The hint rubric's `on_target` does not fit this mode, and the routing dev set
+  still needs about 10 labelled "stuck with no working" cases, to be picked with the developer. No new metrics.
+
 ## Deployment
 - **M7 app (2026-10-27)**: Streamlit chat (`app.py`, `src/tutor/ui.py`): name field, chat bubbles on the checkpointed
   history, "New chat" (same person, same profile), sidebar with hint level, hints used and the `get_profile` summary,
   a visited-nodes toggle. Unit tests (`test_ui.py`, `test_app.py` with Streamlit's `AppTest`) run with the model scripted.
   No metrics: the app is not a node. **Not done yet: the demo video, the report and the single test-split run.**
+- **Graph panel (2026-11-08)**: a fixed right panel with the live graph (running node green, used path blue, failed node red) and
+  a log per node; details are behind a "Developer view" toggle, and `orchestrator` now keeps the model's `decision_reason`. Unit
+  tests and an `AppTest` run with the model scripted; the layout and redraw were checked in headless Chrome on a scripted stream.
+  No metrics: UI only.
 - Planned: the demo video using scenarios A and B.

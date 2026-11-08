@@ -2,10 +2,14 @@
 
 import logging
 import time
+from dataclasses import dataclass
 
 import streamlit as st
+from langchain_core.runnables.graph import Graph
+from streamlit.delta_generator import DeltaGenerator
 
 from tutor.config import ConfigError, load_config
+from tutor.trace import Trace, graph_dot
 from tutor.ui import (
     StepFinished,
     StepStarted,
@@ -22,6 +26,39 @@ from tutor.ui import (
 
 logging.basicConfig(level=logging.INFO)
 
+# The panel is fixed on the right of a wide window; on a narrow one it stays in the page flow.
+PANEL_CSS = """
+<style>
+@media (min-width: 1000px) {
+  .st-key-trace_panel {
+    position: fixed;
+    top: 3.75rem;
+    right: 0;
+    width: 380px;
+    height: calc(100vh - 3.75rem);
+    overflow-y: auto;
+    padding: 1rem;
+    border-left: 1px solid rgba(128, 128, 128, 0.3);
+  }
+  [data-testid="stMainBlockContainer"],
+  [data-testid="stBottomBlockContainer"] {
+    padding-right: 420px;
+    max-width: none;
+  }
+}
+</style>
+"""
+
+
+@dataclass(frozen=True)
+class Panel:
+    """The slots that are redrawn while a turn runs, and the graph drawn in them."""
+
+    graph: Graph
+    chart: DeltaGenerator
+    log: DeltaGenerator
+    developer: bool
+
 
 @st.cache_resource
 def get_tutor() -> Tutor:
@@ -29,16 +66,17 @@ def get_tutor() -> Tutor:
 
 
 def show_sidebar(tutor: Tutor, student_id: str, chat: int) -> bool:
-    """Name, new-chat button, hint counters and the learner profile. Returns the debug toggle."""
+    """Name, new-chat button, hint counters, learner profile. Returns the developer toggle."""
     with st.sidebar:
         st.markdown(f"**{student_id}** · chat {chat}")
         if st.button("New chat"):
             st.session_state.chat = next_chat(tutor, student_id)
             st.session_state.pop("last_turn", None)
             st.session_state.pop("step_log", None)
+            st.session_state.pop("trace", None)
             st.rerun()
         if st.button("Switch name"):
-            for key in ("student_id", "chat", "last_turn", "failed_text", "step_log"):
+            for key in ("student_id", "chat", "last_turn", "failed_text", "step_log", "trace"):
                 st.session_state.pop(key, None)
             st.rerun()
         info = sidebar_info(tutor, student_id, chat)
@@ -50,7 +88,7 @@ def show_sidebar(tutor: Tutor, student_id: str, chat: int) -> bool:
             st.caption(f"Weak topics: {topics}")
             for mid, count in info.profile.misconception_counts.items():
                 st.caption(f"{mid}: seen {count}×")
-        return st.toggle("Show visited nodes")
+        return st.toggle("Developer view", help="Also show what each node decided.")
 
 
 def show_step_log(lines: list[str], summary: str) -> None:
@@ -59,35 +97,68 @@ def show_step_log(lines: list[str], summary: str) -> None:
             st.write(line)
 
 
-def run_turn(tutor: Tutor, student_id: str, chat: int, text: str) -> TurnView:
+def draw_panel(panel: Panel, trace: Trace, steps: list[StepFinished]) -> None:
+    """Redraw the graph and the log. Details (what a node decided) are for the developer view."""
+    panel.chart.graphviz_chart(graph_dot(panel.graph, trace), width="stretch")
+    with panel.log.container():
+        for step in steps:
+            if step.path not in panel.graph.nodes:  # the `diagnosis` wrapper: its steps are listed
+                continue
+            st.text(f"{'✗' if step.failed else '✓'} {step.path} · {step.seconds:.1f}s")
+            if panel.developer:
+                for detail in step.details:
+                    st.text(f"   {detail}")  # literal: model text is not Markdown
+
+
+def open_panel(tutor: Tutor, developer: bool) -> Panel:
+    """Create the right-hand panel, showing the last turn if there is one."""
+    st.html(PANEL_CSS)
+    with st.container(key="trace_panel"):
+        st.markdown("**How the tutor works**")
+        panel = Panel(tutor.graph.get_graph(xray=True), st.empty(), st.empty(), developer)
+    trace, steps = st.session_state.get("trace", (Trace(), []))
+    draw_panel(panel, trace, steps)
+    return panel
+
+
+def run_turn(tutor: Tutor, student_id: str, chat: int, text: str, panel: Panel) -> TurnView:
     """Send one message; the status shows the running step and logs each finished one with its time.
 
-    The log is kept in `session_state.step_log` so it stays visible after the rerun.
+    The log and the trace are kept in `session_state` so they stay visible after the rerun.
     """
     view: TurnView | None = None
     lines: list[str] = []
+    trace = Trace()
+    steps: list[StepFinished] = []
     start = time.monotonic()
     with st.chat_message("assistant"):
         with st.status("Thinking…", expanded=True) as status:
             for event in send_stream(tutor, student_id, chat, text):
                 if isinstance(event, StepStarted):
                     status.update(label=event.label)
+                    trace = trace.start(event.path)
                 elif isinstance(event, StepFinished):
-                    lines.append(f"✓ {event.label.rstrip('…')} — {event.seconds:.1f}s")
+                    mark = "✗" if event.failed else "✓"
+                    lines.append(f"{mark} {event.label.rstrip('…')} — {event.seconds:.1f}s")
                     st.write(lines[-1])
+                    trace = trace.finish(event.path, event.failed)
+                    steps.append(event)
                 else:
                     view = event
+                    trace = trace.end(view.error)
+                draw_panel(panel, trace, steps)
             assert view is not None  # the stream always ends with a TurnView
             total = time.monotonic() - start
             summary = f"Failed after {total:.1f}s" if view.error else f"Done in {total:.1f}s"
             status.update(label=summary, state="error" if view.error else "complete")
         st.write(view.reply)
     st.session_state.step_log = (lines, summary)
+    st.session_state.trace = (trace, steps)
     return view
 
 
 def main() -> None:
-    st.set_page_config(page_title="Math tutor", page_icon="➕")
+    st.set_page_config(page_title="Math tutor", page_icon="➕", layout="wide")
     st.title("Math tutor")
     try:
         load_config()
@@ -107,7 +178,7 @@ def main() -> None:
 
     student_id: str = st.session_state.student_id
     chat: int = st.session_state.chat
-    debug = show_sidebar(tutor, student_id, chat)
+    developer = show_sidebar(tutor, student_id, chat)
 
     for role, text in load_history(tutor, student_id, chat):
         with st.chat_message(role):
@@ -120,13 +191,12 @@ def main() -> None:
         st.error(last.reply)
     if step_log := st.session_state.get("step_log"):
         show_step_log(*step_log)
-    if debug and last is not None:
-        st.caption("Visited: " + " → ".join(last.visited))
+    panel = open_panel(tutor, developer)
 
     if text := st.chat_input("Paste a problem and your steps, or ask a question"):
         with st.chat_message("user"):
             st.write(text)
-        view = run_turn(tutor, student_id, chat, text)
+        view = run_turn(tutor, student_id, chat, text, panel)
         st.session_state.failed_text = text if view.error else None
         st.session_state.last_turn = view
         st.rerun()

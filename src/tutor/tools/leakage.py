@@ -8,6 +8,11 @@ quoting a side as written is fine: `3(x + 2)` is allowed, `3x + 6` is not.
 Math is read from backtick fragments (the hint prompt asks for them); a bare `var = number` in the
 prose is checked too. Limits: only these forms are caught, not every correct next step, and a
 fragment that does not parse is ignored.
+
+For a student with no working yet, a hint also leaks when it names every solution as a number
+anywhere in its text, even among other candidates. A sign is ignored, because a factor's number has
+the opposite sign to the root. Numbers already in the problem do not count, and neither do
+exponents. Limits: only rational solutions in digits are caught, so not "two and three".
 """
 
 import re
@@ -18,6 +23,8 @@ from tutor.tools import algebra
 
 _FRAGMENT = re.compile(r"`([^`]+)`")
 _BARE_ASSIGNMENT = re.compile(r"\b([a-z])\s*=\s*(-?\d+(?:\.\d+)?(?:\s*/\s*\d+)?)")
+_EXPONENT = re.compile(r"\^\s*\d+")
+_NUMBER = re.compile(r"(?<![\w.])\d+(?:\.\d+)?(?:/\d+)?(?![\d.]*\d)")
 
 
 def _parts(text: str) -> list[tuple[str, sp.Expr]]:
@@ -61,11 +68,24 @@ def _assigned(text: str, solutions: sp.Set | None) -> str | None:
     return None
 
 
+def _numbers(text: str) -> set[sp.Rational]:
+    """The sizes of the numbers written in `text`, leaving out exponents."""
+    return {sp.Rational(token) for token in _NUMBER.findall(_EXPONENT.sub(" ", text))}
+
+
+def _names_every_solution(text: str, problem: str, solutions: sp.Set | None) -> bool:
+    """Whether `text` names all the problem's rational solutions that the problem does not show."""
+    if not isinstance(solutions, sp.FiniteSet) or not all(s.is_rational for s in solutions):
+        return False
+    hidden = {abs(solution) for solution in solutions} - _numbers(problem)
+    return bool(hidden) and hidden <= _numbers(text)
+
+
 _NONE: list[str] | None = None
 
 
 @algebra.guarded(_NONE)
-def _find_leaks(text: str, problem: str, before: str) -> list[str] | None:
+def _find_leaks(text: str, problem: str, before: str, named_solutions: bool) -> list[str] | None:
     solutions = algebra.solution_set(problem)
     given = _parts(problem) + _parts(before)
     quoted = {written for written, _ in given}
@@ -82,9 +102,14 @@ def _find_leaks(text: str, problem: str, before: str) -> list[str] | None:
             if written not in quoted and side in forms:
                 leaks.append(f"writes out a correct form: {fragment.strip()}")
                 break
+    if named_solutions and _names_every_solution(text, problem, solutions):
+        leaks.append("names every solution")
     return list(dict.fromkeys(leaks))
 
 
-def find_leaks(text: str, problem: str, before: str) -> list[str]:
-    """Why the hint leaks (empty if it does not). If SymPy fails the hint is judged not to leak."""
-    return _find_leaks(text, problem, before) or []
+def find_leaks(text: str, problem: str, before: str, named_solutions: bool = False) -> list[str]:
+    """Why the hint leaks (empty if it does not). If SymPy fails the hint is judged not to leak.
+
+    `named_solutions` also rejects a hint that names every solution as a number.
+    """
+    return _find_leaks(text, problem, before, named_solutions) or []

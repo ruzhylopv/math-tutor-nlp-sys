@@ -1,5 +1,6 @@
 """Smoke test of app.py with Streamlit's AppTest; the tutor is built on an in-memory saver."""
 
+import re
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from streamlit.testing.v1 import AppTest
 
 from tutor import ui
 from tutor.state import Decision
+from tutor.trace import VISITED
 
 APP = Path(__file__).resolve().parent.parent / "app.py"
 
@@ -79,3 +81,71 @@ def test_the_step_log_stays_after_the_reply(app: AppTest) -> None:
     ]
     next(b for b in app.sidebar.button if b.label == "New chat").click().run()
     assert not [e for e in app.expander if e.label.startswith("Done in")]
+
+
+def _start(app: AppTest) -> None:
+    app.run()
+    app.text_input[0].set_value("Ada").run()
+    app.button[0].click().run()
+
+
+def _panel_text(app: AppTest) -> list[str]:
+    return [t.value for t in app.text]
+
+
+def test_the_panel_lists_nodes_and_timings_for_everyone(app: AppTest) -> None:
+    _start(app)
+    app.chat_input[0].set_value("hi").run()
+    lines = _panel_text(app)
+    assert [line.split(" · ")[0] for line in lines] == ["✓ parse_input", "✓ orchestrator"]
+    assert all(re.fullmatch(r"\d+\.\ds", line.split(" · ")[1]) for line in lines)
+    assert not app.exception
+
+
+def test_what_a_node_decided_needs_the_developer_view(app: AppTest) -> None:
+    _start(app)
+    app.chat_input[0].set_value("hi").run()
+    assert not any("why: greeting" in line for line in _panel_text(app))
+    next(t for t in app.sidebar.toggle if t.label == "Developer view").set_value(True).run()
+    assert any("why: greeting" in line for line in _panel_text(app))
+
+
+def test_a_new_chat_clears_the_panel(app: AppTest) -> None:
+    _start(app)
+    app.chat_input[0].set_value("hi").run()
+    next(b for b in app.sidebar.button if b.label == "New chat").click().run()
+    assert _panel_text(app) == []
+
+
+def _scripted_turn(*args: object, **kwargs: object) -> Iterator[object]:
+    yield ui.StepStarted("parse_input", "Reading…", "parse_input")
+    yield ui.StepFinished("parse_input", "Reading…", 1.2, "parse_input")
+    yield ui.StepStarted("diagnosis", "Diagnosing…", "diagnosis")
+    yield ui.StepStarted("verify", "Checking…", "diagnosis:verify")
+    yield ui.StepFinished("verify", "Checking…", 0.5, "diagnosis:verify", failed=True)
+    yield ui.StepFinished("diagnosis", "Diagnosing…", 0.6, "diagnosis", failed=True)
+    yield ui.TurnView(reply=ui.ERROR_REPLY, error=True)
+
+
+def test_the_panel_marks_a_failed_step_and_skips_the_diagnosis_wrapper(
+    app: AppTest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ui, "send_stream", _scripted_turn)
+    _start(app)
+    app.chat_input[0].set_value("2x = 4").run()
+    assert _panel_text(app) == ["✓ parse_input · 1.2s", "✗ diagnosis:verify · 0.5s"]
+    (log,) = [e for e in app.expander if e.label.startswith("Failed after")]
+    assert [m.value for m in log.markdown] == [
+        "✓ Reading — 1.2s",
+        "✗ Checking — 0.5s",
+        "✗ Diagnosing — 0.6s",
+    ]
+
+
+def test_the_graph_is_drawn_and_marks_the_nodes_a_turn_visited(app: AppTest) -> None:
+    _start(app)
+    assert f'fillcolor="{VISITED}"' not in app.get("graphviz_chart")[0].proto.spec
+    app.chat_input[0].set_value("hi").run()
+    spec = app.get("graphviz_chart")[0].proto.spec
+    assert '"hint" [label="hint"' in spec
+    assert f'"parse_input" [label="parse_input" fillcolor="{VISITED}"' in spec

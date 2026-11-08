@@ -715,3 +715,39 @@ fallback hints" from the roadmap.
 - **Layer 6: the orchestrator no longer resets on `topic` None** | keeping that reset | `parse_input` does the real reset when
   the problem changes, and nothing refills `topic` now, so a parse with no topic would wipe the diagnosis on every later
   message; cost: `test_new_problem_resets_the_old_diagnosis` was changed (approved by the developer).
+- **`orchestrator` and `hint` read the last 20 messages** | the last tutor message only; the whole chat | one message could not
+  show that the tutor had already asked twice, and the whole chat lets old problems distract the model and grows the cost;
+  cost: a very long chat loses its oldest turns.
+- **`parse_input` keeps only the last tutor message** | giving it the conversation too | it transcribes this message, and older
+  equations could be taken for new steps; cost: it cannot use earlier turns to read an unclear message.
+- **A student with no working gets a guiding question from `hint`** | the orchestrator writing the help in `reply_text`; more
+  `ask` turns | `hint` already has the leakage check, the levels and the canned fallback, and asking again left the student
+  with no help; cost: `hint` has a third situation, and a reply using new letters is judged by the model, not SymPy.
+- **The tutor coaches into a specific problem and does not teach algebra in general** | written explanations of a method |
+  a guiding question makes no mathematical claim, while an explanation would be model-written math that SymPy never sees;
+  cost: a student who wants a lesson does not get one.
+- **Code sends a stuck student with no working to `hint`, whatever the model chose** | relying on the orchestrator prompt | in a
+  real chat the model chose `ask` and wrote a lesson in `reply_text`, which has no hint rules or leakage check; cost: one model
+  call per such turn is wasted, kept because an existing test requires the call.
+- **With no working, a clarifying question keeps the hint level** | raising it on every request, as for a diagnosed mistake |
+  a "why" question shows the student is trying to understand, and raising the level gave more away each time; cost: a student
+  who keeps asking "why" does not get a more direct hint unless they say they are stuck.
+- **With no working, a hint that names every solution is a leak, by code** | a prompt rule alone; applying it to every hint |
+  the prompt rule failed in a real chat, which listed the right numbers among candidates, and the mistake-hint path was left
+  alone so its leakage numbers stay comparable; cost: a stray digit equal to a solution can reject a good hint.
+- **A solved problem is recognised by `is_correct`, reset with the per-problem fields** | clearing `problem` on a clean solution; a
+  new `solved` state field | clearing `problem` would stop `parse_input` from noticing a new problem and leave the old topic, and
+  a new field needs an edit to an existing test; cost: `is_correct` also means "solved" once the verdicts are cleared.
+- **A 429 stops the turn and tells the student there is no quota** | returning None like other transient failures | a None
+  became a fallback such as "write out your solution", which blamed the student for a provider limit; cost: a short rate-limit
+  spike also reads as "no quota", and an eval stops at the first 429 instead of counting Nones.
+- **A run stopped by a 429 is undone: a `__copy__` fork of the checkpoint from before the run becomes the newest, and a first
+  message's thread is deleted** | putting `hint_level`, `turns` and the rest back by hand with `update_state`, or keeping the
+  half-run | a hand-written list misses a field, and `messages` has a reducer, so a kept half-run stores the message twice and
+  each retry raises the level; cost: the failed run's checkpoints stay in the thread's history, and only a 429 is undone.
+- **The graph panel is drawn with `st.graphviz_chart` from DOT built from the compiled graph** | a custom component or a package
+  such as streamlit-flow; a hand-laid SVG | no new dependency, a new node appears by itself, and `st.html` strips SVG; checked in
+  headless Chrome, where the chart stayed on the page through every redraw; cost: Graphviz picks the layout, so it can shift.
+- **Everyone sees the graph, node names and timings; what a node decided needs the "Developer view" toggle; nobody sees `hint_text`** |
+  a full state dump for everyone | a verdict or misconception tells the student what a level-1 hint wants them to find, and
+  `hint_text` can hold a draft the leak check later rejects; cost: a student cannot read why the tutor routed the turn.

@@ -13,7 +13,7 @@ from pydantic import BaseModel, ValidationError
 from tutor.config import ConfigError
 from tutor.prompts import load_prompt
 from tutor.tools import structured
-from tutor.tools.structured import call_structured
+from tutor.tools.structured import QuotaExceededError, call_structured
 
 
 class Classification(BaseModel):
@@ -124,7 +124,6 @@ def test_no_retries_means_one_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
     [
         openai.APIConnectionError(request=_REQUEST),
         openai.APITimeoutError(request=_REQUEST),
-        _status_error(openai.RateLimitError, 429),
         _status_error(openai.InternalServerError, 500),
         openai.LengthFinishReasonError(completion=_COMPLETION),
         openai.ContentFilterFinishReasonError(),
@@ -170,8 +169,8 @@ def test_a_rate_limit_logs_its_status_code(
 ) -> None:
     error = _status_error(openai.RateLimitError, 429)
     _use(monkeypatch, error, error)
-    with caplog.at_level(logging.WARNING):
-        assert call_structured("parse_input", Classification, "x") is None
+    with caplog.at_level(logging.WARNING), pytest.raises(QuotaExceededError):
+        call_structured("parse_input", Classification, "x")
     assert "RateLimitError" in caplog.text and "status 429" in caplog.text
 
 
@@ -273,3 +272,13 @@ def test_a_prompt_is_loaded_by_name() -> None:
 def test_only_plain_prompt_names_are_accepted(name: str) -> None:
     with pytest.raises(ValueError):
         load_prompt(name)
+
+
+def test_a_rate_limit_raises_quota_exceeded_without_our_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    error = _status_error(openai.RateLimitError, 429)
+    _, chain = _use(monkeypatch, error, GOOD)
+    with pytest.raises(QuotaExceededError):
+        call_structured("parse_input", Classification, "x")
+    assert len(chain.calls) == 1

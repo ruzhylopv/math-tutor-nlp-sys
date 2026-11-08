@@ -1,13 +1,15 @@
+from pathlib import Path
 from typing import Any
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel
 
+from tutor.nodes import hint as hint_module
 from tutor.nodes.hint import hint
-from tutor.state import ErrorContext, HintText, Misconception, TutorState
+from tutor.state import ErrorContext, HintText, Misconception, Step, StepVerdict, TutorState
 from tutor.tools import structured
-from tutor.tools.canned_hints import MAX_LEVEL, canned_hint
+from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 from tutor.tools.catalogue import load_catalogue
 
 
@@ -183,6 +185,20 @@ def test_the_verdict_on_a_reply_is_returned(
     assert hint(_replying())["reply_moves_forward"] is verdict
 
 
+def test_the_prompt_has_the_earlier_conversation(prompts: list[tuple[str, str, str]]) -> None:
+    hint(_replying())
+    assert prompts[0][2].endswith(
+        "Conversation so far:\nStudent: my work\nTutor: What must be true of A?"
+    )
+
+
+def test_the_prompt_has_no_conversation_line_without_a_chat(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    hint(_state())
+    assert "Conversation so far" not in prompts[0][2]
+
+
 def test_a_failed_model_gives_no_verdict_on_a_reply(monkeypatch: pytest.MonkeyPatch) -> None:
     _answer_with(monkeypatch, None)
     result = hint(_replying())
@@ -208,3 +224,97 @@ def test_a_stopped_solution_without_an_error_context_gives_the_stopped_text() ->
     state = _state(error_type="incomplete")
     del state["error_context"]
     assert hint(state)["hint_text"] == canned_hint(1, "incomplete")
+
+
+def _no_working(**fields: Any) -> TutorState:
+    base: dict[str, Any] = {
+        "problem": "2x + 1 = 7",
+        "intent": "stuck",
+        "hint_level": 1,
+        "messages": [HumanMessage("idk where to start")],
+    }
+    return TutorState(**(base | fields))  # type: ignore[typeddict-item]
+
+
+def test_a_student_with_no_working_gets_a_model_hint(prompts: list[tuple[str, str, str]]) -> None:
+    result = hint(_no_working())
+    assert result["hint_text"] == "What does the 3 multiply in `3(x + 2)`?"
+    text = prompts[0][2]
+    assert "Starting point:" in text and "Student's message: idk where to start" in text
+    assert "wrong step" not in text
+
+
+def test_a_reply_with_no_working_gets_a_verdict(monkeypatch: pytest.MonkeyPatch) -> None:
+    _answer_with(monkeypatch, HintText(text="Yes.", reply_moves_forward=True))
+    state = _no_working(
+        intent="answer",
+        hints_used=1,
+        messages=[AIMessage("What do you know?"), HumanMessage("it is a product")],
+    )
+    assert hint(state)["reply_moves_forward"] is True
+
+
+def test_a_failed_model_gives_the_no_working_canned_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    _answer_with(monkeypatch, None)
+    assert hint(_no_working())["hint_text"] == canned_hint(1, NO_WORKING)
+
+
+def test_a_stale_error_type_does_not_change_the_no_working_prompt(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    hint(_no_working(error_type="incomplete"))
+    assert "Starting point:" in prompts[0][2]
+
+
+def test_a_student_with_working_and_no_focus_gets_the_old_canned_hint(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    state = _no_working(stage="diagnosed", error_type="other", student_steps=[Step(claim="2x = 6")])
+    assert hint(state)["hint_text"] == canned_hint(1, "other")
+    assert prompts == []
+
+
+def test_a_diagnosis_with_no_focus_gets_the_canned_hint_on_a_later_message(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    verdicts = [StepVerdict(step_index=1, relation="unparsable")]
+    state = _no_working(error_type="other", step_verdicts=verdicts)
+    assert hint(state)["hint_text"] == canned_hint(1, "other")
+    assert prompts == []
+
+
+def test_a_reply_using_a_new_letter_gets_the_no_working_prompt(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    state = _no_working(
+        problem="x^2 - 5x + 6 = 0",
+        intent="answer",
+        hints_used=1,
+        student_steps=[Step(claim="x^2 - (a+b)x + ab")],
+        messages=[AIMessage("What do you get?"), HumanMessage("x^2 - (a+b)x + ab")],
+    )
+    hint(state)
+    text = prompts[0][2]
+    assert "Starting point:" in text and "Student's reply: x^2 - (a+b)x + ab" in text
+
+
+def test_an_answer_before_any_hint_is_not_treated_as_a_reply(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    state = _no_working(
+        intent="answer", messages=[AIMessage("Please write it out."), HumanMessage("x = 3")]
+    )
+    result = hint(state)
+    text = prompts[0][2]
+    assert "Student's message: x = 3" in text
+    assert "Student's reply" not in text and "Tutor's last message" not in text
+    assert "reply_moves_forward" not in result
+
+
+def _rules_section() -> str:
+    text = (Path(hint_module.__file__).parent.parent / "prompts" / "hint.md").read_text()
+    return text.split("## Rules")[1]
+
+
+def test_the_no_naming_rule_applies_only_to_the_starting_point() -> None:
+    assert "Never name a solution" not in _rules_section()

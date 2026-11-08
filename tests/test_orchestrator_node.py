@@ -10,8 +10,10 @@ from pydantic import BaseModel
 from tutor.config import ConfigError
 from tutor.nodes import orchestrator as orch
 from tutor.state import (
+    Action,
     Decision,
     ErrorContext,
+    Intent,
     LearnerProfile,
     Misconception,
     MisconceptionRecord,
@@ -20,7 +22,8 @@ from tutor.state import (
     TutorState,
 )
 from tutor.tools import learner_db, structured
-from tutor.tools.canned_hints import canned_hint
+from tutor.tools.canned_hints import NO_WORKING, canned_hint
+from tutor.tools.diagnosis import fresh_problem_fields
 
 
 @pytest.fixture
@@ -377,6 +380,17 @@ def test_the_model_sees_the_intent_and_the_tutors_last_message(
     assert "Tutor's last message: What must be true of A?" in seen[0]
 
 
+def test_the_model_sees_the_earlier_conversation(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen = _decide(monkeypatch, Decision(action="ask", reason="r", reply_text="Show me."))
+    messages = [
+        HumanMessage("Hi"),
+        AIMessage("Send me a problem."),
+        HumanMessage("idk where to start"),
+    ]
+    orch.orchestrator({"messages": messages, "problem": "2x = 4"})
+    assert "Conversation so far:\nStudent: Hi\nTutor: Send me a problem." in seen[0]
+
+
 def _hinted_state(**fields: Any) -> TutorState:
     base: dict[str, Any] = {
         "stage": "hinted",
@@ -506,3 +520,195 @@ def test_a_diagnosis_stores_the_focus_step_for_the_hint() -> None:
 def test_an_out_of_scope_problem_leaves_nothing_to_hint_about() -> None:
     state: TutorState = {"stage": "diagnosed", "topic": "Geometry", "error_context": _context()}
     assert orch.orchestrator(state)["error_context"] is None
+
+
+def _no_working(**fields: Any) -> TutorState:
+    base: dict[str, Any] = {
+        "messages": [HumanMessage("idk where to start")],
+        "problem": "2x + 1 = 7",
+        "topic": "Algebra",
+        "intent": "stuck",
+    }
+    return TutorState(**(base | fields))  # type: ignore[typeddict-item]
+
+
+def test_a_stuck_student_with_no_working_can_get_a_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_no_working(hint_level=3))
+    assert out["next_action"] == "hint" and out["hint_level"] == 1
+
+
+def test_a_second_request_for_help_escalates(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_no_working(hint_level=1, hints_used=1))
+    assert out["hint_level"] == 2
+
+
+def test_no_problem_means_no_hint_for_a_stuck_student(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    assert orch.orchestrator(_no_working(problem=""))["next_action"] == "ask"
+
+
+def test_a_stuck_student_on_an_out_of_scope_subject_is_declined(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_no_working(topic="Geometry"))
+    assert out["next_action"] == "reply" and out["reply_text"] == orch.OUT_OF_SCOPE_TEXT
+
+
+def test_a_reply_to_a_no_working_hint_is_routed_by_code() -> None:
+    out = orch.orchestrator(_no_working(intent="answer", hints_used=1, hint_level=2))
+    assert out["next_action"] == "hint" and "hint_level" not in out
+
+
+def test_a_leaking_no_working_hint_falls_back_to_its_own_canned_text() -> None:
+    state = _no_working(stage="hinted", hint_retries=1, hint_text="So `x = 3` works.")
+    out = orch.orchestrator(state)
+    assert out["reply_text"] == canned_hint(1, NO_WORKING)
+
+
+def test_handing_over_the_problem_is_routed_by_the_model_and_can_get_a_hint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen = _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_no_working(intent="answer"))
+    assert len(seen) == 1 and out["next_action"] == "hint" and out["hint_level"] == 1
+
+
+def test_a_clarifying_question_with_no_working_keeps_the_level(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_no_working(intent="explain", hint_level=2, hints_used=2))
+    assert out["next_action"] == "hint" and out["hint_level"] == 2
+
+
+def test_a_clarifying_question_after_a_diagnosis_still_escalates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    state = _no_working(intent="explain", hint_level=2, hints_used=2, error_context=_context())
+    assert orch.orchestrator(state)["hint_level"] == 3
+
+
+def test_a_no_working_hint_listing_every_solution_is_rejected() -> None:
+    state = _no_working(
+        stage="hinted",
+        problem="x^2 - 5x + 6 = 0",
+        hint_text="Try `1` and `6`, or `2` and `3`.",
+    )
+    assert orch.orchestrator(state) == {"next_action": "hint", "hint_retries": 1}
+
+
+@pytest.mark.parametrize("action", ["ask", "reply"])
+@pytest.mark.parametrize("intent", ["stuck", "explain"])
+def test_code_sends_a_student_with_no_working_to_hint(
+    monkeypatch: pytest.MonkeyPatch, action: Action, intent: Intent
+) -> None:
+    _decide(monkeypatch, Decision(action=action, reason="r", reply_text="Find two numbers."))
+    out = orch.orchestrator(_no_working(intent=intent))
+    assert out["next_action"] == "hint" and out["hint_level"] == 1
+    assert "reply_text" not in out and "messages" not in out
+
+
+def test_the_override_needs_a_student_asking_for_help(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="ask", reason="r", reply_text="Show me."))
+    assert orch.orchestrator(_no_working(intent="check_work"))["next_action"] == "ask"
+
+
+def test_the_override_leaves_a_message_with_working_alone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="ask", reason="r", reply_text="Show me."))
+    assert orch.orchestrator(_no_working(student_steps=STEP))["next_action"] == "ask"
+
+
+def test_the_override_still_declines_an_out_of_scope_subject(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="ask", reason="r", reply_text="Find two numbers."))
+    out = orch.orchestrator(_no_working(topic="Geometry"))
+    assert out["reply_text"] == orch.OUT_OF_SCOPE_TEXT
+
+
+WORKING = [Step(claim="2x = 6")]
+
+
+def test_a_hint_for_a_stuck_student_with_working_becomes_ask(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    assert orch.orchestrator(_no_working(student_steps=WORKING))["next_action"] == "ask"
+
+
+def test_a_reply_using_a_new_letter_still_goes_to_hint() -> None:
+    state = _no_working(
+        problem="x^2 - 5x + 6 = 0",
+        intent="answer",
+        hints_used=1,
+        student_steps=[Step(claim="x^2 - (a+b)x + ab")],
+    )
+    assert orch.orchestrator(state)["next_action"] == "hint"
+
+
+def test_a_reply_with_checkable_math_is_diagnosed_by_code() -> None:
+    out = orch.orchestrator(_no_working(intent="answer", hints_used=1, student_steps=WORKING))
+    assert out["next_action"] == "diagnose" and out["stage"] == "diagnosed"
+
+
+def test_a_hint_for_a_student_with_working_is_not_held_to_the_no_working_check() -> None:
+    state = _no_working(
+        stage="hinted",
+        problem="x^2 - 5x + 6 = 0",
+        student_steps=WORKING,
+        hint_text="Try `1` and `6`, or `2` and `3`.",
+    )
+    assert orch.orchestrator(state)["reply_text"] == "Try `1` and `6`, or `2` and `3`."
+
+
+def test_a_leaking_hint_after_a_diagnosis_with_no_focus_keeps_the_error_type_text() -> None:
+    state = _no_working(
+        stage="hinted",
+        hint_retries=1,
+        hint_text="So `x = 3` works.",
+        error_type="other",
+        student_steps=WORKING,
+    )
+    assert orch.orchestrator(state)["reply_text"] == canned_hint(1, "other")
+
+
+def test_a_diagnosis_with_no_focus_is_not_no_working_on_the_next_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    state = _no_working(step_verdicts=[StepVerdict(step_index=1, relation="unparsable")])
+    assert orch.orchestrator(state)["next_action"] == "ask"
+
+
+def test_a_question_after_a_solved_problem_keeps_the_models_reply(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="reply", reason="r", reply_text="Glad it worked."))
+    solved = orch.orchestrator(_clean())
+    state = _no_working(
+        **{**_clean(), **solved, "stage": "new_message", "intent": "explain", "student_steps": []}
+    )
+    out = orch.orchestrator(state)
+    assert out["next_action"] == "reply" and out["reply_text"] == "Glad it worked."
+
+
+def test_a_new_problem_after_a_solved_one_can_get_a_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    state = _no_working(**fresh_problem_fields())
+    assert orch.orchestrator(state)["next_action"] == "hint"
+
+
+def test_a_verdict_on_a_first_message_does_not_raise_the_level() -> None:
+    state = _no_working(
+        stage="hinted",
+        intent="answer",
+        hint_text="What is being done to `x`?",
+        reply_moves_forward=False,
+    )
+    assert "hint_level" not in orch.orchestrator(state)

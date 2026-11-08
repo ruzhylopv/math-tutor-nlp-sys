@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from tutor.state import ErrorContext, Step, StepVerdict, TutorState
+from tutor.tools.algebra import letters
 
 VALID_RELATIONS = ("equivalent", "implies", "narrows")
 
@@ -21,7 +22,46 @@ def fresh_problem_fields() -> dict[str, Any]:
         "step_verdicts": [],
         "first_error_step": None,
         "focus_step": None,
+        "is_correct": False,
     }
+
+
+def no_diagnosis_yet(state: TutorState) -> bool:
+    """A stored problem that no diagnosis has looked at and that is not solved.
+
+    `step_verdicts` stay until the problem changes, so they show a diagnosis that found no focus
+    step. A clean solution clears them but leaves `is_correct` true until the problem changes.
+    """
+    return (
+        bool(state.get("problem"))
+        and state.get("error_context") is None
+        and not state.get("step_verdicts")
+        and not state.get("is_correct", False)
+    )
+
+
+def is_hint_reply(state: TutorState) -> bool:
+    """True when the message answers a question `hint` asked: a diagnosis or a hint came first."""
+    return state.get("intent") == "answer" and (
+        state.get("error_context") is not None or state.get("hints_used", 0) > 0
+    )
+
+
+def uses_new_letter(state: TutorState) -> bool:
+    """True when a submitted line has a letter that is not in the problem."""
+    known = letters(state.get("problem", ""))
+    return any(letters(step.claim) - known for step in state.get("student_steps", []))
+
+
+def is_no_working_help(state: TutorState) -> bool:
+    """A problem with no diagnosis, no submitted working, and a message that may ask for help.
+
+    Lines using a new letter count as no working only in a reply to a hint: `verify` cannot check
+    them, because it does not know definitions from an earlier turn.
+    """
+    if not no_diagnosis_yet(state) or state.get("intent") not in ("stuck", "explain", "answer"):
+        return False
+    return not state.get("student_steps") or (is_hint_reply(state) and uses_new_letter(state))
 
 
 def is_skipped_line(verdict: StepVerdict, steps: Sequence[Step]) -> bool:
