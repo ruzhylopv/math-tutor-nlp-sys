@@ -753,6 +753,15 @@ fallback hints" from the roadmap.
   `hint_text` can hold a draft the leak check later rejects; cost: a student cannot read why the tutor routed the turn.
 - **The chat input is turned off during a turn with `st.chat_input(submit_mode="disable")`** | `disabled=` driven by a pending
   message kept in `session_state` | Streamlit re-enables it when the run ends, so no flag of ours can leave it stuck; cost: Python does not know a turn is starting, so the sidebar buttons can still interrupt one.
+- **A calculation in reply to a hint ends the diagnosis after `verify` and keeps the earlier diagnosis** | a routing gate that skips
+  `diagnosis`; removing the code routing of replies (Layer 5) so the model decides | every submitted line still goes through SymPy,
+  routing does not change and no model call is added; cost: a line with a variable in a reply still gets a full diagnosis, and a
+  whole rework of an arithmetic problem sent as a reply is read as a calculation.
+- **A calculation reply does not change the hint level, right or wrong** | raising the next hint's level on a false calculation, as
+  for other replies | decided by the developer: a slip in a side calculation is not a sign the student needs a more direct hint;
+  cost: a student who keeps getting the calculation wrong gets the same level.
+- **A clarifying question after a hint keeps the level, and `hint` is told what was asked** | raising the level as for "I am stuck" (the previous rule); a new `clarify` intent in `parse_input` | decided by the developer after a real chat, where "What do you mean here?" jumped to a new method; `explain` already says this and needs no change to `parse_input`; cost: "why is that wrong?" also keeps the level, and a student who keeps asking stays on it.
+- **A level-2 reply to numbers already quoted is told the counterexample was used, by a check in code** | a prompt rule alone; raising the level after a good reply | the model was handed the same numbers and repeated them, and a good reply should not make hints more direct; cost: the check compares numbers in the last message, so a message that happens to hold them all also counts.
 - **The graph panel is our own `st.components.v2` component, replacing `st.graphviz_chart`** | keep `st.graphviz_chart`; a new
   dependency (streamlit-flow, streamlit-agraph, not installed or tried) | `st.graphviz_chart` offers no click handling, and a new
   package would need the developer's approval and a click that does not rerun the script, which would kill a running turn, whereas

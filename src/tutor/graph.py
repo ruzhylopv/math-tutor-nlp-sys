@@ -14,12 +14,12 @@ from tutor.nodes.parse_input import parse_input
 from tutor.nodes.retrieve import retrieve
 from tutor.nodes.verify import verify
 from tutor.state import TutorState
-from tutor.tools.diagnosis import is_clean_solution
+from tutor.tools.diagnosis import is_calculation_reply, is_clean_solution
 
 
 def route_after_verify(state: TutorState) -> Literal["__end__", "localize"]:
-    """A clean correct solution ends the diagnosis; anything else goes on to localize."""
-    return "__end__" if is_clean_solution(state) else "localize"
+    """A clean solution, or a calculation in reply to a hint, ends the diagnosis here."""
+    return "__end__" if is_clean_solution(state) or is_calculation_reply(state) else "localize"
 
 
 def build_diagnosis_graph() -> CompiledStateGraph[TutorState, None, TutorState, TutorState]:

@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from tutor.state import ErrorContext, Step, StepVerdict, TutorState
-from tutor.tools.algebra import letters
+from tutor.tools.algebra import is_closed_statement, letters
 
 VALID_RELATIONS = ("equivalent", "implies", "narrows")
 
@@ -44,6 +44,20 @@ def is_hint_reply(state: TutorState) -> bool:
     """True when the message answers a question `hint` asked: a diagnosis or a hint came first."""
     return state.get("intent") == "answer" and (
         state.get("error_context") is not None or state.get("hints_used", 0) > 0
+    )
+
+
+def is_calculation_reply(state: TutorState) -> bool:
+    """A reply to a hint on a diagnosed mistake in which every line is a plain calculation.
+
+    SymPy checks it, but it has no step to localize, so the earlier diagnosis still stands.
+    """
+    steps = state.get("student_steps", [])
+    return (
+        bool(steps)
+        and state.get("intent") == "answer"
+        and state.get("error_context") is not None
+        and all(is_closed_statement(step.claim) for step in steps)
     )
 
 

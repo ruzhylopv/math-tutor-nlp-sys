@@ -61,6 +61,9 @@ flowchart LR
   verify -->|otherwise| localize --> retrieve --> END
 ```
 The orchestrator sets `stage = diagnosed` when it routes here, so it knows it is back from a diagnosis.
+A reply to a hint in which every line is a plain calculation (no variable) also ends after `verify`: SymPy checks it, but
+there is no step to localize. The orchestrator then keeps the earlier diagnosis and the hint level and routes to `hint`,
+which is told SymPy's verdict.
 `verify` short-circuits only when the final answer is correct, every step is valid, and no
 `justification_claims_ok` is False. A correct answer with a wrong justification, or reached through an
 invalid step, therefore goes on to `localize` (error type `reasoning_result_mismatch` or
@@ -102,7 +105,8 @@ One node, three modes, chosen from the `stage` field (`new_message`, `diagnosed`
 sets `hinted`:
 - **new_message** (the student wrote something): the LLM `Decision` picks `ask`, `diagnose`, `hint` or
   `reply`. Counters (`turns`) are plain code. When the action is `hint` without a new diagnosis (the
-  student asked a question, as in scenario B T2), plain code escalates `hint_level` by one (capped at 4) for
+  student asked a question, as in scenario B T2), plain code escalates `hint_level` by one (capped at 4; a clarifying
+  question, intent `explain`, after a hint keeps the level) for
   the current misconception, i.e. the last entry of `misconceptions_seen`. A student with a stored problem and no
   working who needs help to begin also gets a `hint`: one guiding question, first at level 1, and never a lesson. The
   tutor coaches a student into a specific problem; it does not teach algebra in general.

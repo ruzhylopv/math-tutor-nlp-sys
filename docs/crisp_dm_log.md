@@ -202,6 +202,14 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   a log per node; details are behind a "Developer view" toggle, and `orchestrator` now keeps the model's `decision_reason`. Unit
   tests and an `AppTest` run with the model scripted; the layout and redraw were checked in headless Chrome on a scripted stream.
   No metrics: UI only.
+- **Calculation replies (2026-11-08)**: in a real chat, a reply such as a single multiplication went through a full diagnosis, wiped
+  the real one and got the canned hint. Such a reply now ends after `verify`, keeps the diagnosis and the level, and `hint` is told
+  SymPy's verdict. Unit tests with the model scripted. **No eval run: evals are debt.** No new metrics.
+- **Clarifying hints (2026-11-08)**: in a real chat, a level-1 hint asked about something still in the student's line, "What do you
+  mean here?" raised the level and changed method, and a good reply got the same numbers back. A question after a hint now keeps
+  the level and reaches `hint`, level 1 must be true of the student's line, and numbers already quoted are not resent. Unit tests
+  with the model scripted. **No eval run: evals are debt (the developer's call).** The debt is `eval_hint` on the dev split, and
+  `eval_hint` has no reply or question cases, so those two fixes also need the chat re-sent by hand. No new metrics.
 - **Graph panel v2 (2026-11-08)**: the Graphviz chart became a clickable graph in the style of a GitHub Actions run (status icons, a
   spinner, durations, repeat counts; a click shows that node's runs), the log scrolls to its end, and the "Developer view" toggle
   is gone. Checked in Chromium on a scripted stream, light and dark, with no model calls. No metrics: UI only.

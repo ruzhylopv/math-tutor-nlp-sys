@@ -584,11 +584,19 @@ def test_a_clarifying_question_with_no_working_keeps_the_level(
     assert out["next_action"] == "hint" and out["hint_level"] == 2
 
 
-def test_a_clarifying_question_after_a_diagnosis_still_escalates(
+def test_a_clarifying_question_after_a_diagnosis_keeps_the_level(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _decide(monkeypatch, Decision(action="hint", reason="r"))
     state = _no_working(intent="explain", hint_level=2, hints_used=2, error_context=_context())
+    assert orch.orchestrator(state)["hint_level"] == 2
+
+
+def test_being_stuck_after_a_diagnosis_still_escalates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    state = _no_working(intent="stuck", hint_level=2, hints_used=2, error_context=_context())
     assert orch.orchestrator(state)["hint_level"] == 3
 
 

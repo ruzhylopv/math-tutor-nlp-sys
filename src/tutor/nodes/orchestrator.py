@@ -7,9 +7,9 @@ new_message: an LLM `Decision` picks ask / diagnose / hint / reply; code guards 
     level stays for its own hint. A line using a letter that is not in the problem also goes to
     `hint`, because definitions from an earlier turn are not known to `verify` (a known limit).
     A student with a stored problem and no working may also get a `hint`, to help them begin; its
-    first one is level 1, a clarifying question keeps the level, and an out-of-scope subject is
-    declined instead. Code overrules an `ask` or `reply` from the model for such a student, because
-    the model's `reply_text` does not pass the hint rules or the leakage check.
+    first one is level 1, and an out-of-scope subject is declined instead. A clarifying question
+    after any hint keeps the level. Code overrules an `ask` or `reply` from the model for such a
+    student, because the model's `reply_text` does not pass the hint rules or the leakage check.
 diagnosed: plain code. Out-of-scope subject: decline. Clean solution: record the attempt, maybe
     offer practice. Otherwise set the hint level (different misconception: 1, same: +1; partial
     progress keeps it unless the student is stuck) and hint. A reply keeps the level for its own
@@ -45,6 +45,7 @@ from tutor.tools.catalogue import load_catalogue
 from tutor.tools.diagnosis import (
     error_context,
     fresh_problem_fields,
+    is_calculation_reply,
     is_clean_solution,
     is_hint_reply,
     is_no_working_help,
@@ -101,14 +102,14 @@ def _out_of_scope(state: TutorState) -> bool:
 
 
 def _next_hint_level(state: TutorState, diagnosed: bool) -> int:
-    """One level up, except for help before any working: it starts at 1, and a clarifying
-    question there keeps the level, so asking why does not give more away."""
+    """One level up, except that help before any working starts at 1, and a clarifying question
+    after a hint keeps the level: not following the tutor is no reason to give more away."""
     level = state.get("hint_level", 1)
-    if not diagnosed:
-        if state.get("hints_used", 0) == 0:
-            return 1
-        if state.get("intent") == "explain":
-            return level
+    hinted = state.get("hints_used", 0) > 0
+    if hinted and state.get("intent") == "explain":
+        return level
+    if not diagnosed and not hinted:
+        return 1
     return min(level + 1, MAX_LEVEL)
 
 
@@ -205,6 +206,8 @@ def _diagnosed(state: TutorState) -> dict[str, Any]:
         return {**_reply(OUT_OF_SCOPE_TEXT), "error_context": None}
     if is_clean_solution(state):
         return _clean_solution(state)
+    if is_calculation_reply(state):  # the earlier diagnosis and the level stand
+        return {"next_action": "hint", "hint_retries": 0}
     seen = list(state.get("misconceptions_seen", []))
     misconception = state.get("misconception")
     level = state.get("hint_level", 1)
