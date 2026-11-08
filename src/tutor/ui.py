@@ -24,6 +24,7 @@ from tutor.state import LearnerProfile, TutorState
 from tutor.tools.checkpointer import sqlite_checkpointer
 from tutor.tools.learner_db import get_profile, learner_db_path
 from tutor.tools.structured import QuotaExceededError
+from tutor.trace import node_details, node_path
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class StepStarted:
 
     node: str
     label: str
+    path: str = field(default="", compare=False)  # the node's id in the drawn graph
 
 
 @dataclass(frozen=True)
@@ -62,6 +64,9 @@ class StepFinished:
     node: str
     label: str
     seconds: float
+    path: str = field(default="", compare=False)
+    details: tuple[str, ...] = field(default=(), compare=False)  # for the developer view only
+    failed: bool = field(default=False, compare=False)
 
 
 @dataclass(frozen=True)
@@ -177,18 +182,22 @@ def send_stream(
             stream_mode=["tasks", "updates"],
             subgraphs=True,
         )
-        for _, mode, data in chunks:
+        for namespace, mode, data in chunks:
             if mode == "updates":
                 visited.extend(data)
                 continue
             node, label = data["name"], step_label(data["name"])
+            path = node_path(namespace, node)
             if "result" not in data and "error" not in data:  # a node starts
                 started[data["id"]] = time.monotonic()
-                yield StepStarted(node, label)
+                yield StepStarted(node, label, path)
             elif data["id"] in started:  # the same task has finished
                 seconds = time.monotonic() - started.pop(data["id"])
                 logger.info("ui: %s took %.2fs", node, seconds)
-                yield StepFinished(node, label, seconds)
+                details = node_details(node, data.get("result") or {})
+                yield StepFinished(
+                    node, label, seconds, path, details, data.get("error") is not None
+                )
         state = tutor.graph.get_state(config).values
     except QuotaExceededError:
         logger.warning("ui: the model provider has no quota left")

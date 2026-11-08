@@ -86,7 +86,8 @@ def test_state_has_the_designed_fields() -> None:
         "is_correct", "step_verdicts", "first_error_step", "focus_step", "error_context",
         "error_type", "misconception_candidates", "misconception", "hint_level", "hint_text",
         "reply_moves_forward", "hint_retries",
-        "stage", "next_action", "reply_text", "turns", "hints_used", "misconceptions_seen",
+        "stage", "next_action", "decision_reason", "reply_text", "turns", "hints_used",
+        "misconceptions_seen",
         "learner_profile",
     }  # fmt: skip
     assert set(hints) == expected

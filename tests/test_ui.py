@@ -195,3 +195,29 @@ def test_no_quota_tells_the_student_through_a_real_graph_run(
     monkeypatch.setattr(structured, "call_structured", no_quota)
     events = list(ui.send_stream(tutor, "ada", 1, "x + 1 = 2"))
     assert events[-1] == ui.TurnView(reply=ui.NO_QUOTA_REPLY, error=True)
+
+
+def test_a_finished_step_carries_its_graph_path_and_details(tutor: ui.Tutor) -> None:
+    events = list(ui.send_stream(tutor, "ada", 1, "hi"))
+    finished = [e for e in events if isinstance(e, ui.StepFinished)]
+    assert [e.path for e in finished] == ["parse_input", "orchestrator"]
+    assert "why: greeting" in finished[1].details
+    assert not finished[1].failed
+
+
+def test_a_step_inside_the_diagnosis_gets_its_full_path(tutor: ui.Tutor) -> None:
+    namespace = ("diagnosis:abc",)
+
+    class Graph:
+        def stream(self, *args: object, **kwargs: object) -> list[tuple[object, str, object]]:
+            return [
+                (namespace, "tasks", {"id": "a", "name": "verify", "input": {}, "triggers": []}),
+                (namespace, "tasks", {"id": "a", "name": "verify", "result": None, "error": "x"}),
+            ]
+
+        def get_state(self, config: object) -> object:
+            return type("S", (), {"values": {"reply_text": "ok"}})()
+
+    events = list(ui.send_stream(replace(tutor, graph=Graph()), "ada", 1, "x"))  # type: ignore[arg-type]
+    assert isinstance(events[0], ui.StepStarted) and events[0].path == "diagnosis:verify"
+    assert isinstance(events[1], ui.StepFinished) and events[1].failed

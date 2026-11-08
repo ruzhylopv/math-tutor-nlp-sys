@@ -196,6 +196,7 @@ class TutorState(TypedDict, total=False):
     hint_retries: int
     stage: Stage
     next_action: Action
+    decision_reason: str  # the model's reason for its last `Decision`, for the developer view
     reply_text: str
     turns: int
     hints_used: int

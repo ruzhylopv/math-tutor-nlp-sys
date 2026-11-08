@@ -20,9 +20,9 @@ hinted: plain code runs the leakage check, publishes the hint, or retries once, 
     last valid line may be quoted, so the line derived from it is what the check flags.
 
 Reads: messages, stage, intent, reply_moves_forward, and the state so far
-Writes: next_action, stage (when routing to `diagnose`), error_context, hint_level, hint_retries,
-        reply_text, messages, turns, hints_used, misconceptions_seen, learner_profile (and the
-        per-problem fields after a clean solution)
+Writes: next_action, decision_reason, stage (when routing to `diagnose`), error_context,
+        hint_level, hint_retries, reply_text, messages, turns, hints_used, misconceptions_seen,
+        learner_profile (and the per-problem fields after a clean solution)
 Eval metric: routing accuracy on labelled turns
 """
 
@@ -133,6 +133,7 @@ def _new_message(state: TutorState) -> dict[str, Any]:
         action = "diagnose" if has_steps else "ask"
     else:
         action, text = decision.action, decision.reply_text
+        update["decision_reason"] = decision.reason
     if action == "diagnose" and not has_steps:
         action = "ask"
     if action == "hint" and not can_hint:
