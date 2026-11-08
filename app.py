@@ -81,8 +81,10 @@ def show_sidebar(tutor: Tutor, student_id: str, chat: int) -> bool:
                 st.session_state.pop(key, None)
             st.rerun()
         info = sidebar_info(tutor, student_id, chat)
-        st.metric("Hint level", info.hint_level if info.hint_level else "none yet")
-        st.metric("Hints used", info.hints_used)
+        cap = info.max_hint_level
+        level = f"{info.hint_level} / {cap}" if info.hint_level else f"none yet (max {cap})"
+        st.markdown(f"Hint level: **{level}**")
+        st.markdown(f"Hints used: **{info.hints_used}**")
         if info.profile is not None:
             st.markdown("**Profile**")
             topics = ", ".join(info.profile.weak_topics) or "nothing recorded yet"

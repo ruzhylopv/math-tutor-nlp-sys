@@ -21,6 +21,7 @@ from langgraph.types import StateSnapshot
 from tutor.config import ConfigError, checkpoint_db_path
 from tutor.graph import build_main_graph, new_turn
 from tutor.state import LearnerProfile, TutorState
+from tutor.tools.canned_hints import MAX_LEVEL
 from tutor.tools.checkpointer import sqlite_checkpointer
 from tutor.tools.learner_db import get_profile, learner_db_path
 from tutor.tools.structured import QuotaExceededError
@@ -84,6 +85,7 @@ class SidebarInfo:
     hint_level: int | None
     hints_used: int
     profile: LearnerProfile | None  # None when no learner DB is configured
+    max_hint_level: int = MAX_LEVEL
 
 
 @dataclass(frozen=True)
