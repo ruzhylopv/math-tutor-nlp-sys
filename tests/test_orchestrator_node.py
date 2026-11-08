@@ -20,7 +20,7 @@ from tutor.state import (
     TutorState,
 )
 from tutor.tools import learner_db, structured
-from tutor.tools.canned_hints import canned_hint
+from tutor.tools.canned_hints import NO_WORKING, canned_hint
 
 
 @pytest.fixture
@@ -517,3 +517,57 @@ def test_a_diagnosis_stores_the_focus_step_for_the_hint() -> None:
 def test_an_out_of_scope_problem_leaves_nothing_to_hint_about() -> None:
     state: TutorState = {"stage": "diagnosed", "topic": "Geometry", "error_context": _context()}
     assert orch.orchestrator(state)["error_context"] is None
+
+
+def _no_working(**fields: Any) -> TutorState:
+    base: dict[str, Any] = {
+        "messages": [HumanMessage("idk where to start")],
+        "problem": "2x + 1 = 7",
+        "topic": "Algebra",
+        "intent": "stuck",
+    }
+    return TutorState(**(base | fields))  # type: ignore[typeddict-item]
+
+
+def test_a_stuck_student_with_no_working_can_get_a_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_no_working(hint_level=3))
+    assert out["next_action"] == "hint" and out["hint_level"] == 1
+
+
+def test_a_second_request_for_help_escalates(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_no_working(hint_level=1, hints_used=1))
+    assert out["hint_level"] == 2
+
+
+def test_no_problem_means_no_hint_for_a_stuck_student(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    assert orch.orchestrator(_no_working(problem=""))["next_action"] == "ask"
+
+
+def test_a_stuck_student_on_an_out_of_scope_subject_is_declined(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_no_working(topic="Geometry"))
+    assert out["next_action"] == "reply" and out["reply_text"] == orch.OUT_OF_SCOPE_TEXT
+
+
+def test_a_reply_to_a_no_working_hint_is_routed_by_code() -> None:
+    out = orch.orchestrator(_no_working(intent="answer", hints_used=1, hint_level=2))
+    assert out["next_action"] == "hint" and "hint_level" not in out
+
+
+def test_a_leaking_no_working_hint_falls_back_to_its_own_canned_text() -> None:
+    state = _no_working(stage="hinted", hint_retries=1, hint_text="So `x = 3` works.")
+    out = orch.orchestrator(state)
+    assert out["reply_text"] == canned_hint(1, NO_WORKING)
+
+
+def test_handing_over_the_problem_is_routed_by_the_model_and_can_get_a_hint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen = _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_no_working(intent="answer"))
+    assert len(seen) == 1 and out["next_action"] == "hint" and out["hint_level"] == 1

@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from tutor.tools.canned_hints import MAX_LEVEL, canned_hint
+from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 
 
 def test_every_level_has_its_own_hint() -> None:
@@ -28,3 +28,9 @@ def test_a_stopped_solution_has_its_own_text_that_suggests_no_mistake() -> None:
 
 def test_a_mistake_keeps_the_text_for_its_level() -> None:
     assert canned_hint(3, "algebra") == canned_hint(3)
+
+
+def test_the_no_working_hint_has_no_math_and_suggests_no_mistake() -> None:
+    text = canned_hint(2, NO_WORKING)
+    assert not re.search(r"[0-9=^`]", text)
+    assert "wrong" not in text and "your line" not in text

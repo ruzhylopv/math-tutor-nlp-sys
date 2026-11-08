@@ -6,6 +6,8 @@ new_message: an LLM `Decision` picks ask / diagnose / hint / reply; code guards 
     model call: with a line of math to `diagnose` (SymPy checks it), otherwise to `hint`, and the
     level stays for its own hint. A line using a letter that is not in the problem also goes to
     `hint`, because definitions from an earlier turn are not known to `verify` (a known limit).
+    A student with a stored problem and no working may also get a `hint`, to help them begin; its
+    first one is level 1, and an out-of-scope subject is declined instead.
 diagnosed: plain code. Out-of-scope subject: decline. Clean solution: record the attempt, maybe
     offer practice. Otherwise set the hint level (different misconception: 1, same: +1; partial
     progress keeps it unless the student is stuck) and hint. A reply keeps the level for its own
@@ -37,9 +39,14 @@ from tutor.state import (
 )
 from tutor.tools import structured
 from tutor.tools.algebra import letters
-from tutor.tools.canned_hints import MAX_LEVEL, canned_hint
+from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 from tutor.tools.catalogue import load_catalogue
-from tutor.tools.diagnosis import error_context, fresh_problem_fields, is_clean_solution
+from tutor.tools.diagnosis import (
+    error_context,
+    fresh_problem_fields,
+    is_clean_solution,
+    is_no_working_help,
+)
 from tutor.tools.leakage import find_leaks
 from tutor.tools.learner_db import get_profile, learner_db_path, record_attempt
 from tutor.tools.messages import conversation_text, last_tutor_message, latest_student_message
@@ -89,6 +96,11 @@ def _uses_new_letter(state: TutorState) -> bool:
     return any(letters(step.claim) - known for step in state.get("student_steps", []))
 
 
+def _out_of_scope(state: TutorState) -> bool:
+    topic = state.get("topic")
+    return topic is not None and topic not in IN_SCOPE_TOPICS
+
+
 def _new_message(state: TutorState) -> dict[str, Any]:
     update: dict[str, Any] = {"turns": state.get("turns", 0) + 1}
     path = _db_path()
@@ -96,8 +108,13 @@ def _new_message(state: TutorState) -> dict[str, Any]:
         update["learner_profile"] = get_profile(path, state["student_id"])
 
     has_steps = bool(state.get("student_steps")) and bool(state.get("problem"))
-    can_hint = state.get("error_context") is not None
-    is_reply = state.get("intent") == "answer" and can_hint
+    diagnosed = state.get("error_context") is not None
+    can_hint = diagnosed or is_no_working_help(state)
+    # with no diagnosis, only a reply to an earlier hint skips the model: `answer` may also be
+    # the student handing over the problem the tutor asked for
+    is_reply = state.get("intent") == "answer" and (
+        diagnosed or (can_hint and state.get("hints_used", 0) > 0)
+    )
     decision = None if is_reply else _decide(state, latest_student_message(state))
     text = None
     if is_reply:
@@ -112,6 +129,10 @@ def _new_message(state: TutorState) -> dict[str, Any]:
     if action == "hint" and not can_hint:
         action = "ask"
 
+    if action == "hint" and not diagnosed and _out_of_scope(state):
+        update.update(_reply(OUT_OF_SCOPE_TEXT))
+        return update
+
     if action in ("ask", "reply"):
         update.update(_reply(text or (ASK_TEXT if action == "ask" else "Tell me more."), action))
         return update
@@ -120,7 +141,10 @@ def _new_message(state: TutorState) -> dict[str, Any]:
         update["stage"] = "diagnosed"  # the diagnosis subgraph returns here in this mode
     if action == "hint":
         if not is_reply:  # a reply's own hint keeps the level; `_hinted` applies its verdict
-            update["hint_level"] = min(state.get("hint_level", 1) + 1, MAX_LEVEL)
+            first_help = not diagnosed and state.get("hints_used", 0) == 0
+            update["hint_level"] = (
+                1 if first_help else min(state.get("hint_level", 1) + 1, MAX_LEVEL)
+            )
         update["hint_retries"] = 0
     return update
 
@@ -165,8 +189,7 @@ def _clean_solution(state: TutorState) -> dict[str, Any]:
 
 
 def _diagnosed(state: TutorState) -> dict[str, Any]:
-    topic = state.get("topic")
-    if topic is not None and topic not in IN_SCOPE_TOPICS:
+    if _out_of_scope(state):
         return {**_reply(OUT_OF_SCOPE_TEXT), "error_context": None}
     if is_clean_solution(state):
         return _clean_solution(state)
@@ -213,7 +236,8 @@ def _hinted(state: TutorState) -> dict[str, Any]:
         return {"next_action": "hint", "hint_retries": retries + 1}
     if leaks:
         logger.info("orchestrator: hint leaks twice (%s); using the canned hint", leaks)
-        text = canned_hint(level, state.get("error_type"))
+        kind = NO_WORKING if is_no_working_help(state) else state.get("error_type")
+        text = canned_hint(level, kind)
     update = _reply(text)
     update["hints_used"] = state.get("hints_used", 0) + 1
     if state.get("intent") == "answer" and state.get("reply_moves_forward") is False:

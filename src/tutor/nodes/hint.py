@@ -7,6 +7,9 @@ only one that is given the catalogue's general rule. Without an `error_context`,
 fails, the hint is the canned one for the level, so the node always returns a hint. The leakage
 check, the retry and the level changes belong to the orchestrator.
 
+A student with a stored problem and no working yet (`is_no_working_help`) gets one guiding question
+about how to begin, with no judgement of their math unless they are replying to that question.
+
 With `error_type` `incomplete` nothing is wrong: the student stopped before an answer, so the model
 is told that the work is correct and given the last valid line, with no counterexample or rule.
 With intent `answer` the model also gets the tutor's last message and the reply, responds to the
@@ -23,9 +26,10 @@ from typing import Any
 
 from tutor.state import ErrorContext, HintText, Misconception, TutorState
 from tutor.tools import structured
-from tutor.tools.canned_hints import MAX_LEVEL, canned_hint
+from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 from tutor.tools.catalogue import load_catalogue
 from tutor.tools.counterexample import counterexample
+from tutor.tools.diagnosis import is_no_working_help
 from tutor.tools.messages import conversation_text, last_tutor_message, latest_student_message
 
 logger = logging.getLogger("tutor.hint")
@@ -73,9 +77,24 @@ def _mistake_lines(state: TutorState, context: ErrorContext, level: int) -> list
     return lines
 
 
-def _prompt_text(state: TutorState, context: ErrorContext, level: int) -> str:
-    stopped = state.get("error_type") == "incomplete"
-    lines = (_stopped_lines if stopped else _mistake_lines)(state, context, level)
+def _no_working_lines(state: TutorState, level: int) -> list[str]:
+    lines = [
+        f"Hint level: {level}",
+        f"Problem: {state.get('problem', '')}",
+        "Starting point: the student has not written any working yet and wants help to begin.",
+    ]
+    if state.get("intent") != "answer":
+        lines.append(f"Student's message: {latest_student_message(state)}")
+    return lines
+
+
+def _prompt_text(state: TutorState, context: ErrorContext | None, level: int) -> str:
+    if context is None:
+        lines = _no_working_lines(state, level)
+    elif state.get("error_type") == "incomplete":
+        lines = _stopped_lines(state, context, level)
+    else:
+        lines = _mistake_lines(state, context, level)
     if state.get("intent") == "answer":
         lines.append(f"Tutor's last message: {last_tutor_message(state) or 'none'}")
         lines.append(f"Student's reply: {latest_student_message(state)}")
@@ -90,17 +109,19 @@ def hint(state: TutorState) -> dict[str, Any]:
     level = min(max(state.get("hint_level", 1), 1), MAX_LEVEL)
     is_reply = state.get("intent") == "answer"
     context = state.get("error_context")
+    no_working = is_no_working_help(state)
+    kind = NO_WORKING if no_working else state.get("error_type")
     update: dict[str, Any] = {"stage": "hinted"}
     if is_reply:
         update["reply_moves_forward"] = None
-    if context is None:
+    if context is None and not no_working:
         logger.warning("hint: no error context; using the canned hint for level %d", level)
-        return {**update, "hint_text": canned_hint(level, state.get("error_type"))}
+        return {**update, "hint_text": canned_hint(level, kind)}
     result = structured.call_structured("hint", HintText, _prompt_text(state, context, level))
     text = result.text.strip() if result else ""
     if not text:
         logger.warning("hint: no usable answer from the model; using the canned hint")
-        text = canned_hint(level, state.get("error_type"))
+        text = canned_hint(level, kind)
     elif is_reply and result is not None:
         update["reply_moves_forward"] = result.reply_moves_forward
     return {**update, "hint_text": text}

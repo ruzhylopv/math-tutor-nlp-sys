@@ -24,6 +24,13 @@ def fresh_problem_fields() -> dict[str, Any]:
     }
 
 
+def is_no_working_help(state: TutorState) -> bool:
+    """A stored problem, no diagnosis, and a message that may ask for help to begin."""
+    if state.get("error_context") is not None or not state.get("problem"):
+        return False
+    return state.get("intent") in ("stuck", "explain", "answer")
+
+
 def is_skipped_line(verdict: StepVerdict, steps: Sequence[Step]) -> bool:
     """True for a `reason` or `other` line SymPy could not read: it was never compared.
 

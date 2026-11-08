@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from tutor.nodes.hint import hint
 from tutor.state import ErrorContext, HintText, Misconception, TutorState
 from tutor.tools import structured
-from tutor.tools.canned_hints import MAX_LEVEL, canned_hint
+from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 from tutor.tools.catalogue import load_catalogue
 
 
@@ -222,3 +222,43 @@ def test_a_stopped_solution_without_an_error_context_gives_the_stopped_text() ->
     state = _state(error_type="incomplete")
     del state["error_context"]
     assert hint(state)["hint_text"] == canned_hint(1, "incomplete")
+
+
+def _no_working(**fields: Any) -> TutorState:
+    base: dict[str, Any] = {
+        "problem": "2x + 1 = 7",
+        "intent": "stuck",
+        "hint_level": 1,
+        "messages": [HumanMessage("idk where to start")],
+    }
+    return TutorState(**(base | fields))  # type: ignore[typeddict-item]
+
+
+def test_a_student_with_no_working_gets_a_model_hint(prompts: list[tuple[str, str, str]]) -> None:
+    result = hint(_no_working())
+    assert result["hint_text"] == "What does the 3 multiply in `3(x + 2)`?"
+    text = prompts[0][2]
+    assert "Starting point:" in text and "Student's message: idk where to start" in text
+    assert "wrong step" not in text
+
+
+def test_a_reply_with_no_working_gets_a_verdict(monkeypatch: pytest.MonkeyPatch) -> None:
+    _answer_with(monkeypatch, HintText(text="Yes.", reply_moves_forward=True))
+    state = _no_working(
+        intent="answer",
+        hints_used=1,
+        messages=[AIMessage("What do you know?"), HumanMessage("it is a product")],
+    )
+    assert hint(state)["reply_moves_forward"] is True
+
+
+def test_a_failed_model_gives_the_no_working_canned_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    _answer_with(monkeypatch, None)
+    assert hint(_no_working())["hint_text"] == canned_hint(1, NO_WORKING)
+
+
+def test_a_stale_error_type_does_not_change_the_no_working_prompt(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    hint(_no_working(error_type="incomplete"))
+    assert "Starting point:" in prompts[0][2]

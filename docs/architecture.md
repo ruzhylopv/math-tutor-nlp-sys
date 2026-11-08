@@ -103,7 +103,9 @@ sets `hinted`:
 - **new_message** (the student wrote something): the LLM `Decision` picks `ask`, `diagnose`, `hint` or
   `reply`. Counters (`turns`) are plain code. When the action is `hint` without a new diagnosis (the
   student asked a question, as in scenario B T2), plain code escalates `hint_level` by one (capped at 4) for
-  the current misconception, i.e. the last entry of `misconceptions_seen`.
+  the current misconception, i.e. the last entry of `misconceptions_seen`. A student with a stored problem and no
+  working who needs help to begin also gets a `hint`: one guiding question, first at level 1, and never a lesson. The
+  tutor coaches a student into a specific problem; it does not teach algebra in general.
 - **diagnosed** (back from `diagnosis`): plain code. If the answer is correct and nothing is flagged, call
   `record_attempt`, offer practice if a misconception has recurred, and reply. Otherwise compare the new
   `misconception` id with the stored one (the last entry of `misconceptions_seen`, compared before the new id

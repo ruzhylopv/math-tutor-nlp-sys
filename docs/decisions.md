@@ -720,3 +720,9 @@ fallback hints" from the roadmap.
   cost: a very long chat loses its oldest turns.
 - **`parse_input` keeps only the last tutor message** | giving it the conversation too | it transcribes this message, and older
   equations could be taken for new steps; cost: it cannot use earlier turns to read an unclear message.
+- **A student with no working gets a guiding question from `hint`** | the orchestrator writing the help in `reply_text`; more
+  `ask` turns | `hint` already has the leakage check, the levels and the canned fallback, and asking again left the student
+  with no help; cost: `hint` has a third situation, and a reply using new letters is judged by the model, not SymPy.
+- **The tutor coaches into a specific problem and does not teach algebra in general** | written explanations of a method |
+  a guiding question makes no mathematical claim, while an explanation would be model-written math that SymPy never sees;
+  cost: a student who wants a lesson does not get one.
