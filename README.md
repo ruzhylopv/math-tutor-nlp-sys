@@ -11,4 +11,6 @@ retrieves the misconception and gives graded Socratic hints. Architecture: `docs
 
 Type a name (it separates people's chats; there is no password). Paste a problem with your steps, or ask a question.
 The sidebar shows the hint level, hints used and the profile across all your chats; "New chat" starts a fresh
-conversation for the same name. A free model can take a minute per message.
+conversation for the same name. The panel on the right draws the tutor's graph live, with the running node in green and
+each node's time below it; the "Developer view" toggle also shows what each node decided. A free model can take a minute
+per message.

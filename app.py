@@ -138,7 +138,8 @@ def run_turn(tutor: Tutor, student_id: str, chat: int, text: str, panel: Panel) 
                     status.update(label=event.label)
                     trace = trace.start(event.path)
                 elif isinstance(event, StepFinished):
-                    lines.append(f"✓ {event.label.rstrip('…')} — {event.seconds:.1f}s")
+                    mark = "✗" if event.failed else "✓"
+                    lines.append(f"{mark} {event.label.rstrip('…')} — {event.seconds:.1f}s")
                     st.write(lines[-1])
                     trace = trace.finish(event.path, event.failed)
                     steps.append(event)
