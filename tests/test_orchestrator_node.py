@@ -377,6 +377,17 @@ def test_the_model_sees_the_intent_and_the_tutors_last_message(
     assert "Tutor's last message: What must be true of A?" in seen[0]
 
 
+def test_the_model_sees_the_earlier_conversation(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen = _decide(monkeypatch, Decision(action="ask", reason="r", reply_text="Show me."))
+    messages = [
+        HumanMessage("Hi"),
+        AIMessage("Send me a problem."),
+        HumanMessage("idk where to start"),
+    ]
+    orch.orchestrator({"messages": messages, "problem": "2x = 4"})
+    assert "Conversation so far:\nStudent: Hi\nTutor: Send me a problem." in seen[0]
+
+
 def _hinted_state(**fields: Any) -> TutorState:
     base: dict[str, Any] = {
         "stage": "hinted",

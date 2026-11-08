@@ -42,7 +42,7 @@ from tutor.tools.catalogue import load_catalogue
 from tutor.tools.diagnosis import error_context, fresh_problem_fields, is_clean_solution
 from tutor.tools.leakage import find_leaks
 from tutor.tools.learner_db import get_profile, learner_db_path, record_attempt
-from tutor.tools.messages import last_tutor_message, latest_student_message
+from tutor.tools.messages import conversation_text, last_tutor_message, latest_student_message
 
 logger = logging.getLogger("tutor.orchestrator")
 
@@ -78,7 +78,8 @@ def _decide(state: TutorState, message: str) -> Decision | None:
         f"Steps found in the message: {steps}\n"
         f"Diagnosis so far: {diagnosed}\n"
         f"Student intent: {state.get('intent') or 'other'}\n"
-        f"Tutor's last message: {last_tutor_message(state) or 'none'}"
+        f"Tutor's last message: {last_tutor_message(state) or 'none'}\n"
+        f"Conversation so far:\n{conversation_text(state) or 'none'}"
     )
     return structured.call_structured("orchestrator", Decision, text)
 

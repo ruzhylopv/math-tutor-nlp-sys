@@ -183,6 +183,20 @@ def test_the_verdict_on_a_reply_is_returned(
     assert hint(_replying())["reply_moves_forward"] is verdict
 
 
+def test_the_prompt_has_the_earlier_conversation(prompts: list[tuple[str, str, str]]) -> None:
+    hint(_replying())
+    assert prompts[0][2].endswith(
+        "Conversation so far:\nStudent: my work\nTutor: What must be true of A?"
+    )
+
+
+def test_the_prompt_has_no_conversation_line_without_a_chat(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    hint(_state())
+    assert "Conversation so far" not in prompts[0][2]
+
+
 def test_a_failed_model_gives_no_verdict_on_a_reply(monkeypatch: pytest.MonkeyPatch) -> None:
     _answer_with(monkeypatch, None)
     result = hint(_replying())

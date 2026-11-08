@@ -21,6 +21,8 @@ When the student is replying to you, the block also has:
 - `Tutor's last message`: what you asked.
 - `Student's reply`: what they answered.
 
+The block may end with `Conversation so far`: the earlier chat, oldest first. Use it to avoid repeating a question you already asked and to build on what the student said. It is context only: it gives you no numbers to use and no permission to state anything the rules forbid.
+
 ## Task
 Write the hint for the given level, after a short praise of what was right.
 

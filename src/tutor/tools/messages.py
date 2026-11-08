@@ -4,6 +4,8 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
 from tutor.state import TutorState
 
+MAX_HISTORY_MESSAGES = 20  # enough for a normal session; keeps the prompt's cost bounded
+
 
 def _text(message: BaseMessage) -> str:
     content = message.content
@@ -11,6 +13,23 @@ def _text(message: BaseMessage) -> str:
         return content.strip()
     parts = (part if isinstance(part, str) else str(part.get("text", "")) for part in content)
     return " ".join(part for part in parts if part).strip()
+
+
+def conversation_text(state: TutorState) -> str:
+    """The chat before the latest student message, oldest first; an empty string if there is none.
+
+    Only the last `MAX_HISTORY_MESSAGES` messages are kept, one `Student:` or `Tutor:` line each.
+    """
+    messages = state.get("messages", [])
+    latest = next(
+        (i for i in reversed(range(len(messages))) if isinstance(messages[i], HumanMessage)), 0
+    )
+    lines = [
+        f"{'Student' if isinstance(message, HumanMessage) else 'Tutor'}: {_text(message)}"
+        for message in messages[:latest]
+        if isinstance(message, HumanMessage | AIMessage)
+    ]
+    return "\n".join(lines[-MAX_HISTORY_MESSAGES:])
 
 
 def latest_student_message(state: TutorState) -> str:

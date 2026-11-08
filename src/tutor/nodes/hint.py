@@ -26,7 +26,7 @@ from tutor.tools import structured
 from tutor.tools.canned_hints import MAX_LEVEL, canned_hint
 from tutor.tools.catalogue import load_catalogue
 from tutor.tools.counterexample import counterexample
-from tutor.tools.messages import last_tutor_message, latest_student_message
+from tutor.tools.messages import conversation_text, last_tutor_message, latest_student_message
 
 logger = logging.getLogger("tutor.hint")
 
@@ -79,6 +79,9 @@ def _prompt_text(state: TutorState, context: ErrorContext, level: int) -> str:
     if state.get("intent") == "answer":
         lines.append(f"Tutor's last message: {last_tutor_message(state) or 'none'}")
         lines.append(f"Student's reply: {latest_student_message(state)}")
+    conversation = conversation_text(state)
+    if conversation:
+        lines.append(f"Conversation so far:\n{conversation}")
     return "\n".join(lines)
 
 

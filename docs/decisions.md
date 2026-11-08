@@ -715,3 +715,8 @@ fallback hints" from the roadmap.
 - **Layer 6: the orchestrator no longer resets on `topic` None** | keeping that reset | `parse_input` does the real reset when
   the problem changes, and nothing refills `topic` now, so a parse with no topic would wipe the diagnosis on every later
   message; cost: `test_new_problem_resets_the_old_diagnosis` was changed (approved by the developer).
+- **`orchestrator` and `hint` read the last 20 messages** | the last tutor message only; the whole chat | one message could not
+  show that the tutor had already asked twice, and the whole chat lets old problems distract the model and grows the cost;
+  cost: a very long chat loses its oldest turns.
+- **`parse_input` keeps only the last tutor message** | giving it the conversation too | it transcribes this message, and older
+  equations could be taken for new steps; cost: it cannot use earlier turns to read an unclear message.

@@ -11,6 +11,7 @@ One block of facts, one per line:
 - `Diagnosis so far`: "yes" if the tutor has already looked at the student's work on this problem and has something to say about it, else "no".
 - `Student intent`: what a parser thinks the student wants (check_work, stuck, answer, explain, new_problem, other; may be wrong).
 - `Tutor's last message`: what the tutor said just before this message, or "none".
+- `Conversation so far`: the earlier chat, oldest first, one `Student:` or `Tutor:` line per message, or "none". Use it to understand the student's situation and to avoid asking for something again. The message to route is `Student message`, not an earlier one.
 
 ## Task
 Choose one action:
