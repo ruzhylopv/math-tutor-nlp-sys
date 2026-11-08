@@ -159,7 +159,9 @@ function build(root, view, select) {
     parts.nodes.set(node.id, buildNode(node, layout.boxes.get(node.id), canvas, select));
   }
   const detail = html("div", "detail", undefined, root);
-  return { parts, detail };
+  html("hr", "separator", undefined, root);
+  const log = html("div", "log", undefined, root);
+  return { parts, detail, log };
 }
 
 function paintNode(node, part, selected) {
@@ -182,28 +184,69 @@ function paintNode(node, part, selected) {
   if (part.count) part.count.textContent = node.count > 1 ? `×${node.count}` : "";
 }
 
+function statusIcon(status, parent) {
+  const icon = svg("svg", { viewBox: "-8 -8 16 16", class: "status-icon" }, parent);
+  drawIcon(svg("g", {}, icon), status);
+}
+
+// The card of the selected node: only that node's runs. No selection, no card.
 function paintDetail(detail, view, selected) {
   detail.replaceChildren();
   const node = view.nodes.find((n) => n.id === selected);
-  if (!node) {
-    html("div", "detail-hint", "Click a node to see what it did in this turn.", detail);
-    return;
-  }
-  const header = html("div", "detail-header", undefined, detail);
+  if (!node) return;
+  const card = html("div", `detail-card status-${node.status}`, undefined, detail);
+  const header = html("div", "detail-header", undefined, card);
+  statusIcon(node.status, header);
   html("span", "detail-name", node.label, header);
-  html("span", `detail-status text-${node.status}`, STATUS_TEXT[node.status], header);
-  if (node.runs.length === 0) {
+  const total = node.runs.length ? ` · ${seconds(node.seconds)}` : "";
+  html("span", `detail-status text-${node.status}`, `${STATUS_TEXT[node.status]}${total}`, header);
+  const body = html("div", "detail-body", undefined, card);
+  if (node.runs.every((run) => run.details.length === 0)) {
     const empty = node.status === "running" ? "Still working." : "Nothing recorded in this turn.";
-    html("div", "detail-hint", empty, detail);
+    html("div", "detail-hint", empty, body);
     return;
   }
   node.runs.forEach((run, index) => {
-    const block = html("div", "run", undefined, detail);
-    const mark = run.failed ? "✗" : "✓";
-    const title = node.runs.length > 1 ? `${mark} run ${index + 1}` : mark;
-    html("div", "run-title", `${title} · ${seconds(run.seconds)}`, block);
-    for (const line of run.details) html("div", "run-line", line, block);
+    if (node.runs.length > 1) {
+      html("div", "run-title", `${run.failed ? "✗" : "✓"} run ${index + 1} · ${seconds(run.seconds)}`, body);
+    }
+    for (const line of run.details) html("div", "run-line", line, body);
   });
+}
+
+// One finished step. A step with no details has nothing to fold out, so it is a plain row.
+function buildRow(step, key, parent, opened) {
+  const status = step.failed ? "failed" : "done";
+  const foldable = step.details.length > 0;
+  const row = html(foldable ? "details" : "div", `row row-${status}`, undefined, parent);
+  row.dataset.key = key;
+  const head = html(foldable ? "summary" : "div", "row-head", undefined, row);
+  const chevron = svg("svg", { viewBox: "0 0 12 12", class: "chevron" }, head);
+  if (foldable) svg("path", { d: "M4 2l4 4-4 4" }, chevron);
+  statusIcon(status, head);
+  html("span", "row-name", step.label, head);
+  html("span", "row-preview", step.details[0] ?? "", head);
+  html("span", "row-time", seconds(step.seconds), head);
+  if (!foldable) return;
+  const body = html("div", "row-body", undefined, row);
+  for (const line of step.details) html("div", "run-line", line, body);
+  row.open = opened.has(key);
+  row.addEventListener("toggle", () => {
+    if (row.open) opened.add(key);
+    else opened.delete(key);
+  });
+}
+
+// Rows are only appended, so one that is open stays open. A different list means a different turn.
+function paintLog(log, steps, opened) {
+  const keys = steps.map((step, index) => `${index}:${JSON.stringify(step)}`);
+  if ([...log.children].some((row, index) => row.dataset.key !== keys[index])) {
+    log.replaceChildren();
+    opened.clear();
+  }
+  for (let index = log.children.length; index < steps.length; index += 1) {
+    buildRow(steps[index], keys[index], log, opened);
+  }
 }
 
 function paint(ui, view, store) {
@@ -216,6 +259,7 @@ function paint(ui, view, store) {
     ui.parts.groups.get(group.id).setAttribute("class", `group status-${group.status}`);
   }
   paintDetail(ui.detail, view, store.selected);
+  paintLog(ui.log, view.log, store.opened);
 }
 
 function shape(view) {
@@ -224,6 +268,7 @@ function shape(view) {
 
 export default function ({ data, parentElement }) {
   const store = (window.__tutorTrace ??= { view: null, selected: null });
+  store.opened ??= new Set();
   if (!store.view || data.stamp >= store.view.stamp) store.view = data;
   const root = parentElement.querySelector("#root");
 

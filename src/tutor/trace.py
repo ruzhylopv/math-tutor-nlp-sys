@@ -258,15 +258,16 @@ def panel_view(graph: Graph, trace: Trace, steps: Iterable[StepRecord]) -> dict[
     ranks = _ranks(nodes, edges, back)
     slots = _slots(nodes, ranks)
     runs: dict[str, list[dict[str, Any]]] = {node: [] for node in nodes}
+    log: list[dict[str, Any]] = []
     for step in steps:
         if step.path in runs:  # the `diagnosis` wrapper: its steps are listed
-            runs[step.path].append(
-                {
-                    "seconds": round(step.seconds, 2),
-                    "failed": step.failed,
-                    "details": list(step.details),
-                }
-            )
+            run = {
+                "seconds": round(step.seconds, 2),
+                "failed": step.failed,
+                "details": list(step.details),
+            }
+            runs[step.path].append(run)
+            log.append({"node": step.path, "label": _name(step.path), **run})
     members: dict[str, list[str]] = {}
     for node in nodes:
         if (group := _group(node)) is not None:
@@ -302,6 +303,7 @@ def panel_view(graph: Graph, trace: Trace, steps: Iterable[StepRecord]) -> dict[
             {"id": name, "status": _group_status(name, inner, trace, visited)}
             for name, inner in members.items()
         ],
+        "log": log,
     }
 
 
