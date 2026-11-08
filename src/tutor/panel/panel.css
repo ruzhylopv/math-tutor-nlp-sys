@@ -1,0 +1,66 @@
+:host, #root {
+  --panel-text: var(--st-text-color, #1f2328);
+  --panel-muted: color-mix(in srgb, var(--panel-text) 55%, transparent);
+  --panel-faint: color-mix(in srgb, var(--panel-text) 18%, transparent);
+  --panel-card: var(--st-secondary-background-color, #f6f8fa);
+  --green: #2da44e;
+  --red: #e5484d;
+  --amber: #d29922;
+  --blue: #4493f8;
+  color: var(--panel-text);
+  font-family: var(--st-font, sans-serif);
+}
+
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+.edge { fill: none; stroke: var(--panel-faint); stroke-width: 1.5; transition: stroke 0.25s; }
+.edge.conditional { stroke-dasharray: 4 3; }
+.edge.taken { stroke: var(--blue); stroke-width: 2; }
+.edge.back:not(.taken) { stroke-width: 1; }
+
+.group { fill: none; stroke: var(--panel-faint); stroke-width: 1; transition: stroke 0.25s; }
+.group.status-running { stroke: var(--amber); stroke-width: 1.5; }
+.group.status-failed { stroke: var(--red); stroke-width: 1.5; }
+.group.status-done { stroke: color-mix(in srgb, var(--green) 55%, transparent); }
+.group-label { fill: var(--panel-muted); font-size: 10px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+.node { cursor: pointer; outline: none; }
+.card { fill: var(--panel-card); stroke: var(--panel-faint); stroke-width: 1; transition: stroke 0.25s, fill 0.25s; }
+.node:hover .card { stroke: var(--panel-muted); }
+.node.status-running .card { stroke: var(--amber); stroke-width: 1.5; }
+.node.status-failed .card { stroke: var(--red); stroke-width: 1.5; }
+.node.status-idle .name { fill: var(--panel-muted); }
+.node.selected .card,
+.node:focus-visible .card { stroke: var(--blue); stroke-width: 2; }
+
+.name { fill: var(--panel-text); font-size: 12px; font-weight: 600; }
+.time { fill: var(--panel-muted); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.count { fill: var(--panel-muted); font-size: 10.5px; font-weight: 600; text-anchor: end; }
+
+.icon-done .badge { fill: var(--green); }
+.icon-failed .badge { fill: var(--red); }
+.mark { fill: none; stroke: #fff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.idle-ring { fill: none; stroke: var(--panel-muted); stroke-width: 1.5; }
+.ring-track { fill: none; stroke: color-mix(in srgb, var(--amber) 30%, transparent); stroke-width: 2; }
+.ring-head { fill: none; stroke: var(--amber); stroke-width: 2; stroke-linecap: round; }
+.icon-running { animation: spin 0.9s linear infinite; }
+@keyframes spin {
+  from { rotate: 0deg; }
+  to { rotate: 360deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon-running { animation-duration: 4s; }
+}
+
+.detail { margin-top: 10px; font-size: 12px; line-height: 1.45; }
+.detail-hint { color: var(--panel-muted); }
+.detail-header { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.detail-name { font-weight: 600; }
+.detail-status { font-weight: 500; }
+.text-done { color: var(--green); }
+.text-failed { color: var(--red); }
+.text-running { color: var(--amber); }
+.text-idle { color: var(--panel-muted); }
+.run { padding: 5px 8px; margin-top: 4px; border-left: 2px solid var(--panel-faint); }
+.run-title { color: var(--panel-muted); font-variant-numeric: tabular-nums; }
+.run-line { font-family: var(--st-code-font, monospace); font-size: 11.5px; overflow-wrap: anywhere; white-space: pre-wrap; }

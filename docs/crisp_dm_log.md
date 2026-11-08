@@ -202,4 +202,7 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   a log per node; details are behind a "Developer view" toggle, and `orchestrator` now keeps the model's `decision_reason`. Unit
   tests and an `AppTest` run with the model scripted; the layout and redraw were checked in headless Chrome on a scripted stream.
   No metrics: UI only.
+- **Graph panel v2 (2026-11-08)**: the Graphviz chart became a clickable graph in the style of a GitHub Actions run (status icons, a
+  spinner, durations, repeat counts; a click shows that node's runs), the log scrolls to its end, and the "Developer view" toggle
+  is gone. Checked in Chromium on a scripted stream, light and dark, with no model calls. No metrics: UI only.
 - Planned: the demo video using scenarios A and B.
