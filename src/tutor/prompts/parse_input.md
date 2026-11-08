@@ -23,7 +23,7 @@ Three parts, labelled in the user's text:
      - `reason`: a sentence that argues in words rather than deriving math, even when it mentions numbers (a remark that some value cannot be zero, that a case is impossible, that the answer must be positive). Words attached to a math line stay its `justification`; a line that is only words is a `reason` line, with the sentence as its claim.
      - `check`: the student checks a result by putting a value back in, as a statement without variables.
      - `other`: any other line of working, for example one you cannot read as math or words.
-   A question or request to the tutor ("is this right?", "what next?") is not a step; it tells the intent. A reply in words to the tutor's question is not a step either. In a math reply, an intermediate line (an equation that still needs solving) is a step; a bare final answer (a variable equal to a value) is not, as above.
+   A question or request to the tutor ("is this right?", "what next?") is not a step; it tells the intent. A reply in words to the tutor's question is not a step either. A remark about the student's own situation (what they do not understand, what a teacher or friend said, what they think they need to do) is not a step either; it tells the intent. In a math reply, an intermediate line (an equation that still needs solving) is a step; a bare final answer (a variable equal to a value) is not, as above.
 4. Intent: what the student wants with this message, one of
    - `check_work`: the student shows working or an answer and wants it checked (also the default when they just send working).
    - `stuck`: the student says they do not know how to go on, or asks what to do next.
@@ -65,6 +65,9 @@ Output: problem null; steps: an empty list; intent explain; topic null, level nu
 
 Message: "let u = m^2 so u^2 - 5u + 4 = 0, the square of a real number is never negative. now what?" (stored problem: `m^4 - 5m^2 + 4 = 0`)
 Output: problem null; steps: claim `u = m^2` (kind definition, operation substitute); claim `u^2 - 5u + 4 = 0` (kind equation); claim "the square of a real number is never negative" (kind reason); intent stuck; topic null, level null.
+
+Message: "it's 4n + 3 = 11, my friend mentioned subtracting but i'm lost"
+Output: problem `4n + 3 = 11`; steps: an empty list; intent stuck; topic Prealgebra, level 1.
 
 Tutor's last message: "What do you get when you divide both sides by 4?"; message: "p = 6"
 Output: problem null; steps: an empty list (a bare answer); intent answer; topic null, level null.
