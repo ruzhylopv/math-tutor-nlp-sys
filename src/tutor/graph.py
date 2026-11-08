@@ -60,12 +60,13 @@ def new_turn(student_id: str, text: str) -> TutorState:
 
     One `invoke` is one message. The stage must be reset on every run, because the checkpointer
     restores the last run's `stage` (`hinted` or `diagnosed`) and the orchestrator would otherwise
-    start in the wrong mode.
+    start in the wrong mode. The intent is reset too, so a failed parse cannot reuse the last one.
     """
     return {
         "student_id": student_id,
         "messages": [HumanMessage(content=text)],
         "stage": "new_message",
+        "intent": "other",
     }
 
 

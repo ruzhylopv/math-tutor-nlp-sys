@@ -175,6 +175,11 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   solution that stops with every checked line valid is `incomplete` (focus on the last valid line; retrieve skips it).
   **No eval run: evals are debt for layers 4-6 (developer's decision).** No new metrics.
 
+- **Flexible input layer 5, `hint` and `orchestrator` (2026-11-08)**: hint words `incomplete` solutions as correct so far and
+  responds to replies, with a verdict that sets the next hint level; a reply is routed by code. Both turns of chat `Pavlo|4`
+  replay correctly through the real graph with the model scripted, which checks the wiring and rules, not the model.
+  **No eval run: evals are debt for layers 4-6 (developer's decision).** Hint and orchestrator evals have no new cases yet.
+
 ## Deployment
 - **M7 app (2026-10-27)**: Streamlit chat (`app.py`, `src/tutor/ui.py`): name field, chat bubbles on the checkpointed
   history, "New chat" (same person, same profile), sidebar with hint level, hints used and the `get_profile` summary,

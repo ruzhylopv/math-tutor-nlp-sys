@@ -697,3 +697,13 @@ fallback hints" from the roadmap.
 - **Layer 4: a line in words after the last valid line is `other` unless the student is stuck** | always `incomplete` |
   the checker cannot read "no solution", so a finished solution would look stopped; cost: such a solution still gets the
   generic hint.
+- **Layer 5: a reply to the tutor is routed by code when a diagnosis exists** | leaving it to the model | the failure this
+  fixes was the model asking for working again, and it saves a call; cost: a wrong `answer` label from parse_input cannot be
+  overruled by the orchestrator.
+- **Layer 5: a math line in a reply goes to `diagnose`** | sending every reply to `hint` | SymPy still checks every submitted
+  step; cost: a reply with math takes the longer path.
+- **Layer 5: the verdict on a reply sets the next hint's level, not its own** | a second model call before the hint | the
+  verdict is produced with the hint, so a reply's own hint stays at the current level; cost: a wrong reply gets the more direct
+  hint one turn later.
+- **Layer 5: `new_turn` resets `intent`** | writing `other` when parse_input fails | a failed parse must not reuse the last
+  turn's intent, and the existing parse_input contract stays; cost: `graph.py` knows one more field.

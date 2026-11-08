@@ -331,3 +331,95 @@ def test_an_empty_hint_counts_as_a_leak() -> None:
 
 def test_the_profile_type_is_exported() -> None:
     assert LearnerProfile().weak_topics == []
+
+
+def _reply_state(**fields: Any) -> TutorState:
+    base: dict[str, Any] = {
+        "messages": [AIMessage("What must be true of A?"), HumanMessage("it has to be zero")],
+        "problem": "5A = 0",
+        "topic": "Algebra",
+        "intent": "answer",
+        "error_context": _context(),
+        "hint_level": 2,
+    }
+    return TutorState(**(base | fields))  # type: ignore[typeddict-item]
+
+
+def test_a_reply_in_words_goes_to_hint_without_a_model_call_and_keeps_the_level() -> None:
+    out = orch.orchestrator(_reply_state())  # a model call would fail the test (autouse guard)
+    assert out["next_action"] == "hint"
+    assert "hint_level" not in out and out["hint_retries"] == 0
+
+
+def test_a_reply_with_a_math_line_is_checked_by_sympy() -> None:
+    out = orch.orchestrator(_reply_state(student_steps=STEP))
+    assert out["next_action"] == "diagnose"
+
+
+def test_a_reply_without_a_diagnosis_is_routed_by_the_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen = _decide(monkeypatch, Decision(action="ask", reason="r", reply_text="Show me."))
+    out = orch.orchestrator(_reply_state(error_context=None))
+    assert out["next_action"] == "ask" and len(seen) == 1
+
+
+def test_the_model_sees_the_intent_and_the_tutors_last_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen = _decide(monkeypatch, Decision(action="ask", reason="r", reply_text="Show me."))
+    orch.orchestrator(_reply_state(error_context=None, intent="stuck"))
+    assert "Student intent: stuck" in seen[0]
+    assert "Tutor's last message: What must be true of A?" in seen[0]
+
+
+def _hinted_state(**fields: Any) -> TutorState:
+    base: dict[str, Any] = {
+        "stage": "hinted",
+        "problem": "3(x + 2) = 15",
+        "hint_text": "What does the 3 multiply?",
+        "error_context": _context(),
+        "hint_level": 1,
+        "intent": "answer",
+    }
+    return TutorState(**(base | fields))  # type: ignore[typeddict-item]
+
+
+def test_a_reply_that_does_not_move_forward_raises_the_next_level() -> None:
+    assert orch.orchestrator(_hinted_state(reply_moves_forward=False))["hint_level"] == 2
+
+
+@pytest.mark.parametrize("verdict", [True, None])
+def test_a_reply_that_moves_forward_or_has_no_verdict_keeps_the_level(
+    verdict: bool | None,
+) -> None:
+    assert "hint_level" not in orch.orchestrator(_hinted_state(reply_moves_forward=verdict))
+
+
+def test_an_old_verdict_is_ignored_when_the_message_is_not_a_reply() -> None:
+    out = orch.orchestrator(_hinted_state(intent="stuck", reply_moves_forward=False))
+    assert "hint_level" not in out
+
+
+def _diagnosed_incomplete(**fields: Any) -> TutorState:
+    base: dict[str, Any] = {
+        "stage": "diagnosed",
+        "topic": "Algebra",
+        "error_type": "incomplete",
+        "hint_level": 2,
+        "hints_used": 1,
+    }
+    return TutorState(**(base | fields))  # type: ignore[typeddict-item]
+
+
+def test_partial_progress_keeps_the_level() -> None:
+    assert orch.orchestrator(_diagnosed_incomplete(intent="check_work"))["hint_level"] == 2
+
+
+def test_partial_progress_raises_the_level_when_the_student_is_stuck() -> None:
+    assert orch.orchestrator(_diagnosed_incomplete(intent="stuck"))["hint_level"] == 3
+
+
+def test_the_first_hint_on_partial_progress_is_level_one() -> None:
+    state = _diagnosed_incomplete(intent="stuck", hints_used=0)
+    assert orch.orchestrator(state)["hint_level"] == 1

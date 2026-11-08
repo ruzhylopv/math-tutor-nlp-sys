@@ -3,13 +3,17 @@
 new_message: an LLM `Decision` picks ask / diagnose / hint / reply; code guards the impossible
     choices (diagnose without steps, hint without a diagnosis) and counts the turn. A new problem
     (`topic` cleared by `parse_input` while a diagnosis of the old one is still stored) resets the
-    per-problem fields.
+    per-problem fields. A reply to the tutor when a diagnosis exists is routed by code, with no
+    model call: with a line of math to `diagnose` (SymPy checks it), otherwise to `hint`, and the
+    level stays for its own hint.
 diagnosed: plain code. Out-of-scope subject: decline. Clean solution: record the attempt, maybe
-    offer practice. Otherwise set the hint level (different misconception: 1, same: +1) and hint.
+    offer practice. Otherwise set the hint level (different misconception: 1, same: +1; partial
+    progress keeps it unless the student is stuck) and hint.
 hinted: plain code runs the leakage check, publishes the hint, or retries once, then falls back
-    to the canned hint for the level. A rejected hint never enters `messages`.
+    to the canned hint for the level. A rejected hint never enters `messages`. A reply the hint
+    judged as not moving forward raises the level for the next hint.
 
-Reads: messages, stage, and the state so far
+Reads: messages, stage, intent, reply_moves_forward, and the state so far
 Writes: next_action, hint_level, hint_retries, reply_text, messages, turns, hints_used,
         misconceptions_seen, learner_profile (and the per-problem fields on a reset)
 Eval metric: routing accuracy on labelled turns
@@ -18,7 +22,7 @@ Eval metric: routing accuracy on labelled turns
 import logging
 from typing import Any
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage
 
 from tutor.config import ConfigError
 from tutor.state import (
@@ -34,6 +38,7 @@ from tutor.tools.catalogue import load_catalogue
 from tutor.tools.diagnosis import is_clean_solution
 from tutor.tools.leakage import find_leaks
 from tutor.tools.learner_db import get_profile, learner_db_path, record_attempt
+from tutor.tools.messages import last_tutor_message, latest_student_message
 
 logger = logging.getLogger("tutor.orchestrator")
 
@@ -45,13 +50,6 @@ OUT_OF_SCOPE_TEXT = (
     "Send me an algebra problem and your steps and I will gladly look at them."
 )
 CORRECT_TEXT = "Correct, well done!"
-
-
-def _latest_student_message(state: TutorState) -> str:
-    for message in reversed(state.get("messages", [])):
-        if isinstance(message, HumanMessage):
-            return message.content.strip() if isinstance(message.content, str) else ""
-    return ""
 
 
 def _reply(text: str, action: str = "reply") -> dict[str, Any]:
@@ -99,7 +97,9 @@ def _decide(state: TutorState, message: str) -> Decision | None:
         f"Student message: {message}\n"
         f"Stored problem: {state.get('problem') or 'none'}\n"
         f"Steps found in the message: {steps}\n"
-        f"Diagnosis so far: {diagnosed}"
+        f"Diagnosis so far: {diagnosed}\n"
+        f"Student intent: {state.get('intent') or 'other'}\n"
+        f"Tutor's last message: {last_tutor_message(state) or 'none'}"
     )
     return structured.call_structured("orchestrator", Decision, text)
 
@@ -117,11 +117,14 @@ def _new_message(state: TutorState) -> dict[str, Any]:
     has_steps = bool(state.get("student_steps")) and bool(state.get("problem"))
     # after a reset the old diagnosis is gone, so there is nothing to hint about
     can_hint = state.get("error_context") is not None and "error_context" not in update
-    decision = _decide(state, _latest_student_message(state))
-    if decision is None:
+    is_reply = state.get("intent") == "answer" and can_hint
+    decision = None if is_reply else _decide(state, latest_student_message(state))
+    text = None
+    if is_reply:
+        action = "diagnose" if has_steps else "hint"
+    elif decision is None:
         logger.warning("orchestrator: no decision from the model; routing on the steps")
         action = "diagnose" if has_steps else "ask"
-        text = None
     else:
         action, text = decision.action, decision.reply_text
     if action == "diagnose" and not has_steps:
@@ -134,7 +137,8 @@ def _new_message(state: TutorState) -> dict[str, Any]:
         return update
     update["next_action"] = action
     if action == "hint":
-        update["hint_level"] = min(state.get("hint_level", 1) + 1, MAX_LEVEL)
+        if not is_reply:  # a reply's own hint keeps the level; `_hinted` applies its verdict
+            update["hint_level"] = min(state.get("hint_level", 1) + 1, MAX_LEVEL)
         update["hint_retries"] = 0
     return update
 
@@ -188,8 +192,13 @@ def _diagnosed(state: TutorState) -> dict[str, Any]:
     misconception = state.get("misconception")
     level = state.get("hint_level", 1)
     if misconception is None:
-        # no misconception retrieved: escalate only if this problem already got a hint
-        level = min(level + 1, MAX_LEVEL) if state.get("hints_used", 0) > 0 else 1
+        # no misconception retrieved: escalate only if this problem already got a hint, and
+        # not for partial progress unless the student says they are stuck
+        progress = state.get("error_type") == "incomplete" and state.get("intent") != "stuck"
+        if state.get("hints_used", 0) == 0:
+            level = 1
+        elif not progress:
+            level = min(level + 1, MAX_LEVEL)
     else:
         same = bool(seen) and seen[-1] == misconception.id
         level = min(level + 1, MAX_LEVEL) if same else 1
@@ -218,6 +227,8 @@ def _hinted(state: TutorState) -> dict[str, Any]:
         text = canned_hint(level)
     update = _reply(text)
     update["hints_used"] = state.get("hints_used", 0) + 1
+    if state.get("intent") == "answer" and state.get("reply_moves_forward") is False:
+        update["hint_level"] = min(level + 1, MAX_LEVEL)
     return update
 
 
