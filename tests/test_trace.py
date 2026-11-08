@@ -5,6 +5,7 @@ from langchain_core.runnables.graph import Graph
 
 from tutor.graph import build_main_graph
 from tutor.state import Misconception, StepVerdict
+from tutor.tools.diagnosis import fresh_problem_fields
 from tutor.trace import ACTIVE, FAILED, TAKEN_EDGE, Trace, graph_dot, node_details, node_path
 
 
@@ -87,6 +88,21 @@ def test_node_details_say_what_the_node_decided(
     node: str, update: dict[str, Any], expected: str
 ) -> None:
     assert any(expected in line for line in node_details(node, update))
+
+
+def test_a_clean_solution_reports_the_reply_and_no_hint() -> None:
+    update = {**fresh_problem_fields(), "next_action": "reply", "is_correct": True}
+    assert node_details("orchestrator", update) == ("action: reply",)
+
+
+def test_the_hint_level_shows_when_a_hint_is_routed_or_published() -> None:
+    routed = {"next_action": "hint", "hint_level": 2, "hint_retries": 0}
+    assert node_details("orchestrator", routed) == ("action: hint", "hint level: 2")
+    published = {"next_action": "reply", "hints_used": 1, "hint_level": 3}
+    assert node_details("orchestrator", published) == (
+        "leak check finished, hint published",
+        "hint level: 3",
+    )
 
 
 def test_verify_details_list_each_verdict() -> None:

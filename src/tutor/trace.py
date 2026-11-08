@@ -162,12 +162,13 @@ def _parse_input(update: Mapping[str, Any]) -> list[str]:
 def _orchestrator(update: Mapping[str, Any]) -> list[str]:
     if update.get("hint_retries"):
         return [f"leak check: rejected, retry {update['hint_retries']}"]
+    published = bool(update.get("hints_used"))  # a finished problem resets the count to 0
     lines = (
         ["leak check finished, hint published"]
-        if "hints_used" in update
+        if published
         else [f"action: {update.get('next_action')}"]
     )
-    if "hint_level" in update:
+    if "hint_level" in update and (published or update.get("next_action") == "hint"):
         lines.append(f"hint level: {update['hint_level']}")
     if reason := update.get("decision_reason"):
         lines.append(f"why: {reason}")
