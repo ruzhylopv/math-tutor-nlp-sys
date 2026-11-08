@@ -1,5 +1,6 @@
 """Smoke test of app.py with Streamlit's AppTest; the tutor is built on an in-memory saver."""
 
+import json
 import re
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -9,12 +10,12 @@ import streamlit as st
 from streamlit.proto.ChatInput_pb2 import ChatInput
 from streamlit.testing.v1 import AppTest
 
-from tutor import ui
+from tutor import panel, ui
 from tutor.state import Decision
 from tutor.tools.canned_hints import MAX_LEVEL
-from tutor.trace import VISITED
 
 APP = Path(__file__).resolve().parent.parent / "app.py"
+FRONTEND = Path(panel.__file__).parent
 
 
 @pytest.fixture
@@ -105,12 +106,11 @@ def test_the_panel_lists_nodes_and_timings_for_everyone(app: AppTest) -> None:
     assert not app.exception
 
 
-def test_what_a_node_decided_needs_the_developer_view(app: AppTest) -> None:
+def test_what_a_node_decided_is_always_in_the_log(app: AppTest) -> None:
     _start(app)
     app.chat_input[0].set_value("hi").run()
-    assert not any("why: greeting" in line for line in _panel_text(app))
-    next(t for t in app.sidebar.toggle if t.label == "Developer view").set_value(True).run()
-    assert any("why: greeting" in line for line in _panel_text(app))
+    assert any("why: greeting" in block.value for block in app.code)
+    assert list(app.sidebar.toggle) == []
 
 
 def test_a_new_chat_clears_the_panel(app: AppTest) -> None:
@@ -166,13 +166,18 @@ def test_the_panel_marks_a_failed_step_and_skips_the_diagnosis_wrapper(
     ]
 
 
+def _graph_statuses(app: AppTest) -> dict[str, str]:
+    (graph,) = app.get("bidi_component")
+    return {node["id"]: node["status"] for node in json.loads(graph.proto.json)["nodes"]}
+
+
 def test_the_graph_is_drawn_and_marks_the_nodes_a_turn_visited(app: AppTest) -> None:
     _start(app)
-    assert f'fillcolor="{VISITED}"' not in app.get("graphviz_chart")[0].proto.spec
+    assert set(_graph_statuses(app).values()) == {"idle"}
     app.chat_input[0].set_value("hi").run()
-    spec = app.get("graphviz_chart")[0].proto.spec
-    assert '"hint" [label="hint"' in spec
-    assert f'"parse_input" [label="parse_input" fillcolor="{VISITED}"' in spec
+    statuses = _graph_statuses(app)
+    assert statuses["hint"] == "idle"
+    assert statuses["parse_input"] == "done"
 
 
 def test_the_input_is_off_while_a_turn_runs(app: AppTest) -> None:
@@ -215,3 +220,22 @@ def test_a_failed_message_keeps_its_lines(app: AppTest, monkeypatch: pytest.Monk
     _start(app)
     app.chat_input[0].set_value("2x = 4\nx = 2").run()
     assert _user_messages(app)[-1] == "2x = 4  \nx = 2"
+
+
+def _turn_that_ends_in_the_state_it_was_in(*args: object, **kwargs: object) -> Iterator[object]:
+    yield ui.StepStarted("parse_input", "Reading…", "parse_input")
+    yield ui.StepFinished("parse_input", "Reading…", 1.2, "parse_input")
+    yield ui.TurnView(reply=ui.ERROR_REPLY, error=True)
+
+
+def test_two_equal_updates_in_one_turn_are_accepted(
+    app: AppTest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(ui, "send_stream", _turn_that_ends_in_the_state_it_was_in)
+    _start(app)
+    app.chat_input[0].set_value("2x = 4").run()
+    assert not app.exception
+
+
+def test_the_frontend_never_inserts_model_text_as_html() -> None:
+    assert "innerHTML" not in (FRONTEND / "panel.js").read_text(encoding="utf-8")
