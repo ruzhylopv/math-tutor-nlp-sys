@@ -13,6 +13,11 @@ decision): no new cases and no eval run in this layer.
 - `src/tutor/nodes/retrieve.py`: `incomplete` has nothing to look up. The learner DB then records nothing
   for it, because only retrieved misconceptions are recorded.
 
+## Added from the review (developer, 2026-11-08)
+- A false arithmetic claim on a reason line is not skipped: `reasoning_result_mismatch` on that line.
+- A line in words after the last valid line is `other` with no focus, unless the student said they are stuck.
+- `compared_line` gives the focus step the line verify really compared it with.
+
 ## Existing tests and labels (developer's decisions, 2026-11-08)
 - `test_valid_steps_with_a_wrong_answer_and_no_implication_is_other` now expects `incomplete`, and the set of
   error types in `test_the_hand_written_cases_are_well_formed_and_cover_every_type` includes it.

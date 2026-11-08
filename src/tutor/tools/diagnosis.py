@@ -8,8 +8,13 @@ VALID_RELATIONS = ("equivalent", "implies", "narrows")
 
 
 def is_skipped_line(verdict: StepVerdict, steps: Sequence[Step]) -> bool:
-    """True for a `reason` or `other` line SymPy could not read: it was never compared."""
-    if verdict.relation != "unparsable" or not 1 <= verdict.step_index <= len(steps):
+    """True for a `reason` or `other` line SymPy could not read: it was never compared.
+
+    A line with a false arithmetic claim is not skipped: the claim itself is wrong.
+    """
+    if verdict.relation != "unparsable" or verdict.justification_claims_ok is False:
+        return False
+    if not 1 <= verdict.step_index <= len(steps):
         return False
     return steps[verdict.step_index - 1].kind in ("reason", "other")
 

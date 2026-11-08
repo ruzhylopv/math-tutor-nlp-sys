@@ -32,6 +32,14 @@ def test_an_unreadable_equation_line_is_not_clean() -> None:
     )
 
 
+def test_a_false_claim_on_a_reason_line_is_not_clean() -> None:
+    verdict = StepVerdict(step_index=1, relation="unparsable", justification_claims_ok=False)
+    steps = [Step(claim="take away six", kind="reason")]
+    assert not is_clean_solution(
+        {"is_correct": True, "step_verdicts": [verdict], "student_steps": steps}
+    )
+
+
 def _visited(state: TutorState) -> list[str]:
     """Names of the nodes the subgraph ran, in order."""
     graph = build_diagnosis_graph()

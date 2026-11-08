@@ -165,7 +165,7 @@ def test_a_stopped_solution_focuses_on_the_last_valid_line_not_a_reason_or_check
         (_verdict(3, "equivalent", check_holds=True), "check"),
         (_verdict(4, "unparsable"), "reason"),
     )
-    assert localize(state) == _result(None, 2, "incomplete")
+    assert localize({**state, "intent": "stuck"}) == _result(None, 2, "incomplete")
 
 
 def test_an_implication_still_wins_over_incomplete() -> None:
@@ -193,3 +193,19 @@ def test_the_substitution_that_stopped_is_incomplete_through_verify() -> None:
     }
     state.update(verify(state))  # type: ignore[typeddict-item]
     assert localize(state) == _result(None, 4, "incomplete")
+
+
+def test_a_conclusion_in_words_after_valid_lines_is_not_incomplete() -> None:
+    state = _with_kinds(
+        (_verdict(1, "equivalent"), "equation"), (_verdict(2, "unparsable"), "reason")
+    )
+    assert localize(state) == _result(None, None, "other")
+
+
+def test_a_false_claim_on_a_reason_line_is_a_mismatch() -> None:
+    state = _with_kinds(
+        (_verdict(1, "unparsable", justification_claims_ok=False), "reason"),
+        (_verdict(2, "equivalent"), "equation"),
+        is_correct=True,
+    )
+    assert localize(state) == _result(1, 1, "reasoning_result_mismatch")

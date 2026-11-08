@@ -691,3 +691,9 @@ fallback hints" from the roadmap.
 - **Layer 4: localize tells a skipped line by `Step.kind` plus the `unparsable` verdict** | matching verify's note text |
   no coupling to a note string; cost: localize reads `student_steps`, and a `reason` line that parses but follows an
   unreadable problem is skipped too (the problem itself is then unreadable, so nothing was compared anyway).
+- **Layer 4: `omission_extraneous_root` wins over `incomplete`** | `incomplete` for a student who stops right after a
+  non-reversible step | existing rule kept, the design plan did not change it; cost: such a student is told about
+  rejected roots before reaching an answer.
+- **Layer 4: a line in words after the last valid line is `other` unless the student is stuck** | always `incomplete` |
+  the checker cannot read "no solution", so a finished solution would look stopped; cost: such a solution still gets the
+  generic hint.
