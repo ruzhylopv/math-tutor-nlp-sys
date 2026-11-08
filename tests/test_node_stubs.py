@@ -77,3 +77,32 @@ def test_finish_diagnosis_clears_the_context_without_a_usable_focus_step(
     }
     state["focus_step"] = focus
     assert finish_diagnosis(state)["error_context"] is None
+
+
+@pytest.mark.parametrize(
+    ("steps", "focus", "before"),
+    [
+        (
+            [
+                Step(claim="2x = 8"),
+                Step(claim="now divide by two", kind="reason"),
+                Step(claim="x = 5"),
+            ],
+            3,
+            "2x = 8",
+        ),
+        ([Step(claim="t = x + 3", kind="definition"), Step(claim="x = 5")], 2, "2x + 6 = 14"),
+        (
+            [Step(claim="2x = 8"), Step(claim="2*4 = 8", kind="check"), Step(claim="x = 5")],
+            3,
+            "2x = 8",
+        ),
+    ],
+)
+def test_finish_diagnosis_keeps_the_line_the_focus_step_was_really_compared_with(
+    steps: list[Step], focus: int, before: str
+) -> None:
+    state: TutorState = {"problem": "2x + 6 = 14", "student_steps": steps, "focus_step": focus}
+    state["step_verdicts"] = verify(state)["step_verdicts"]
+    context = finish_diagnosis(state)["error_context"]
+    assert context is not None and context.before == before

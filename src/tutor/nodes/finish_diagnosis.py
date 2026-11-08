@@ -4,7 +4,7 @@ The wrong step is copied into `error_context` here, because `parse_input` clears
 the next message without working and `hint` still needs it. A clean solution (no focus step) resets
 it to None, so a context from an earlier diagnosis cannot survive.
 
-Reads: problem, student_steps, focus_step
+Reads: problem, student_steps, step_verdicts, focus_step
 Writes: stage, error_context
 Eval metric: none (exempt from the eval-script rule; unit tests only)
 """
@@ -12,6 +12,7 @@ Eval metric: none (exempt from the eval-script rule; unit tests only)
 from typing import Any
 
 from tutor.state import ErrorContext, TutorState
+from tutor.tools.diagnosis import compared_line
 
 
 def _error_context(state: TutorState) -> ErrorContext | None:
@@ -19,10 +20,9 @@ def _error_context(state: TutorState) -> ErrorContext | None:
     steps = state.get("student_steps", [])
     if focus is None or not 1 <= focus <= len(steps):
         return None
-    before = state.get("problem", "") if focus == 1 else steps[focus - 2].claim
     return ErrorContext(
         step_number=focus,
-        before=before,
+        before=compared_line(state, focus),
         after=steps[focus - 1].claim,
         correct_steps=[step.claim for step in steps[: focus - 1]],
     )

@@ -14,6 +14,25 @@ def is_skipped_line(verdict: StepVerdict, steps: Sequence[Step]) -> bool:
     return steps[verdict.step_index - 1].kind in ("reason", "other")
 
 
+def compared_line(state: TutorState, focus: int) -> str:
+    """The line step `focus` was really compared with, or the problem when no line came before it.
+
+    `verify` does not use a skipped line, a check line or a definition as the predecessor. A step
+    with no verdict counts as a normal predecessor.
+    """
+    steps = state.get("student_steps", [])
+    verdicts = {verdict.step_index: verdict for verdict in state.get("step_verdicts", [])}
+    for index in range(focus - 1, 0, -1):
+        verdict = verdicts.get(index)
+        if verdict is None or not (
+            is_skipped_line(verdict, steps)
+            or verdict.check_holds is not None
+            or verdict.notes == "definition"
+        ):
+            return steps[index - 1].claim
+    return state.get("problem", "")
+
+
 def is_clean_solution(state: TutorState) -> bool:
     """True when the final answer is correct, every step is valid and no justification is flagged.
 
