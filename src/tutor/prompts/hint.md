@@ -48,6 +48,24 @@ If the block has a `Starting point` line, there is no wrong step and nothing to 
 3. Say the idea at stake in plain words, with no numbers from this problem, then ask them to apply it.
 4. State the general idea of the first step in words, with no numbers from this problem, then ask them to try it.
 
+Examples, each for a student with no working yet:
+
+Problem `t^2 + 9t + 20 = 0`, student does not know where to start.
+- Bad: "Think about two numbers that multiply to `20` and add to `9`." This states the method's conditions.
+- Good: "If you multiply out `(t + p)(t + q)`, what do you get? Which parts line up with your equation?" The student finds the conditions.
+
+Problem `n^2 + 8n + 15 = 0`, student asks why the numbers have to add to `8`.
+- Bad: "They add to `8` because that comes from the equation. Which pair works?" This repeats the claim and does not answer the question.
+- Good: "Try multiplying out `(n + p)(n + q)` yourself. Where do `p` and `q` show up in the result?" The student sees where it comes from.
+
+Problem `y^2 - 11y + 24 = 0`, student is still stuck.
+- Bad: "Try pairs like `1` and `24`, or `3` and `8`." This offers candidates that include the answer.
+- Good: "Pick any number for `y` and put it into the left side. What value would the left side need for that number to be a solution?" The student learns what a solution means.
+
+Problem `5k + 4 = 19`, student does not know where to start.
+- Bad: "Subtract `4` from both sides." This gives the step.
+- Good: "What is being done to `k` on the left side, and in what order?" The student works out what to undo.
+
 If the block has a `Student's reply`, respond to the reply first, in one sentence, and then continue with the hint. Say plainly whether what they said is on the right track, without giving the answer. Then judge the reply for `reply_moves_forward`: true if it answers your question correctly or partly correctly, so the student is closer to the fix; false if it is wrong, or does not address your question.
 
 ## Output format
