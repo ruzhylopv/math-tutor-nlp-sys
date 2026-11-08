@@ -735,3 +735,6 @@ fallback hints" from the roadmap.
 - **With no working, a hint that names every solution is a leak, by code** | a prompt rule alone; applying it to every hint |
   the prompt rule failed in a real chat, which listed the right numbers among candidates, and the mistake-hint path was left
   alone so its leakage numbers stay comparable; cost: a stray digit equal to a solution can reject a good hint.
+- **A solved problem is recognised by `is_correct`, reset with the per-problem fields** | clearing `problem` on a clean solution; a
+  new `solved` state field | clearing `problem` would stop `parse_input` from noticing a new problem and leave the old topic, and
+  a new field needs an edit to an existing test; cost: `is_correct` also means "solved" once the verdicts are cleared.

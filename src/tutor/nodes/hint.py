@@ -12,8 +12,9 @@ about how to begin, with no judgement of their math unless they are replying to 
 
 With `error_type` `incomplete` nothing is wrong: the student stopped before an answer, so the model
 is told that the work is correct and given the last valid line, with no counterexample or rule.
-With intent `answer` the model also gets the tutor's last message and the reply, responds to the
-reply first and judges whether it moves forward; a failed call gives no verdict. This is the one
+With intent `answer` after a diagnosis or an earlier hint, the model also gets the tutor's last
+message and the reply, responds to the reply first and judges whether it moves forward; a failed
+call gives no verdict. An `answer` before any hint is not a reply to one. This is the one
 place where the LLM judges a student's math (see CLAUDE.md); submitted steps still go to SymPy.
 
 Reads: error_context, error_type, misconception, hint_level, problem, intent, messages
@@ -29,7 +30,7 @@ from tutor.tools import structured
 from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 from tutor.tools.catalogue import load_catalogue
 from tutor.tools.counterexample import counterexample
-from tutor.tools.diagnosis import is_no_working_help
+from tutor.tools.diagnosis import is_hint_reply, is_no_working_help
 from tutor.tools.messages import conversation_text, last_tutor_message, latest_student_message
 
 logger = logging.getLogger("tutor.hint")
@@ -83,7 +84,7 @@ def _no_working_lines(state: TutorState, level: int) -> list[str]:
         f"Problem: {state.get('problem', '')}",
         "Starting point: the student has not written any working yet and wants help to begin.",
     ]
-    if state.get("intent") != "answer":
+    if not is_hint_reply(state):
         lines.append(f"Student's message: {latest_student_message(state)}")
     return lines
 
@@ -95,7 +96,7 @@ def _prompt_text(state: TutorState, context: ErrorContext | None, level: int) ->
         lines = _stopped_lines(state, context, level)
     else:
         lines = _mistake_lines(state, context, level)
-    if state.get("intent") == "answer":
+    if is_hint_reply(state):
         lines.append(f"Tutor's last message: {last_tutor_message(state) or 'none'}")
         lines.append(f"Student's reply: {latest_student_message(state)}")
     conversation = conversation_text(state)
@@ -107,7 +108,7 @@ def _prompt_text(state: TutorState, context: ErrorContext | None, level: int) ->
 def hint(state: TutorState) -> dict[str, Any]:
     """Word one hint for the focus step at the current hint level."""
     level = min(max(state.get("hint_level", 1), 1), MAX_LEVEL)
-    is_reply = state.get("intent") == "answer"
+    is_reply = is_hint_reply(state)
     context = state.get("error_context")
     no_working = is_no_working_help(state)
     kind = NO_WORKING if no_working else state.get("error_type")

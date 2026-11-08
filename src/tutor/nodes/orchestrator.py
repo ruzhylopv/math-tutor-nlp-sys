@@ -40,14 +40,16 @@ from tutor.state import (
     TutorState,
 )
 from tutor.tools import structured
-from tutor.tools.algebra import letters
 from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 from tutor.tools.catalogue import load_catalogue
 from tutor.tools.diagnosis import (
     error_context,
     fresh_problem_fields,
     is_clean_solution,
+    is_hint_reply,
     is_no_working_help,
+    no_diagnosis_yet,
+    uses_new_letter,
 )
 from tutor.tools.leakage import find_leaks
 from tutor.tools.learner_db import get_profile, learner_db_path, record_attempt
@@ -93,11 +95,6 @@ def _decide(state: TutorState, message: str) -> Decision | None:
     return structured.call_structured("orchestrator", Decision, text)
 
 
-def _uses_new_letter(state: TutorState) -> bool:
-    known = letters(state.get("problem", ""))
-    return any(letters(step.claim) - known for step in state.get("student_steps", []))
-
-
 def _out_of_scope(state: TutorState) -> bool:
     topic = state.get("topic")
     return topic is not None and topic not in IN_SCOPE_TOPICS
@@ -126,13 +123,11 @@ def _new_message(state: TutorState) -> dict[str, Any]:
     can_hint = diagnosed or is_no_working_help(state)
     # with no diagnosis, only a reply to an earlier hint skips the model: `answer` may also be
     # the student handing over the problem the tutor asked for
-    is_reply = state.get("intent") == "answer" and (
-        diagnosed or (can_hint and state.get("hints_used", 0) > 0)
-    )
+    is_reply = is_hint_reply(state) and (diagnosed or no_diagnosis_yet(state))
     decision = None if is_reply else _decide(state, latest_student_message(state))
     text = None
     if is_reply:
-        action = "diagnose" if has_steps and not _uses_new_letter(state) else "hint"
+        action = "diagnose" if has_steps and not uses_new_letter(state) else "hint"
     elif decision is None:
         logger.warning("orchestrator: no decision from the model; routing on the steps")
         action = "diagnose" if has_steps else "ask"
@@ -198,7 +193,8 @@ def _clean_solution(state: TutorState) -> dict[str, Any]:
                 )
                 break
     update.update(_reply(text))
-    update.update(fresh_problem_fields())  # the attempt is finished
+    # the attempt is finished; `is_correct` stays so a follow-up is not taken for no working yet
+    update.update({**fresh_problem_fields(), "is_correct": True})
     return update
 
 
@@ -259,7 +255,7 @@ def _hinted(state: TutorState) -> dict[str, Any]:
         text = canned_hint(level, kind)
     update = _reply(text)
     update["hints_used"] = state.get("hints_used", 0) + 1
-    if state.get("intent") == "answer" and state.get("reply_moves_forward") is False:
+    if is_hint_reply(state) and state.get("reply_moves_forward") is False:
         update["hint_level"] = min(level + 1, MAX_LEVEL)
     return update
 
