@@ -36,3 +36,6 @@ Update after the developer's test (approved 2026-11-08): the prompt rule did not
 the level. For a student with no working: a "why" question gets a small task instead of a repeat of the claim; the method's
 conditions and candidate numbers are not stated; `explain` keeps the level; `find_leaks` also rejects a hint that names every
 solution as a number. The mistake-hint path is unchanged.
+
+Second update (approved 2026-11-08): the model still chose `ask` for a stuck student and wrote its own lesson in `reply_text`.
+Code now turns that `ask` or `reply` into `hint`. The model call stays, because an existing test requires it.

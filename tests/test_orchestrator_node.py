@@ -10,8 +10,10 @@ from pydantic import BaseModel
 from tutor.config import ConfigError
 from tutor.nodes import orchestrator as orch
 from tutor.state import (
+    Action,
     Decision,
     ErrorContext,
+    Intent,
     LearnerProfile,
     Misconception,
     MisconceptionRecord,
@@ -596,3 +598,34 @@ def test_a_no_working_hint_listing_every_solution_is_rejected() -> None:
         hint_text="Try `1` and `6`, or `2` and `3`.",
     )
     assert orch.orchestrator(state) == {"next_action": "hint", "hint_retries": 1}
+
+
+@pytest.mark.parametrize("action", ["ask", "reply"])
+@pytest.mark.parametrize("intent", ["stuck", "explain"])
+def test_code_sends_a_student_with_no_working_to_hint(
+    monkeypatch: pytest.MonkeyPatch, action: Action, intent: Intent
+) -> None:
+    _decide(monkeypatch, Decision(action=action, reason="r", reply_text="Find two numbers."))
+    out = orch.orchestrator(_no_working(intent=intent))
+    assert out["next_action"] == "hint" and out["hint_level"] == 1
+    assert "reply_text" not in out and "messages" not in out
+
+
+def test_the_override_needs_a_student_asking_for_help(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="ask", reason="r", reply_text="Show me."))
+    assert orch.orchestrator(_no_working(intent="check_work"))["next_action"] == "ask"
+
+
+def test_the_override_leaves_a_message_with_working_alone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="ask", reason="r", reply_text="Show me."))
+    assert orch.orchestrator(_no_working(student_steps=STEP))["next_action"] == "ask"
+
+
+def test_the_override_still_declines_an_out_of_scope_subject(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="ask", reason="r", reply_text="Find two numbers."))
+    out = orch.orchestrator(_no_working(topic="Geometry"))
+    assert out["reply_text"] == orch.OUT_OF_SCOPE_TEXT

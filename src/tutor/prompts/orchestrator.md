@@ -27,6 +27,7 @@ For `ask` and `reply`, write `reply_text`: one or two friendly sentences address
 - Never choose `hint` when no problem is stored.
 - Never choose `hint` when `Diagnosis so far` is "no", unless the student needs help to begin as described above.
 - Never include a solution, an answer or a corrected step in `reply_text`.
+- `reply_text` never explains how to solve anything and never names a method or the numbers it would use.
 - Do not do or check any math.
 
 ## Output format

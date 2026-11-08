@@ -726,6 +726,9 @@ fallback hints" from the roadmap.
 - **The tutor coaches into a specific problem and does not teach algebra in general** | written explanations of a method |
   a guiding question makes no mathematical claim, while an explanation would be model-written math that SymPy never sees;
   cost: a student who wants a lesson does not get one.
+- **Code sends a stuck student with no working to `hint`, whatever the model chose** | relying on the orchestrator prompt | in a
+  real chat the model chose `ask` and wrote a lesson in `reply_text`, which has no hint rules or leakage check; cost: one model
+  call per such turn is wasted, kept because an existing test requires the call.
 - **With no working, a clarifying question keeps the hint level** | raising it on every request, as for a diagnosed mistake |
   a "why" question shows the student is trying to understand, and raising the level gave more away each time; cost: a student
   who keeps asking "why" does not get a more direct hint unless they say they are stuck.

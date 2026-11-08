@@ -8,7 +8,8 @@ new_message: an LLM `Decision` picks ask / diagnose / hint / reply; code guards 
     `hint`, because definitions from an earlier turn are not known to `verify` (a known limit).
     A student with a stored problem and no working may also get a `hint`, to help them begin; its
     first one is level 1, a clarifying question keeps the level, and an out-of-scope subject is
-    declined instead.
+    declined instead. Code overrules an `ask` or `reply` from the model for such a student, because
+    the model's `reply_text` does not pass the hint rules or the leakage check.
 diagnosed: plain code. Out-of-scope subject: decline. Clean solution: record the attempt, maybe
     offer practice. Otherwise set the hint level (different misconception: 1, same: +1; partial
     progress keeps it unless the student is stuck) and hint. A reply keeps the level for its own
@@ -141,6 +142,9 @@ def _new_message(state: TutorState) -> dict[str, Any]:
         action = "ask"
     if action == "hint" and not can_hint:
         action = "ask"
+    wants_help = not has_steps and state.get("intent") in ("stuck", "explain")
+    if action in ("ask", "reply") and wants_help and can_hint and not diagnosed:
+        action, text = "hint", None  # the model's own text would skip the hint rules and the check
 
     if action == "hint" and not diagnosed and _out_of_scope(state):
         update.update(_reply(OUT_OF_SCOPE_TEXT))
