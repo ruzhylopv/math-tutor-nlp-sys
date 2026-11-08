@@ -16,6 +16,7 @@ from tutor.ui import (
     TurnView,
     Tutor,
     build_tutor,
+    hard_line_breaks,
     latest_chat,
     load_history,
     next_chat,
@@ -89,6 +90,12 @@ def show_sidebar(tutor: Tutor, student_id: str, chat: int) -> bool:
             for mid, count in info.profile.misconception_counts.items():
                 st.caption(f"{mid}: seen {count}×")
         return st.toggle("Developer view", help="Also show what each node decided.")
+
+
+def clear_last_turn_log() -> None:
+    """Runs on send, before the script: the previous turn's log must not stay on screen."""
+    st.session_state.pop("step_log", None)
+    st.session_state.pop("trace", None)
 
 
 def show_step_log(lines: list[str], summary: str) -> None:
@@ -182,20 +189,25 @@ def main() -> None:
 
     for role, text in load_history(tutor, student_id, chat):
         with st.chat_message(role):
-            st.write(text)
+            st.write(hard_line_breaks(text) if role == "user" else text)
     last: TurnView | None = st.session_state.get("last_turn")
     if last is not None and last.error:  # a failed run is not in the checkpoint
         if failed := st.session_state.get("failed_text"):
             with st.chat_message("user"):
-                st.write(failed)
+                st.write(hard_line_breaks(failed))
         st.error(last.reply)
     if step_log := st.session_state.get("step_log"):
         show_step_log(*step_log)
     panel = open_panel(tutor, developer)
 
-    if text := st.chat_input("Paste a problem and your steps, or ask a question"):
+    # A message sent during a turn would rerun the script and abort the turn, so the input is off.
+    if text := st.chat_input(
+        "Paste a problem and your steps, or ask a question (Shift+Enter for a new line)",
+        submit_mode="disable",
+        on_submit=clear_last_turn_log,
+    ):
         with st.chat_message("user"):
-            st.write(text)
+            st.write(hard_line_breaks(text))
         view = run_turn(tutor, student_id, chat, text, panel)
         st.session_state.failed_text = text if view.error else None
         st.session_state.last_turn = view

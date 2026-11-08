@@ -5,6 +5,8 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 
 import pytest
+import streamlit as st
+from streamlit.proto.ChatInput_pb2 import ChatInput
 from streamlit.testing.v1 import AppTest
 
 from tutor import ui
@@ -149,3 +151,45 @@ def test_the_graph_is_drawn_and_marks_the_nodes_a_turn_visited(app: AppTest) -> 
     spec = app.get("graphviz_chart")[0].proto.spec
     assert '"hint" [label="hint"' in spec
     assert f'"parse_input" [label="parse_input" fillcolor="{VISITED}"' in spec
+
+
+def test_the_input_is_off_while_a_turn_runs(app: AppTest) -> None:
+    _start(app)
+    assert app.chat_input[0].proto.submit_mode == ChatInput.SubmitMode.SUBMIT_MODE_DISABLE
+
+
+def test_sending_clears_the_previous_turns_log_before_the_new_turn(
+    app: AppTest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    left_over: list[bool] = []
+
+    def recording(*args: object, **kwargs: object) -> Iterator[ui.TurnView]:
+        left_over.append("trace" in st.session_state or "step_log" in st.session_state)
+        yield ui.TurnView(reply="Hello!")
+
+    _start(app)
+    app.chat_input[0].set_value("hi").run()
+    assert "trace" in app.session_state and "step_log" in app.session_state
+    monkeypatch.setattr(ui, "send_stream", recording)
+    app.chat_input[0].set_value("hi again").run()
+    assert left_over == [False]
+
+
+def _user_messages(app: AppTest) -> list[str]:
+    return [str(m.markdown[0].value) for m in app.chat_message if m.name == "user"]
+
+
+def test_a_message_keeps_its_lines_in_the_history(app: AppTest) -> None:
+    _start(app)
+    app.chat_input[0].set_value("2x = 4\nx = 2").run()
+    assert _user_messages(app)[-1] == "2x = 4  \nx = 2"
+
+
+def test_a_failed_message_keeps_its_lines(app: AppTest, monkeypatch: pytest.MonkeyPatch) -> None:
+    def failing(*args: object, **kwargs: object) -> Iterator[ui.TurnView]:
+        yield ui.TurnView(reply=ui.ERROR_REPLY, error=True)
+
+    monkeypatch.setattr(ui, "send_stream", failing)
+    _start(app)
+    app.chat_input[0].set_value("2x = 4\nx = 2").run()
+    assert _user_messages(app)[-1] == "2x = 4  \nx = 2"
