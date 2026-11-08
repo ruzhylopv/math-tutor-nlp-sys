@@ -79,3 +79,36 @@ def test_the_step_log_stays_after_the_reply(app: AppTest) -> None:
     ]
     next(b for b in app.sidebar.button if b.label == "New chat").click().run()
     assert not [e for e in app.expander if e.label.startswith("Done in")]
+
+
+def _start(app: AppTest) -> None:
+    app.run()
+    app.text_input[0].set_value("Ada").run()
+    app.button[0].click().run()
+
+
+def _panel_text(app: AppTest) -> list[str]:
+    return [t.value for t in app.text]
+
+
+def test_the_panel_lists_nodes_and_timings_for_everyone(app: AppTest) -> None:
+    _start(app)
+    app.chat_input[0].set_value("hi").run()
+    lines = _panel_text(app)
+    assert [line.split(" · ")[0] for line in lines] == ["✓ parse_input", "✓ orchestrator"]
+    assert not app.exception
+
+
+def test_what_a_node_decided_needs_the_developer_view(app: AppTest) -> None:
+    _start(app)
+    app.chat_input[0].set_value("hi").run()
+    assert not any("why: greeting" in line for line in _panel_text(app))
+    next(t for t in app.sidebar.toggle if t.label == "Developer view").set_value(True).run()
+    assert any("why: greeting" in line for line in _panel_text(app))
+
+
+def test_a_new_chat_clears_the_panel(app: AppTest) -> None:
+    _start(app)
+    app.chat_input[0].set_value("hi").run()
+    next(b for b in app.sidebar.button if b.label == "New chat").click().run()
+    assert _panel_text(app) == []

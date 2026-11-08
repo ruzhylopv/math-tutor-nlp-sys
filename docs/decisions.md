@@ -745,3 +745,9 @@ fallback hints" from the roadmap.
   message's thread is deleted** | putting `hint_level`, `turns` and the rest back by hand with `update_state`, or keeping the
   half-run | a hand-written list misses a field, and `messages` has a reducer, so a kept half-run stores the message twice and
   each retry raises the level; cost: the failed run's checkpoints stay in the thread's history, and only a 429 is undone.
+- **The graph panel is drawn with `st.graphviz_chart` from DOT built from the compiled graph** | a custom component or a package
+  such as streamlit-flow; a hand-laid SVG | no new dependency, a new node appears by itself, and `st.html` strips SVG; checked in
+  headless Chrome, where the chart stayed on the page through every redraw; cost: Graphviz picks the layout, so it can shift.
+- **Everyone sees the graph, node names and timings; what a node decided needs the "Developer view" toggle; nobody sees `hint_text`** |
+  a full state dump for everyone | a verdict or misconception tells the student what a level-1 hint wants them to find, and
+  `hint_text` can hold a draft the leak check later rejects; cost: a student cannot read why the tutor routed the turn.

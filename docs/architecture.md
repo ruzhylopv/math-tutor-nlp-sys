@@ -70,7 +70,7 @@ invalid step, therefore goes on to `localize` (error type `reasoning_result_mism
 - Learner DB (SQLite), exposed to the orchestrator as tools `get_profile` and `record_attempt`.
 - Checkpointer: state saved after each run, keyed by `thread_id`. One `invoke` is one student
   message. This is how `hint_level` and seen misconceptions persist across turns.
-- UI: Streamlit chat (`app.py`).
+- UI: Streamlit chat (`app.py`), with a live graph panel on the right (`src/tutor/trace.py`).
 - `scripts/draw_graph.py` exports the compiled graph to Mermaid.
 
 ## Nodes
