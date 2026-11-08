@@ -5,7 +5,8 @@ new_message: an LLM `Decision` picks ask / diagnose / hint / reply; code guards 
     (`topic` cleared by `parse_input` while a diagnosis of the old one is still stored) resets the
     per-problem fields. A reply to the tutor when a diagnosis exists is routed by code, with no
     model call: with a line of math to `diagnose` (SymPy checks it), otherwise to `hint`, and the
-    level stays for its own hint.
+    level stays for its own hint. A line using a letter that is not in the problem also goes to
+    `hint`, because definitions from an earlier turn are not known to `verify` (a known limit).
 diagnosed: plain code. Out-of-scope subject: decline. Clean solution: record the attempt, maybe
     offer practice. Otherwise set the hint level (different misconception: 1, same: +1; partial
     progress keeps it unless the student is stuck) and hint. A reply keeps the level for its own
@@ -35,6 +36,7 @@ from tutor.state import (
     TutorState,
 )
 from tutor.tools import structured
+from tutor.tools.algebra import letters
 from tutor.tools.canned_hints import MAX_LEVEL, canned_hint
 from tutor.tools.catalogue import load_catalogue
 from tutor.tools.diagnosis import fresh_problem_fields, is_clean_solution
@@ -90,6 +92,11 @@ def _decide(state: TutorState, message: str) -> Decision | None:
     return structured.call_structured("orchestrator", Decision, text)
 
 
+def _uses_new_letter(state: TutorState) -> bool:
+    known = letters(state.get("problem", ""))
+    return any(letters(step.claim) - known for step in state.get("student_steps", []))
+
+
 def _new_message(state: TutorState) -> dict[str, Any]:
     update: dict[str, Any] = {}
     # parse_input clears topic when the problem changes: drop what described the old problem
@@ -107,7 +114,7 @@ def _new_message(state: TutorState) -> dict[str, Any]:
     decision = None if is_reply else _decide(state, latest_student_message(state))
     text = None
     if is_reply:
-        action = "diagnose" if has_steps else "hint"
+        action = "diagnose" if has_steps and not _uses_new_letter(state) else "hint"
     elif decision is None:
         logger.warning("orchestrator: no decision from the model; routing on the steps")
         action = "diagnose" if has_steps else "ask"

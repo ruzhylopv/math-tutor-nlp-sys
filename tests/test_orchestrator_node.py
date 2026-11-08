@@ -352,8 +352,16 @@ def test_a_reply_in_words_goes_to_hint_without_a_model_call_and_keeps_the_level(
 
 
 def test_a_reply_with_a_math_line_is_checked_by_sympy() -> None:
-    out = orch.orchestrator(_reply_state(student_steps=STEP))
+    out = orch.orchestrator(_reply_state(student_steps=[Step(claim="A = 0")]))
     assert out["next_action"] == "diagnose"
+
+
+def test_a_reply_using_a_letter_defined_earlier_goes_to_hint() -> None:
+    state = _reply_state(
+        problem="m^4 - 5m^2 + 4 = 0", student_steps=[Step(claim="(u - 1)(u - 4) = 0")]
+    )
+    out = orch.orchestrator(state)  # verify no longer knows `u`, so it would call this wrong
+    assert out["next_action"] == "hint" and "hint_level" not in out
 
 
 def test_a_reply_without_a_diagnosis_is_routed_by_the_model(

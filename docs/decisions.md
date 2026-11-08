@@ -707,3 +707,6 @@ fallback hints" from the roadmap.
   hint one turn later.
 - **Layer 5: `new_turn` resets `intent`** | writing `other` when parse_input fails | a failed parse must not reuse the last
   turn's intent, and the existing parse_input contract stays; cost: `graph.py` knows one more field.
+- **Layer 5: a math reply using a letter not in the problem goes to `hint`** | carrying definitions between turns in the
+  state | `verify` builds definitions per run and would mark the reply wrong, and a new field was not wanted; cost: that
+  reply is judged by the hint model, not SymPy (a known limit).
