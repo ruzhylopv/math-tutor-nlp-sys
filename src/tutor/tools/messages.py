@@ -32,6 +32,11 @@ def conversation_text(state: TutorState) -> str:
     return "\n".join(lines[-MAX_HISTORY_MESSAGES:])
 
 
+def tutor_messages(state: TutorState) -> list[str]:
+    """The text of every tutor message so far, oldest first, with no limit on how far back."""
+    return [_text(m) for m in state.get("messages", []) if isinstance(m, AIMessage)]
+
+
 def latest_student_message(state: TutorState) -> str:
     """The text of the latest student message, or an empty string."""
     for message in reversed(state.get("messages", [])):

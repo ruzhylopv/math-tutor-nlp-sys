@@ -15,7 +15,8 @@ is told that the work is correct and given the last valid line, with no countere
 With intent `answer` after a diagnosis or an earlier hint, the model also gets the tutor's last
 message and the reply, responds to the reply first and judges whether it moves forward; a failed
 call gives no verdict. A level-2 reply to numbers already quoted is not given them again. With
-intent `explain` after a hint, the model gets the question and says the same point more simply.
+intent `explain` after a hint, the model gets the question and says the same point more simply,
+with no counterexample or rule, because `_hinted` may already have raised the stored level.
 An `answer` before any hint is not a reply to one. This is the one
 place where the LLM judges a student's math (see CLAUDE.md); submitted steps still go to SymPy.
 A calculation in reply is judged by SymPy alone: the model is told the verdict, and its own
@@ -36,7 +37,12 @@ from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 from tutor.tools.catalogue import load_catalogue
 from tutor.tools.counterexample import Counterexample, counterexample
 from tutor.tools.diagnosis import is_calculation_reply, is_hint_reply, is_no_working_help
-from tutor.tools.messages import conversation_text, last_tutor_message, latest_student_message
+from tutor.tools.messages import (
+    conversation_text,
+    last_tutor_message,
+    latest_student_message,
+    tutor_messages,
+)
 
 logger = logging.getLogger("tutor.hint")
 
@@ -61,12 +67,12 @@ def _stopped_lines(state: TutorState, context: ErrorContext, level: int) -> list
 
 
 def _already_tried(state: TutorState, found: Counterexample) -> bool:
-    """True when the student is replying to a message that already quoted these numbers."""
+    """True when the student is replying and one earlier tutor message quoted all these numbers."""
     if not is_hint_reply(state):
         return False
-    quoted = set(re.findall(r"\d+(?:/\d+)?", last_tutor_message(state)))
     numbers = {str(value).lstrip("-") for value in found.assignment.values()}
-    return numbers | {found.before_value.lstrip("-"), found.after_value.lstrip("-")} <= quoted
+    numbers |= {found.before_value.lstrip("-"), found.after_value.lstrip("-")}
+    return any(numbers <= set(re.findall(r"\d+(?:/\d+)?", m)) for m in tutor_messages(state))
 
 
 def _mistake_lines(state: TutorState, context: ErrorContext, level: int) -> list[str]:
@@ -82,6 +88,8 @@ def _mistake_lines(state: TutorState, context: ErrorContext, level: int) -> list
         + (" ; ".join(context.correct_steps) if context.correct_steps else "none"),
         "Misconception: " + (misconception.description if misconception else "unknown"),
     ]
+    if _asks_about_the_hint(state, context):  # same point, more simply: nothing new to add
+        return lines
     if level == 2:
         found = counterexample(context.before, context.after, problem)
         if found is not None and _already_tried(state, found):
