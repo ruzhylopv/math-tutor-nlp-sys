@@ -686,3 +686,32 @@ fallback hints" from the roadmap.
   `verify_steps.jsonl` | the pair file's format and its build are unchanged; cost: a second dataset file.
 - **Considered and not taken (developer, 2026-11-02): one general verify rule ("compare what parses, skip the rest")
   and dropping `Step.kind`** | the per-kind rules of this plan | the developer chose the plan as written.
+- **Layer 4: `is_clean_solution` skips an unreadable `reason`/`other` line** | leaving it "not clean" | localize finds
+  nothing wrong there, so a correct solution would get a hint; cost: `diagnosis.py` and localize share one more rule.
+- **Layer 4: localize tells a skipped line by `Step.kind` plus the `unparsable` verdict** | matching verify's note text |
+  no coupling to a note string; cost: localize reads `student_steps`, and a `reason` line that parses but follows an
+  unreadable problem is skipped too (the problem itself is then unreadable, so nothing was compared anyway).
+- **Layer 4: `omission_extraneous_root` wins over `incomplete`** | `incomplete` for a student who stops right after a
+  non-reversible step | existing rule kept, the design plan did not change it; cost: such a student is told about
+  rejected roots before reaching an answer.
+- **Layer 4: a line in words after the last valid line is `other` unless the student is stuck** | always `incomplete` |
+  the checker cannot read "no solution", so a finished solution would look stopped; cost: such a solution still gets the
+  generic hint.
+- **Layer 5: a reply to the tutor is routed by code when a diagnosis exists** | leaving it to the model | the failure this
+  fixes was the model asking for working again, and it saves a call; cost: a wrong `answer` label from parse_input cannot be
+  overruled by the orchestrator.
+- **Layer 5: a math line in a reply goes to `diagnose`** | sending every reply to `hint` | SymPy still checks every submitted
+  step; cost: a reply with math takes the longer path.
+- **Layer 5: the verdict on a reply sets the next hint's level, not its own** | a second model call before the hint | the
+  verdict is produced with the hint, so a reply's own hint stays at the current level; cost: a wrong reply gets the more direct
+  hint one turn later.
+- **Layer 5: `new_turn` resets `intent`** | writing `other` when parse_input fails | a failed parse must not reuse the last
+  turn's intent, and the existing parse_input contract stays; cost: `graph.py` knows one more field.
+- **Layer 5: a math reply using a letter not in the problem goes to `hint`** | carrying definitions between turns in the
+  state | `verify` builds definitions per run and would mark the reply wrong, and a new field was not wanted; cost: that
+  reply is judged by the hint model, not SymPy (a known limit).
+- **Layer 6: `finish_diagnosis`'s work moves to the orchestrator** | an edge condition, as the design said | the node also set
+  `stage` and copied `error_context`, which an edge cannot do; cost: the orchestrator does a little more.
+- **Layer 6: the orchestrator no longer resets on `topic` None** | keeping that reset | `parse_input` does the real reset when
+  the problem changes, and nothing refills `topic` now, so a parse with no topic would wipe the diagnosis on every later
+  message; cost: `test_new_problem_resets_the_old_diagnosis` was changed (approved by the developer).

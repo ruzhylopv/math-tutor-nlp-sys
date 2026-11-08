@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
-from tutor.state import Classification, ParsedInput
+from tutor.state import ParsedInput
 from tutor.tools import embedding, structured
 
 
@@ -32,11 +32,10 @@ def _refuse_real_embedding_model(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def canned_llm(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
-    """Replace the model with fixed answers: `canned_llm(Classification=..., ParsedInput=...)`."""
+    """Replace the model with fixed answers: `canned_llm(ParsedInput=..., Decision=...)`."""
 
     def install(**answers: BaseModel | None) -> None:
         defaults: dict[str, BaseModel | None] = {
-            "Classification": Classification(topic="Algebra", level=2),
             "ParsedInput": ParsedInput(),
         }
         defaults.update(answers)

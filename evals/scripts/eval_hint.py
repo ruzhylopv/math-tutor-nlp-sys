@@ -3,7 +3,7 @@
 Data: evals/datasets/<split>/hint.jsonl (built from the retrieve datasets by
 `evals/builders/build_hint.py`). Each case is a wrong step with its true catalogue entry, so the
 eval measures the hint and not `retrieve`; the state is built the way the graph builds it
-(`finish_diagnosis` stores the wrong step) and `hint` runs on it with the case's level. Needs the
+(`error_context` stores the wrong step) and `hint` runs on it with the case's level. Needs the
 key in .env: one call for the hint and one for the judge. Answers are cached under
 evals/.llm_cache.
 
@@ -34,13 +34,13 @@ from evals.runner import (
     write_result,
 )
 from tutor.config import load_config
-from tutor.nodes.finish_diagnosis import finish_diagnosis
 from tutor.nodes.hint import hint
 from tutor.state import ErrorContext, HintRubric, Misconception, Step, TutorState
 from tutor.tools import structured
 from tutor.tools.canned_hints import canned_hint
 from tutor.tools.catalogue import load_catalogue
 from tutor.tools.counterexample import counterexample
+from tutor.tools.diagnosis import error_context
 from tutor.tools.leakage import find_leaks
 
 COMPONENT = "hint"
@@ -68,7 +68,7 @@ def build_state(case: dict[str, Any]) -> tuple[TutorState, ErrorContext, Misconc
         ],
         "focus_step": case["focus_step"],
     }
-    context = finish_diagnosis(state)["error_context"]
+    context = error_context(state)
     if context is None:
         raise ValueError(f"case {case['id']} has no usable focus step")
     misconception = Misconception(

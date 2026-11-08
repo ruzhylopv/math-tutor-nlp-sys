@@ -1,7 +1,8 @@
 """One fixed, answer-free hint per level, for when a generated hint leaks twice (used by M6).
 
 They use no numbers and no math of the student's, so they cannot leak. Levels follow
-docs/architecture.md: 1 a question, 2 try a number, 3 name the idea, 4 the most direct.
+docs/architecture.md: 1 a question, 2 try a number, 3 name the idea, 4 the most direct. A solution
+that stopped before an answer has nothing wrong in it, so it gets one text that suggests no mistake.
 """
 
 MAX_LEVEL = 4
@@ -17,7 +18,14 @@ _HINTS = {
     "piece at a time, and compare it with what you wrote.",
 }
 
+_STOPPED_HINT = (
+    "Your work so far is correct, but you have not reached the final answer yet. "
+    "What would you do next, starting from your last line?"
+)
 
-def canned_hint(level: int) -> str:
-    """The fixed hint for a level; a level outside 1-4 is clamped."""
+
+def canned_hint(level: int, error_type: str | None = None) -> str:
+    """The fixed hint for a level; a level outside 1-4 is clamped. `incomplete` has its own text."""
+    if error_type == "incomplete":
+        return _STOPPED_HINT
     return _HINTS[min(max(level, 1), MAX_LEVEL)]

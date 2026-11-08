@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 
 from tutor.nodes.retrieve import MIN_SCORE, TOP_K, focus_lines, retrieve
+from tutor.nodes.verify import verify
 from tutor.state import Misconception, Step, TutorState
 from tutor.tools import retrieval
 
@@ -111,3 +112,40 @@ def test_a_best_match_exactly_at_the_threshold_is_trusted(monkeypatch: pytest.Mo
     exact = [_match("M001", MIN_SCORE)]
     monkeypatch.setattr(retrieval, "search", lambda previous, written, k=5: exact)
     assert retrieve(_state())["misconception"] == exact[0]
+
+
+def test_an_incomplete_solution_has_nothing_to_look_up(
+    searches: list[tuple[str, str, int]],
+) -> None:
+    state = _state(error_type="incomplete", focus_step=1)
+    assert focus_lines(state) is None
+    assert retrieve(state) == {"misconception_candidates": [], "misconception": None}
+    assert searches == []
+
+
+@pytest.mark.parametrize(
+    ("steps", "focus", "previous"),
+    [
+        (
+            [
+                Step(claim="2x = 8"),
+                Step(claim="now divide by two", kind="reason"),
+                Step(claim="x = 5"),
+            ],
+            3,
+            "2x = 8",
+        ),
+        ([Step(claim="t = x + 3", kind="definition"), Step(claim="x = 5")], 2, "2x + 6 = 14"),
+        (
+            [Step(claim="2x = 8"), Step(claim="2*4 = 8", kind="check"), Step(claim="x = 5")],
+            3,
+            "2x = 8",
+        ),
+    ],
+)
+def test_a_focus_step_is_looked_up_against_the_line_it_was_really_compared_with(
+    steps: list[Step], focus: int, previous: str
+) -> None:
+    state = _state(problem="2x + 6 = 14", student_steps=steps, focus_step=focus)
+    state["step_verdicts"] = verify(state)["step_verdicts"]
+    assert focus_lines(state) == (previous, "x = 5")

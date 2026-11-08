@@ -8,10 +8,11 @@ previous attempt are not mistaken for a new one); for a message without a proble
 stored `problem`, `topic` and `level`. If there is no message, or the model fails twice, the steps
 are empty and the rest stays. A stated problem with a topic from the model sets `topic` and
 `level`; a problem that differs from the stored one and has no topic clears them, since they
-described the old problem.
+described the old problem. A problem that differs from the stored one also resets the per-problem
+fields, so the old diagnosis cannot be taken for one of the new problem.
 
 Reads: messages, problem
-Writes: problem, student_steps, intent, topic, level
+Writes: problem, student_steps, intent, topic, level (and the per-problem fields on a new problem)
 Eval metric: problem-extraction accuracy; claim exact match; step-split accuracy; SymPy parse rate;
     kind accuracy; intent accuracy; topic accuracy / macro-F1
 """
@@ -19,40 +20,12 @@ Eval metric: problem-extraction accuracy; claim exact match; step-split accuracy
 import logging
 from typing import Any
 
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-
 from tutor.state import ParsedInput, TutorState
 from tutor.tools import structured
+from tutor.tools.diagnosis import fresh_problem_fields
+from tutor.tools.messages import last_tutor_message, latest_student_message
 
 logger = logging.getLogger("tutor.parse_input")
-
-
-def _text(message: BaseMessage) -> str:
-    content = message.content
-    if isinstance(content, str):
-        return content.strip()
-    parts = (part if isinstance(part, str) else str(part.get("text", "")) for part in content)
-    return " ".join(part for part in parts if part).strip()
-
-
-def _latest_student_message(state: TutorState) -> str:
-    for message in reversed(state.get("messages", [])):
-        if isinstance(message, HumanMessage):
-            return _text(message)
-    return ""
-
-
-def _last_tutor_message(state: TutorState) -> str:
-    """The tutor's message before the latest student message, or an empty string."""
-    seen_student = False
-    for message in reversed(state.get("messages", [])):
-        if isinstance(message, HumanMessage):
-            if seen_student:
-                return ""  # two student messages in a row: the tutor has not answered
-            seen_student = True
-        elif isinstance(message, AIMessage) and seen_student:
-            return _text(message)
-    return ""
 
 
 def _squash(text: str) -> str:
@@ -62,11 +35,11 @@ def _squash(text: str) -> str:
 
 def parse_input(state: TutorState) -> dict[str, Any]:
     """Ask the model to split the latest message into a problem, steps, intent and topic."""
-    message = _latest_student_message(state)
+    message = latest_student_message(state)
     if not message:
         return {"student_steps": []}
     stored = state.get("problem", "").strip() or "none"
-    tutor = _last_tutor_message(state) or "none"
+    tutor = last_tutor_message(state) or "none"
     text = f"Stored problem: {stored}\n\nTutor's last message:\n{tutor}\n\nStudent message:\n"
     parsed = structured.call_structured("parse_input", ParsedInput, text + message)
     if parsed is None:
@@ -75,10 +48,13 @@ def parse_input(state: TutorState) -> dict[str, Any]:
     update: dict[str, Any] = {"student_steps": parsed.steps, "intent": parsed.intent}
     if parsed.problem is not None and parsed.problem.strip():
         update["problem"] = parsed.problem.strip()
+        is_new = stored != "none" and _squash(update["problem"]) != _squash(stored)
+        if is_new:
+            update.update(fresh_problem_fields())
         if parsed.topic is not None:
             update["topic"] = parsed.topic
             update["level"] = parsed.level
-        elif stored != "none" and _squash(update["problem"]) != _squash(stored):
+        elif is_new:
             update["topic"] = None
             update["level"] = None
     return update

@@ -47,6 +47,7 @@ Every change reaches `main` through a reviewed PR. The developer reviews and mer
 - Node contract: a node is a pure function `(TutorState) -> dict` returning only the fields it changed.
   No module-level state, no hidden I/O except through src/tutor/tools/.
 - The LLM never does arithmetic or checks algebra. All math verification goes through SymPy.
+  Exception: `hint` may judge a student's reply to its own question; every submitted step still goes through SymPy.
 - Prompts are loaded from src/tutor/prompts/*.md. Never write a prompt inline in Python.
 - LLM outputs that drive logic must use structured output (pydantic model), not string parsing.
 - Use LangGraph only for orchestration. Do not use classic LangChain chains.

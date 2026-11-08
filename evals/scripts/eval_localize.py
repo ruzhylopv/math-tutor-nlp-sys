@@ -29,6 +29,7 @@ TYPES = (
     "algebraic_transformation",
     "omission_extraneous_root",
     "reasoning_result_mismatch",
+    "incomplete",
     "other",
     "none",
 )

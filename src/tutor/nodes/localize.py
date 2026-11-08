@@ -2,15 +2,19 @@
 
 Rules on the verdicts `verify` already computed; no model is called (see
 docs/plans/nodes/2026-10-27-m4a-localize.md). The steps are scanned once, in order, and the
-first step with a problem decides:
+first step with a problem decides (a `reason` or `other` line SymPy could not read was never
+compared, so it is skipped and is never the focus, unless its arithmetic claim is false):
 - `not_valid`: that step, `algebraic_transformation`.
-- `unparsable`: SymPy could not judge it, so there is no first error step, but that step is the
-  focus; `other`.
+- `unparsable`: an `equation` line SymPy could not judge, so there is no first error step, but
+  that step is the focus; `other`.
 - a valid step whose justification claim is false: that step, `reasoning_result_mismatch`.
 If every step is fine but the final answer is wrong: a non-reversible (`implies`) step means
 roots may have been added and never rejected (`omission_extraneous_root`, the first such step is
-the focus); otherwise `other` (for example steps that stop before an answer). With
-nothing wrong all three fields are None.
+the focus); otherwise the student stopped before an answer (`incomplete`, the last valid line that
+is not a check line is the focus). With no such line it is `other`, with no focus. A line in words
+after the last valid line may be a conclusion SymPy cannot read ("no solution"), so that is `other`
+with no focus too, unless the student says they are stuck. With nothing wrong all three fields are
+None.
 
 A failed check line (`check_holds` False) is information, not an error: it is how a student
 rejects an extraneous root. Only the first error is reported.
@@ -21,14 +25,15 @@ Known limits:
 - The omission rule can fire when the student ran a check line but the answer is wrong for
   another reason.
 
-Reads: step_verdicts, is_correct
+Reads: step_verdicts, is_correct, student_steps, intent
 Writes: first_error_step, focus_step, error_type
 Eval metric: first-error-step accuracy; error-type accuracy; mismatch detection rate
 """
 
 from typing import Any
 
-from tutor.state import ErrorType, StepVerdict, TutorState
+from tutor.state import ErrorType, Step, StepVerdict, TutorState
+from tutor.tools.diagnosis import VALID_RELATIONS, is_skipped_line
 
 
 def _outcome(first: int | None, focus: int | None, error_type: ErrorType | None) -> dict[str, Any]:
@@ -40,16 +45,23 @@ def _step_problem(verdict: StepVerdict) -> dict[str, Any] | None:
     index = verdict.step_index
     if verdict.relation == "not_valid":
         return _outcome(index, index, "algebraic_transformation")
-    if verdict.relation == "unparsable":
-        return _outcome(None, index, "other")
     if verdict.justification_claims_ok is False:
         return _outcome(index, index, "reasoning_result_mismatch")
+    if verdict.relation == "unparsable":
+        return _outcome(None, index, "other")
     return None
+
+
+def _ends_in_words(verdicts: list[StepVerdict], steps: list[Step], last_valid: int) -> bool:
+    """True when a line in words follows the last valid line, such as "no solution"."""
+    return any(v.step_index > last_valid and is_skipped_line(v, steps) for v in verdicts)
 
 
 def localize(state: TutorState) -> dict[str, Any]:
     """Apply the rules in the module docstring to the verdicts."""
-    verdicts = state.get("step_verdicts", [])
+    steps = state.get("student_steps", [])
+    every = state.get("step_verdicts", [])
+    verdicts = [v for v in every if not is_skipped_line(v, steps)]
     for verdict in verdicts:
         problem = _step_problem(verdict)
         if problem is not None:
@@ -59,4 +71,9 @@ def localize(state: TutorState) -> dict[str, Any]:
     for verdict in verdicts:
         if verdict.relation == "implies":
             return _outcome(None, verdict.step_index, "omission_extraneous_root")
-    return _outcome(None, None, "other")
+    valid = [
+        v.step_index for v in verdicts if v.relation in VALID_RELATIONS and v.check_holds is None
+    ]
+    if not valid or (_ends_in_words(every, steps, valid[-1]) and state.get("intent") != "stuck"):
+        return _outcome(None, None, "other")
+    return _outcome(None, valid[-1], "incomplete")

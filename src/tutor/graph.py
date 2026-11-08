@@ -7,8 +7,6 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from tutor.nodes.classify import classify
-from tutor.nodes.finish_diagnosis import finish_diagnosis
 from tutor.nodes.hint import hint
 from tutor.nodes.localize import localize
 from tutor.nodes.orchestrator import orchestrator
@@ -19,25 +17,21 @@ from tutor.state import TutorState
 from tutor.tools.diagnosis import is_clean_solution
 
 
-def route_after_verify(state: TutorState) -> Literal["finish_diagnosis", "localize"]:
+def route_after_verify(state: TutorState) -> Literal["__end__", "localize"]:
     """A clean correct solution ends the diagnosis; anything else goes on to localize."""
-    return "finish_diagnosis" if is_clean_solution(state) else "localize"
+    return "__end__" if is_clean_solution(state) else "localize"
 
 
 def build_diagnosis_graph() -> CompiledStateGraph[TutorState, None, TutorState, TutorState]:
-    """classify -> verify -> (localize -> retrieve ->) finish_diagnosis."""
+    """verify -> (localize -> retrieve); a clean solution ends after verify."""
     graph = StateGraph(TutorState)
-    graph.add_node("classify", classify)
     graph.add_node("verify", verify)
     graph.add_node("localize", localize)
     graph.add_node("retrieve", retrieve)
-    graph.add_node("finish_diagnosis", finish_diagnosis)
-    graph.add_edge(START, "classify")
-    graph.add_edge("classify", "verify")
+    graph.add_edge(START, "verify")
     graph.add_conditional_edges("verify", route_after_verify)
     graph.add_edge("localize", "retrieve")
-    graph.add_edge("retrieve", "finish_diagnosis")
-    graph.add_edge("finish_diagnosis", END)
+    graph.add_edge("retrieve", END)
     return graph.compile()
 
 
@@ -60,12 +54,13 @@ def new_turn(student_id: str, text: str) -> TutorState:
 
     One `invoke` is one message. The stage must be reset on every run, because the checkpointer
     restores the last run's `stage` (`hinted` or `diagnosed`) and the orchestrator would otherwise
-    start in the wrong mode.
+    start in the wrong mode. The intent is reset too, so a failed parse cannot reuse the last one.
     """
     return {
         "student_id": student_id,
         "messages": [HumanMessage(content=text)],
         "stage": "new_message",
+        "intent": "other",
     }
 
 

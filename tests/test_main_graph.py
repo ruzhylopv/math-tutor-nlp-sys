@@ -1,15 +1,19 @@
 import runpy
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
 
 import pytest
+from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START
 
 from tutor import graph as graph_module
-from tutor.graph import build_main_graph, route_from_orchestrator
-from tutor.state import Decision, TutorState
+from tutor.graph import build_main_graph, new_turn, route_from_orchestrator
+from tutor.state import Decision, HintText, ParsedInput, Step, TutorState
 from tutor.tools import structured
+from tutor.tools.canned_hints import canned_hint
 
 
 @pytest.mark.parametrize(
@@ -80,7 +84,7 @@ def test_diagnosis_and_hint_both_return_to_the_orchestrator(
         stage = state.get("stage", "new_message")
         seen.append(stage)
         if stage == "new_message":
-            return {"next_action": "diagnose"}
+            return {"next_action": "diagnose", "stage": "diagnosed"}
         if stage == "diagnosed":
             return {"next_action": "hint"}
         return {"next_action": "reply", "reply_text": "done"}
@@ -181,3 +185,92 @@ def test_draw_script_writes_mermaid(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     text = out.read_text(encoding="utf-8")
     assert "orchestrator" in text
     assert "verify" in text
+
+
+def test_a_stopped_substitution_and_a_reply_to_the_hint(
+    monkeypatch: pytest.MonkeyPatch, canned_llm: Callable[..., None]
+) -> None:
+    """The chat that started the flexible-input work: both turns, only the model is scripted."""
+    monkeypatch.delenv("LEARNER_DB_PATH", raising=False)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    graph = build_main_graph(InMemorySaver())
+    config: RunnableConfig = {"configurable": {"thread_id": "t"}}
+    canned_llm(
+        ParsedInput=ParsedInput(
+            problem="5(x + 32x^2 + 2) = 0",
+            steps=[
+                Step(claim="A = x + 32x^2 + 2", kind="definition"),
+                Step(claim="5A = 0"),
+                Step(claim="5 is not zero", kind="reason"),
+            ],
+            intent="stuck",
+            topic="Algebra",
+            level=2,
+        ),
+        Decision=Decision(action="diagnose", reason="working"),
+        HintText=HintText(text="Good so far. What must be true of `A`?"),
+    )
+    first = graph.invoke(new_turn("ada", "my work, what next?"), config)
+    assert first["error_type"] == "incomplete" and first["focus_step"] == 2
+    assert first["hint_level"] == 1 and first["hints_used"] == 1
+
+    canned_llm(
+        ParsedInput=ParsedInput(intent="answer"),
+        HintText=HintText(text="Yes, that is the idea. What next?", reply_moves_forward=True),
+    )  # no Decision: a reply is routed without the model
+    second = graph.invoke(new_turn("ada", "It has to be equal to zero"), config)
+    assert second["messages"][-1].content == "Yes, that is the idea. What next?"
+    assert second["hint_level"] == 1 and second["hints_used"] == 2
+
+
+def _stopped_turn() -> ParsedInput:
+    return ParsedInput(
+        problem="x^2 + 4 = 5x",
+        steps=[Step(claim="x^2 - 5x + 4 = 0")],
+        intent="check_work",
+        topic="Algebra",
+        level=2,
+    )
+
+
+def test_a_new_problem_labelled_answer_is_not_a_reply_to_the_old_diagnosis(
+    monkeypatch: pytest.MonkeyPatch, canned_llm: Callable[..., None]
+) -> None:
+    monkeypatch.delenv("LEARNER_DB_PATH", raising=False)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    graph = build_main_graph(InMemorySaver())
+    config: RunnableConfig = {"configurable": {"thread_id": "t"}}
+    canned_llm(
+        ParsedInput=_stopped_turn(),
+        Decision=Decision(action="diagnose", reason="working"),
+        HintText=HintText(text="Good so far. What comes next?"),
+    )
+    first = graph.invoke(new_turn("ada", "my work"), config)
+    assert first["error_context"] is not None and first["hints_used"] == 1
+    graph.update_state(config, {"hint_level": 3})  # as if earlier hints had raised it
+
+    canned_llm(
+        ParsedInput=ParsedInput(problem="2y = 6", intent="answer", topic="Algebra", level=1),
+        Decision=Decision(action="ask", reason="no working", reply_text="Show me your steps."),
+    )  # no HintText: a hint would fail the test
+    second = graph.invoke(new_turn("ada", "2y = 6"), config)
+    assert second["next_action"] == "ask"
+    assert second["messages"][-1].content == "Show me your steps."
+    assert second["hint_level"] == 1 and second["hints_used"] == 0
+    assert second["error_context"] is None
+
+
+def test_a_stopped_solution_through_a_leak_rejection_and_the_fallback(
+    monkeypatch: pytest.MonkeyPatch, canned_llm: Callable[..., None]
+) -> None:
+    monkeypatch.delenv("LEARNER_DB_PATH", raising=False)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    canned_llm(
+        ParsedInput=_stopped_turn(),
+        Decision=Decision(action="diagnose", reason="working"),
+        HintText=HintText(text="Try `(x - 1)(x - 4) = 0`."),
+    )
+    result = build_main_graph().invoke(new_turn("ada", "my work"))
+    assert result["error_type"] == "incomplete"
+    assert result["hint_retries"] == 1 and result["hints_used"] == 1
+    assert result["messages"][-1].content == canned_hint(1, "incomplete")

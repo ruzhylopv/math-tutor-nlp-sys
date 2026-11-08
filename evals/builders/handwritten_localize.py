@@ -76,7 +76,7 @@ HANDWRITTEN: list[Case] = [
         MISMATCH,
     ),
     _case("unparsable", "x^2 - 5x + 6 = 0", _plain("x equals three plus"), None, 1, "other"),
-    _case("incomplete", "3x + 6 = 15", _plain("3x = 9"), None, None, "other"),
+    _case("incomplete", "3x + 6 = 15", _plain("3x = 9"), None, 1, "incomplete"),
     _case(
         "control",
         "3(x + 2) = 15",
@@ -121,7 +121,7 @@ HANDWRITTEN: list[Case] = [
         1,
         "other",
     ),
-    _case("incomplete", "2(x + 3) = 14", _plain("2x + 6 = 14", "2x = 8"), None, None, "other"),
+    _case("incomplete", "2(x + 3) = 14", _plain("2x + 6 = 14", "2x = 8"), None, 2, "incomplete"),
     _case(
         "control",
         "2x + 3 = 11",

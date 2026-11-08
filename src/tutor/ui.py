@@ -33,11 +33,9 @@ PROGRESS_LABELS = {
     "parse_input": "Reading your message…",
     "orchestrator": "Deciding what to do next…",
     "diagnosis": "Diagnosing your solution…",
-    "classify": "Working out the topic…",
     "verify": "Checking your steps…",
     "localize": "Finding the first wrong step…",
     "retrieve": "Looking for the likely misconception…",
-    "finish_diagnosis": "Wrapping up the diagnosis…",
     "hint": "Writing a hint…",
 }
 

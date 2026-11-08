@@ -129,6 +129,7 @@ def test_the_hand_written_cases_are_well_formed_and_cover_every_type() -> None:
         "algebraic_transformation",
         "omission_extraneous_root",
         "reasoning_result_mismatch",
+        "incomplete",
         "other",
         None,
     }

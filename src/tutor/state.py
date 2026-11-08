@@ -70,15 +70,8 @@ class ParsedInput(BaseModel):
     problem: str | None = None
     steps: list[Step] = Field(default_factory=list)
     intent: Intent = "other"
-    topic: Topic | None = None  # from the classify merge; None when there is no problem
+    topic: Topic | None = None  # None when the message states no problem
     level: int | None = Field(default=None, ge=1, le=5)
-
-
-class Classification(BaseModel):
-    """What `classify` returns: the MATH subject and the MATH difficulty level (1 easiest)."""
-
-    topic: Topic
-    level: int = Field(ge=1, le=5)
 
 
 class ErrorContext(BaseModel):
@@ -185,7 +178,7 @@ class TutorState(TypedDict, total=False):
     problem: str
     student_steps: list[Step]
     intent: Intent
-    topic: Topic | None  # None after a new problem, until `classify` runs again
+    topic: Topic | None  # None until `parse_input` gets one for the problem
     level: int | None
     is_correct: bool
     step_verdicts: list[StepVerdict]

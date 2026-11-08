@@ -8,13 +8,15 @@ One block of facts, one per line:
 - `Student message`: the raw text the student just sent.
 - `Stored problem`: the problem being worked on, or "none".
 - `Steps found in the message`: how many lines of working a parser extracted (a number, may be wrong for a question).
-- `Diagnosis so far`: "yes" if the tutor has already found a mistake in the student's work on this problem, else "no".
+- `Diagnosis so far`: "yes" if the tutor has already looked at the student's work on this problem and has something to say about it, else "no".
+- `Student intent`: what a parser thinks the student wants (check_work, stuck, answer, explain, new_problem, other; may be wrong).
+- `Tutor's last message`: what the tutor said just before this message, or "none".
 
 ## Task
 Choose one action:
 - `ask`: the student gave a problem or an answer but no working, or the message is unclear about what to check. Ask them to write their solution step by step.
 - `diagnose`: the message is a new attempt at the problem with working (a list of steps, even if short). The tutor will check it.
-- `hint`: the student asks a question about the mistake already found (for example "why is that wrong?" or "isn't it just ...?"), or asks for more help, and `Diagnosis so far` is "yes". A question that mentions an expression is still a question, not a new attempt.
+- `hint`: the student asks a question about the work already looked at (for example "why is that wrong?" or "isn't it just ...?"), says they are stuck, or asks for more help, and `Diagnosis so far` is "yes". A question that mentions an expression is still a question, not a new attempt.
 - `reply`: anything else: a greeting, thanks, or a request that is not about this problem. Answer briefly and invite the student to continue.
 
 For `ask` and `reply`, write `reply_text`: one or two friendly sentences addressed to the student. For `diagnose` and `hint`, leave `reply_text` empty.

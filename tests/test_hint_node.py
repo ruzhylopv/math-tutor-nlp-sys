@@ -1,6 +1,7 @@
 from typing import Any
 
 import pytest
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel
 
 from tutor.nodes.hint import hint
@@ -126,3 +127,84 @@ def test_a_failed_or_blank_model_answer_gives_the_canned_hint(
 
 def test_the_node_returns_only_its_declared_fields(prompts: list[tuple[str, str, str]]) -> None:
     assert set(hint(_state())) == {"hint_text", "stage"}
+
+
+def _stopped(**fields: Any) -> TutorState:
+    context = ErrorContext(
+        step_number=2, before="2x + 6 = 14", after="2x = 8", correct_steps=["2x + 6 = 14"]
+    )
+    return _state(error_type="incomplete", error_context=context, misconception=None, **fields)
+
+
+def test_a_stopped_solution_is_never_described_as_wrong(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    hint(_stopped(hint_level=2, problem="2(x + 3) = 14"))
+    text = prompts[0][2]
+    assert "every line so far is correct" in text
+    assert "The student's last valid line: 2x = 8" in text
+    assert "wrong" not in text and "Counterexample" not in text
+
+
+@pytest.mark.parametrize(("intent", "said"), [("stuck", "yes"), ("check_work", "no")])
+def test_the_hint_for_a_stopped_solution_knows_if_the_student_is_stuck(
+    prompts: list[tuple[str, str, str]], intent: str, said: str
+) -> None:
+    hint(_stopped(intent=intent))
+    assert f"Student says they are stuck: {said}" in prompts[0][2]
+
+
+def _replying(**fields: Any) -> TutorState:
+    messages = [
+        HumanMessage("my work"),
+        AIMessage("What must be true of A?"),
+        HumanMessage("  it has to be zero "),
+    ]
+    return _state(intent="answer", messages=messages, **fields)
+
+
+def _answer_with(monkeypatch: pytest.MonkeyPatch, answer: HintText | None) -> None:
+    monkeypatch.setattr(structured, "call_structured", lambda name, schema, text, retries=1: answer)
+
+
+def test_a_reply_gives_the_model_the_question_and_the_reply(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    hint(_replying())
+    assert "Tutor's last message: What must be true of A?" in prompts[0][2]
+    assert "Student's reply: it has to be zero" in prompts[0][2]
+
+
+@pytest.mark.parametrize("verdict", [True, False, None])
+def test_the_verdict_on_a_reply_is_returned(
+    monkeypatch: pytest.MonkeyPatch, verdict: bool | None
+) -> None:
+    _answer_with(monkeypatch, HintText(text="Yes.", reply_moves_forward=verdict))
+    assert hint(_replying())["reply_moves_forward"] is verdict
+
+
+def test_a_failed_model_gives_no_verdict_on_a_reply(monkeypatch: pytest.MonkeyPatch) -> None:
+    _answer_with(monkeypatch, None)
+    result = hint(_replying())
+    assert result["reply_moves_forward"] is None and result["hint_text"] == canned_hint(1)
+
+
+def test_no_verdict_is_written_for_a_message_that_is_not_a_reply(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _answer_with(monkeypatch, HintText(text="Look again.", reply_moves_forward=True))
+    assert "reply_moves_forward" not in hint(_state(intent="stuck"))
+
+
+@pytest.mark.parametrize("answer", [None, HintText(text="   ")])
+def test_a_failed_model_on_a_stopped_solution_gives_the_stopped_text(
+    answer: HintText | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _answer_with(monkeypatch, answer)
+    assert hint(_stopped(hint_level=2))["hint_text"] == canned_hint(2, "incomplete")
+
+
+def test_a_stopped_solution_without_an_error_context_gives_the_stopped_text() -> None:
+    state = _state(error_type="incomplete")
+    del state["error_context"]
+    assert hint(state)["hint_text"] == canned_hint(1, "incomplete")
