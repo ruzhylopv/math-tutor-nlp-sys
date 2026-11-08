@@ -202,4 +202,7 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   a log per node; details are behind a "Developer view" toggle, and `orchestrator` now keeps the model's `decision_reason`. Unit
   tests and an `AppTest` run with the model scripted; the layout and redraw were checked in headless Chrome on a scripted stream.
   No metrics: UI only.
+- **Calculation replies (2026-11-08)**: in a real chat, a reply such as a single multiplication went through a full diagnosis, wiped
+  the real one and got the canned hint. Such a reply now ends after `verify`, keeps the diagnosis and the level, and `hint` is told
+  SymPy's verdict. Unit tests with the model scripted. **No eval run: evals are debt.** No new metrics.
 - Planned: the demo video using scenarios A and B.

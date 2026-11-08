@@ -16,6 +16,8 @@ With intent `answer` after a diagnosis or an earlier hint, the model also gets t
 message and the reply, responds to the reply first and judges whether it moves forward; a failed
 call gives no verdict. An `answer` before any hint is not a reply to one. This is the one
 place where the LLM judges a student's math (see CLAUDE.md); submitted steps still go to SymPy.
+A calculation in reply is judged by SymPy alone: the model is told the verdict, and its own
+`reply_moves_forward` is dropped, so the reply does not change the level.
 
 Reads: error_context, error_type, misconception, hint_level, problem, intent, messages
 Writes: hint_text, stage, reply_moves_forward (only for intent `answer`)
@@ -30,7 +32,7 @@ from tutor.tools import structured
 from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 from tutor.tools.catalogue import load_catalogue
 from tutor.tools.counterexample import counterexample
-from tutor.tools.diagnosis import is_hint_reply, is_no_working_help
+from tutor.tools.diagnosis import is_calculation_reply, is_hint_reply, is_no_working_help
 from tutor.tools.messages import conversation_text, last_tutor_message, latest_student_message
 
 logger = logging.getLogger("tutor.hint")
@@ -89,6 +91,18 @@ def _no_working_lines(state: TutorState, level: int) -> list[str]:
     return lines
 
 
+def _calculation_lines(state: TutorState) -> list[str]:
+    """SymPy's verdict on each line of a calculation reply (`verify` has already checked them)."""
+    if not is_calculation_reply(state):
+        return []
+    pairs = zip(state.get("student_steps", []), state.get("step_verdicts", []), strict=False)
+    return [
+        f"SymPy checked the reply: `{step.claim}` is {'true' if verdict.check_holds else 'false'}"
+        for step, verdict in pairs
+        if verdict.check_holds is not None
+    ]
+
+
 def _prompt_text(state: TutorState, context: ErrorContext | None, level: int) -> str:
     if context is None:
         lines = _no_working_lines(state, level)
@@ -99,6 +113,7 @@ def _prompt_text(state: TutorState, context: ErrorContext | None, level: int) ->
     if is_hint_reply(state):
         lines.append(f"Tutor's last message: {last_tutor_message(state) or 'none'}")
         lines.append(f"Student's reply: {latest_student_message(state)}")
+        lines += _calculation_lines(state)
     conversation = conversation_text(state)
     if conversation:
         lines.append(f"Conversation so far:\n{conversation}")
@@ -123,6 +138,6 @@ def hint(state: TutorState) -> dict[str, Any]:
     if not text:
         logger.warning("hint: no usable answer from the model; using the canned hint")
         text = canned_hint(level, kind)
-    elif is_reply and result is not None:
+    elif is_reply and result is not None and not is_calculation_reply(state):
         update["reply_moves_forward"] = result.reply_moves_forward
     return {**update, "hint_text": text}

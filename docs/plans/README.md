@@ -17,6 +17,7 @@ Path: `docs/plans/<area>/YYYY-MM-DD-<topic>.md`.
 | 2026-10-25 | [address-review: comment trigger](workflow/2026-10-25-address-review-comment-trigger.md) | implemented |
 | 2026-10-25 | [address-review: pre-fetch the review](workflow/2026-10-25-address-review-prefetch.md) | implemented |
 | 2026-11-08 | [Graph panel](design/2026-11-08-graph-panel.md) | approved, in progress |
+| 2026-11-08 | [Calculation replies](nodes/2026-11-08-calculation-replies.md) | approved, in progress |
 | 2026-10-25 | [address-review: per-thread replies](workflow/2026-10-25-address-review-thread-replies.md) | implemented |
 | 2026-10-25 | [address-review: hardening](workflow/2026-10-25-address-review-hardening.md) | implemented |
 | 2026-10-25 | [Design handoff to docs](design/2026-10-25-design-handoff.md) | implemented |

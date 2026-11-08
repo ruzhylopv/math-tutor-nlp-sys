@@ -753,3 +753,10 @@ fallback hints" from the roadmap.
   `hint_text` can hold a draft the leak check later rejects; cost: a student cannot read why the tutor routed the turn.
 - **The chat input is turned off during a turn with `st.chat_input(submit_mode="disable")`** | `disabled=` driven by a pending
   message kept in `session_state` | Streamlit re-enables it when the run ends, so no flag of ours can leave it stuck; cost: Python does not know a turn is starting, so the sidebar buttons can still interrupt one.
+- **A calculation in reply to a hint ends the diagnosis after `verify` and keeps the earlier diagnosis** | a routing gate that skips
+  `diagnosis`; removing the code routing of replies (Layer 5) so the model decides | every submitted line still goes through SymPy,
+  routing does not change and no model call is added; cost: a line with a variable in a reply still gets a full diagnosis, and a
+  whole rework of an arithmetic problem sent as a reply is read as a calculation.
+- **A calculation reply does not change the hint level, right or wrong** | raising the next hint's level on a false calculation, as
+  for other replies | decided by the developer: a slip in a side calculation is not a sign the student needs a more direct hint;
+  cost: a student who keeps getting the calculation wrong gets the same level.

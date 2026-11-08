@@ -45,6 +45,7 @@ from tutor.tools.catalogue import load_catalogue
 from tutor.tools.diagnosis import (
     error_context,
     fresh_problem_fields,
+    is_calculation_reply,
     is_clean_solution,
     is_hint_reply,
     is_no_working_help,
@@ -205,6 +206,8 @@ def _diagnosed(state: TutorState) -> dict[str, Any]:
         return {**_reply(OUT_OF_SCOPE_TEXT), "error_context": None}
     if is_clean_solution(state):
         return _clean_solution(state)
+    if is_calculation_reply(state):  # the earlier diagnosis and the level stand
+        return {"next_action": "hint", "hint_retries": 0}
     seen = list(state.get("misconceptions_seen", []))
     misconception = state.get("misconception")
     level = state.get("hint_level", 1)
