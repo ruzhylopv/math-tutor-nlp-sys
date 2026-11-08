@@ -16,6 +16,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import StateSnapshot
 
 from tutor.config import ConfigError, checkpoint_db_path
 from tutor.graph import build_main_graph, new_turn
@@ -139,18 +140,35 @@ def load_history(tutor: Tutor, student_id: str, chat: int) -> list[tuple[str, st
     return history
 
 
+def _undo_run(tutor: Tutor, config: RunnableConfig, before: StateSnapshot) -> None:
+    """Put a chat back as it was before a run that failed, so the failed turn leaves no trace.
+
+    A copy of the earlier checkpoint becomes the newest one; a first message has no earlier
+    checkpoint, so the thread is emptied. If this fails too, the failure is only logged.
+    """
+    try:
+        if before.metadata is None:  # nothing was saved before this run
+            tutor.saver.delete_thread(config["configurable"]["thread_id"])
+        else:
+            tutor.graph.update_state(before.config or config, None, as_node="__copy__")
+    except Exception:
+        logger.exception("ui: could not undo the failed run")
+
+
 def send_stream(
     tutor: Tutor, student_id: str, chat: int, text: str
 ) -> Iterator[StepStarted | StepFinished | TurnView]:
     """One student message is one run of the graph: a `StepStarted` and a `StepFinished` per node
     run (a node that runs twice is logged twice), then one `TurnView`.
 
-    A failure ends the stream with a friendly `TurnView` (error=True) instead of raising.
+    A failure ends the stream with a friendly `TurnView` (error=True) instead of raising. A run
+    stopped by a 429 is undone, so a retry does not raise the hint level or store the message twice.
     """
     config = _config(student_id, chat)
     visited: list[str] = []
     started: dict[str, float] = {}  # task id -> start time
     try:
+        before = tutor.graph.get_state(config)
         # with several modes and subgraphs each chunk is (namespace, mode, data); the stub types
         # do not say so
         chunks: Iterator[Any] = tutor.graph.stream(
@@ -174,6 +192,7 @@ def send_stream(
         state = tutor.graph.get_state(config).values
     except QuotaExceededError:
         logger.warning("ui: the model provider has no quota left")
+        _undo_run(tutor, config, before)
         yield TurnView(reply=NO_QUOTA_REPLY, error=True)
         return
     except Exception:  # the UI must survive a model, network or config failure

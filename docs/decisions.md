@@ -741,3 +741,7 @@ fallback hints" from the roadmap.
 - **A 429 stops the turn and tells the student there is no quota** | returning None like other transient failures | a None
   became a fallback such as "write out your solution", which blamed the student for a provider limit; cost: a short rate-limit
   spike also reads as "no quota", and an eval stops at the first 429 instead of counting Nones.
+- **A run stopped by a 429 is undone: a `__copy__` fork of the checkpoint from before the run becomes the newest, and a first
+  message's thread is deleted** | putting `hint_level`, `turns` and the rest back by hand with `update_state`, or keeping the
+  half-run | a hand-written list misses a field, and `messages` has a reducer, so a kept half-run stores the message twice and
+  each retry raises the level; cost: the failed run's checkpoints stay in the thread's history, and only a 429 is undone.
