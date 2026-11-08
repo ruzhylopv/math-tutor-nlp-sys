@@ -8,10 +8,11 @@ previous attempt are not mistaken for a new one); for a message without a proble
 stored `problem`, `topic` and `level`. If there is no message, or the model fails twice, the steps
 are empty and the rest stays. A stated problem with a topic from the model sets `topic` and
 `level`; a problem that differs from the stored one and has no topic clears them, since they
-described the old problem.
+described the old problem. A problem that differs from the stored one also resets the per-problem
+fields, so the old diagnosis cannot be taken for one of the new problem.
 
 Reads: messages, problem
-Writes: problem, student_steps, intent, topic, level
+Writes: problem, student_steps, intent, topic, level (and the per-problem fields on a new problem)
 Eval metric: problem-extraction accuracy; claim exact match; step-split accuracy; SymPy parse rate;
     kind accuracy; intent accuracy; topic accuracy / macro-F1
 """
@@ -21,6 +22,7 @@ from typing import Any
 
 from tutor.state import ParsedInput, TutorState
 from tutor.tools import structured
+from tutor.tools.diagnosis import fresh_problem_fields
 from tutor.tools.messages import last_tutor_message, latest_student_message
 
 logger = logging.getLogger("tutor.parse_input")
@@ -46,10 +48,13 @@ def parse_input(state: TutorState) -> dict[str, Any]:
     update: dict[str, Any] = {"student_steps": parsed.steps, "intent": parsed.intent}
     if parsed.problem is not None and parsed.problem.strip():
         update["problem"] = parsed.problem.strip()
+        is_new = stored != "none" and _squash(update["problem"]) != _squash(stored)
+        if is_new:
+            update.update(fresh_problem_fields())
         if parsed.topic is not None:
             update["topic"] = parsed.topic
             update["level"] = parsed.level
-        elif stored != "none" and _squash(update["problem"]) != _squash(stored):
+        elif is_new:
             update["topic"] = None
             update["level"] = None
     return update

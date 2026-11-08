@@ -1,10 +1,27 @@
 """Pure helpers shared by the diagnosis nodes and the graph."""
 
 from collections.abc import Sequence
+from typing import Any
 
 from tutor.state import Step, StepVerdict, TutorState
 
 VALID_RELATIONS = ("equivalent", "implies", "narrows")
+
+
+def fresh_problem_fields() -> dict[str, Any]:
+    """Per-problem fields back to their starting values."""
+    return {
+        "hint_level": 1,
+        "hint_retries": 0,
+        "hints_used": 0,
+        "turns": 0,
+        "error_context": None,
+        "misconception": None,
+        "misconceptions_seen": [],
+        "step_verdicts": [],
+        "first_error_step": None,
+        "focus_step": None,
+    }
 
 
 def is_skipped_line(verdict: StepVerdict, steps: Sequence[Step]) -> bool:

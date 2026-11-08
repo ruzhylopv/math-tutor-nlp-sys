@@ -423,3 +423,59 @@ def test_partial_progress_raises_the_level_when_the_student_is_stuck() -> None:
 def test_the_first_hint_on_partial_progress_is_level_one() -> None:
     state = _diagnosed_incomplete(intent="stuck", hints_used=0)
     assert orch.orchestrator(state)["hint_level"] == 1
+
+
+def _hinted_stopped(text: str, **fields: Any) -> TutorState:
+    context = ErrorContext(step_number=1, before="x^2 + 4 = 5x", after="x^2 - 5x + 4 = 0")
+    return _hinted(
+        text, problem="x^2 + 4 = 5x", error_type="incomplete", error_context=context, **fields
+    )
+
+
+def test_a_stopped_solution_may_quote_its_last_valid_line() -> None:
+    context = ErrorContext(step_number=1, before="3(x + 2) = 15", after="3x + 6 = 15")
+    text = "Your line `3x + 6 = 15` is right. What comes next?"
+    assert orch.orchestrator(_hinted(text, error_context=context))["next_action"] == "hint"
+    state = _hinted(text, error_context=context, error_type="incomplete")
+    assert orch.orchestrator(state)["reply_text"] == text
+
+
+def test_the_line_derived_from_the_last_valid_line_is_rejected() -> None:
+    out = orch.orchestrator(_hinted_stopped("Try `(x - 1)(x - 4) = 0`."))
+    assert out["next_action"] == "hint" and out["hint_retries"] == 1
+
+
+def test_a_second_leak_on_a_stopped_solution_uses_the_stopped_text() -> None:
+    out = orch.orchestrator(_hinted_stopped("Try `(x - 1)(x - 4) = 0`.", hint_retries=1))
+    assert out["reply_text"] == canned_hint(2, "incomplete")
+    assert out["reply_text"] != canned_hint(2)
+
+
+def _diagnosed_reply(**fields: Any) -> TutorState:
+    base: dict[str, Any] = {
+        "stage": "diagnosed",
+        "topic": "Algebra",
+        "intent": "answer",
+        "misconception": _mis("M001"),
+        "misconceptions_seen": ["M001"],
+        "hint_level": 1,
+        "hints_used": 1,
+    }
+    return TutorState(**(base | fields))  # type: ignore[typeddict-item]
+
+
+def test_a_wrong_math_reply_raises_the_level_only_after_its_own_hint() -> None:
+    diagnosed = orch.orchestrator(_diagnosed_reply())
+    assert diagnosed["next_action"] == "hint" and diagnosed["hint_level"] == 1
+    hinted = _hinted_state(hint_level=diagnosed["hint_level"], reply_moves_forward=False)
+    assert orch.orchestrator(hinted)["hint_level"] == 2
+
+
+def test_a_math_reply_with_a_new_misconception_is_recorded_and_keeps_the_level() -> None:
+    out = orch.orchestrator(_diagnosed_reply(misconception=_mis("M002"), hint_level=3))
+    assert out["hint_level"] == 3
+    assert out["misconceptions_seen"] == ["M001", "M002"]
+
+
+def test_a_math_reply_without_a_misconception_keeps_the_level() -> None:
+    assert orch.orchestrator(_diagnosed_reply(misconception=None, hint_level=2))["hint_level"] == 2

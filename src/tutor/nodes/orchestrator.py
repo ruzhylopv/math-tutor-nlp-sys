@@ -8,10 +8,12 @@ new_message: an LLM `Decision` picks ask / diagnose / hint / reply; code guards 
     level stays for its own hint.
 diagnosed: plain code. Out-of-scope subject: decline. Clean solution: record the attempt, maybe
     offer practice. Otherwise set the hint level (different misconception: 1, same: +1; partial
-    progress keeps it unless the student is stuck) and hint.
+    progress keeps it unless the student is stuck) and hint. A reply keeps the level for its own
+    hint, also when it contains math.
 hinted: plain code runs the leakage check, publishes the hint, or retries once, then falls back
     to the canned hint for the level. A rejected hint never enters `messages`. A reply the hint
-    judged as not moving forward raises the level for the next hint.
+    judged as not moving forward raises the level for the next hint. For a stopped solution the
+    last valid line may be quoted, so the line derived from it is what the check flags.
 
 Reads: messages, stage, intent, reply_moves_forward, and the state so far
 Writes: next_action, hint_level, hint_retries, reply_text, messages, turns, hints_used,
@@ -35,7 +37,7 @@ from tutor.state import (
 from tutor.tools import structured
 from tutor.tools.canned_hints import MAX_LEVEL, canned_hint
 from tutor.tools.catalogue import load_catalogue
-from tutor.tools.diagnosis import is_clean_solution
+from tutor.tools.diagnosis import fresh_problem_fields, is_clean_solution
 from tutor.tools.leakage import find_leaks
 from tutor.tools.learner_db import get_profile, learner_db_path, record_attempt
 from tutor.tools.messages import last_tutor_message, latest_student_message
@@ -65,22 +67,6 @@ def _db_path() -> str | None:
         return None
 
 
-def _fresh_problem_fields() -> dict[str, Any]:
-    """Per-problem fields back to their starting values."""
-    return {
-        "hint_level": 1,
-        "hint_retries": 0,
-        "hints_used": 0,
-        "turns": 0,
-        "error_context": None,
-        "misconception": None,
-        "misconceptions_seen": [],
-        "step_verdicts": [],
-        "first_error_step": None,
-        "focus_step": None,
-    }
-
-
 def _has_old_diagnosis(state: TutorState) -> bool:
     return bool(
         state.get("misconceptions_seen")
@@ -108,7 +94,7 @@ def _new_message(state: TutorState) -> dict[str, Any]:
     update: dict[str, Any] = {}
     # parse_input clears topic when the problem changes: drop what described the old problem
     if state.get("topic") is None and _has_old_diagnosis(state):
-        update.update(_fresh_problem_fields())
+        update.update(fresh_problem_fields())
     update["turns"] = update.get("turns", state.get("turns", 0)) + 1
     path = _db_path()
     if path is not None and "student_id" in state:
@@ -178,7 +164,7 @@ def _clean_solution(state: TutorState) -> dict[str, Any]:
                 )
                 break
     update.update(_reply(text))
-    update.update(_fresh_problem_fields())  # the attempt is finished
+    update.update(fresh_problem_fields())  # the attempt is finished
     return update
 
 
@@ -204,6 +190,8 @@ def _diagnosed(state: TutorState) -> dict[str, Any]:
         level = min(level + 1, MAX_LEVEL) if same else 1
         if misconception.id not in seen:
             seen.append(misconception.id)
+    if state.get("intent") == "answer":  # a reply's own hint keeps the level; `_hinted` raises it
+        level = state.get("hint_level", 1)
     return {
         "next_action": "hint",
         "hint_level": level,
@@ -216,7 +204,11 @@ def _hinted(state: TutorState) -> dict[str, Any]:
     text = state.get("hint_text", "")
     level = state.get("hint_level", 1)
     context = state.get("error_context")
-    before = context.before if context is not None else state.get("problem", "")
+    stopped = state.get("error_type") == "incomplete"
+    if context is None:
+        before = state.get("problem", "")
+    else:
+        before = context.after if stopped else context.before
     leaks = find_leaks(text, state.get("problem", ""), before) if text else ["empty hint"]
     retries = state.get("hint_retries", 0)
     if leaks and retries < MAX_RETRIES:
@@ -224,7 +216,7 @@ def _hinted(state: TutorState) -> dict[str, Any]:
         return {"next_action": "hint", "hint_retries": retries + 1}
     if leaks:
         logger.info("orchestrator: hint leaks twice (%s); using the canned hint", leaks)
-        text = canned_hint(level)
+        text = canned_hint(level, state.get("error_type"))
     update = _reply(text)
     update["hints_used"] = state.get("hints_used", 0) + 1
     if state.get("intent") == "answer" and state.get("reply_moves_forward") is False:

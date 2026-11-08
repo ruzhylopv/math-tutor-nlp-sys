@@ -13,6 +13,7 @@ from tutor import graph as graph_module
 from tutor.graph import build_main_graph, new_turn, route_from_orchestrator
 from tutor.state import Decision, HintText, ParsedInput, Step, TutorState
 from tutor.tools import structured
+from tutor.tools.canned_hints import canned_hint
 
 
 @pytest.mark.parametrize(
@@ -220,3 +221,56 @@ def test_a_stopped_substitution_and_a_reply_to_the_hint(
     second = graph.invoke(new_turn("ada", "It has to be equal to zero"), config)
     assert second["messages"][-1].content == "Yes, that is the idea. What next?"
     assert second["hint_level"] == 1 and second["hints_used"] == 2
+
+
+def _stopped_turn() -> ParsedInput:
+    return ParsedInput(
+        problem="x^2 + 4 = 5x",
+        steps=[Step(claim="x^2 - 5x + 4 = 0")],
+        intent="check_work",
+        topic="Algebra",
+        level=2,
+    )
+
+
+def test_a_new_problem_labelled_answer_is_not_a_reply_to_the_old_diagnosis(
+    monkeypatch: pytest.MonkeyPatch, canned_llm: Callable[..., None]
+) -> None:
+    monkeypatch.delenv("LEARNER_DB_PATH", raising=False)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    graph = build_main_graph(InMemorySaver())
+    config: RunnableConfig = {"configurable": {"thread_id": "t"}}
+    canned_llm(
+        ParsedInput=_stopped_turn(),
+        Decision=Decision(action="diagnose", reason="working"),
+        HintText=HintText(text="Good so far. What comes next?"),
+    )
+    first = graph.invoke(new_turn("ada", "my work"), config)
+    assert first["error_context"] is not None and first["hints_used"] == 1
+    graph.update_state(config, {"hint_level": 3})  # as if earlier hints had raised it
+
+    canned_llm(
+        ParsedInput=ParsedInput(problem="2y = 6", intent="answer", topic="Algebra", level=1),
+        Decision=Decision(action="ask", reason="no working", reply_text="Show me your steps."),
+    )  # no HintText: a hint would fail the test
+    second = graph.invoke(new_turn("ada", "2y = 6"), config)
+    assert second["next_action"] == "ask"
+    assert second["messages"][-1].content == "Show me your steps."
+    assert second["hint_level"] == 1 and second["hints_used"] == 0
+    assert second["error_context"] is None
+
+
+def test_a_stopped_solution_through_a_leak_rejection_and_the_fallback(
+    monkeypatch: pytest.MonkeyPatch, canned_llm: Callable[..., None]
+) -> None:
+    monkeypatch.delenv("LEARNER_DB_PATH", raising=False)
+    monkeypatch.setattr("tutor.config.load_dotenv", lambda: False)
+    canned_llm(
+        ParsedInput=_stopped_turn(),
+        Decision=Decision(action="diagnose", reason="working"),
+        HintText=HintText(text="Try `(x - 1)(x - 4) = 0`."),
+    )
+    result = build_main_graph().invoke(new_turn("ada", "my work"))
+    assert result["error_type"] == "incomplete"
+    assert result["hint_retries"] == 1 and result["hints_used"] == 1
+    assert result["messages"][-1].content == canned_hint(1, "incomplete")

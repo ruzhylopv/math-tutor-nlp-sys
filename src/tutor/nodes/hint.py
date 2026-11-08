@@ -92,12 +92,12 @@ def hint(state: TutorState) -> dict[str, Any]:
         update["reply_moves_forward"] = None
     if context is None:
         logger.warning("hint: no error context; using the canned hint for level %d", level)
-        return {**update, "hint_text": canned_hint(level)}
+        return {**update, "hint_text": canned_hint(level, state.get("error_type"))}
     result = structured.call_structured("hint", HintText, _prompt_text(state, context, level))
     text = result.text.strip() if result else ""
     if not text:
         logger.warning("hint: no usable answer from the model; using the canned hint")
-        text = canned_hint(level)
+        text = canned_hint(level, state.get("error_type"))
     elif is_reply and result is not None:
         update["reply_moves_forward"] = result.reply_moves_forward
     return {**update, "hint_text": text}

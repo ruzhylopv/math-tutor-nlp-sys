@@ -6,8 +6,9 @@ from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import BaseModel
 
 from tutor.nodes.parse_input import parse_input
-from tutor.state import ParsedInput, Step, TutorState
+from tutor.state import ParsedInput, Step, Topic, TutorState
 from tutor.tools import structured
+from tutor.tools.diagnosis import fresh_problem_fields
 
 ATTEMPT = ParsedInput(
     problem="2(y+1) = 10",
@@ -231,3 +232,30 @@ def test_a_message_without_a_problem_keeps_the_stored_topic(
     canned_llm(ParsedInput=ParsedInput(problem=None, intent="explain", topic="Algebra", level=2))
     state = _state("what is a coefficient?", problem="3x = 9")
     assert "topic" not in parse_input({**state, "topic": "Prealgebra", "level": 1})
+
+
+def _diagnosed_state(text: str, problem: str) -> TutorState:
+    return {**_state(text, problem=problem), "hint_level": 3, "hints_used": 2}
+
+
+@pytest.mark.parametrize("topic", [None, "Algebra"])
+def test_a_different_problem_resets_the_per_problem_fields(
+    canned_llm: Callable[..., None], topic: Topic | None
+) -> None:
+    canned_llm(ParsedInput=ParsedInput(problem="x + 1 = 2", intent="answer", topic=topic, level=1))
+    result = parse_input(_diagnosed_state("x + 1 = 2", problem="3x = 9"))
+    assert {key: result[key] for key in fresh_problem_fields()} == fresh_problem_fields()
+
+
+@pytest.mark.parametrize("problem", ["3x = 9", "3x=9", None])
+def test_the_same_problem_or_none_does_not_reset(
+    canned_llm: Callable[..., None], problem: str | None
+) -> None:
+    canned_llm(ParsedInput=ParsedInput(problem=problem, intent="answer", topic="Algebra", level=1))
+    result = parse_input(_diagnosed_state("x = 3", problem="3x = 9"))
+    assert not set(result) & set(fresh_problem_fields())
+
+
+def test_the_first_problem_does_not_reset(canned_llm: Callable[..., None]) -> None:
+    canned_llm(ParsedInput=ParsedInput(problem="3x = 9", topic="Algebra", level=1))
+    assert not set(parse_input(_state("3x = 9"))) & set(fresh_problem_fields())

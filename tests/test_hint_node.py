@@ -194,3 +194,17 @@ def test_no_verdict_is_written_for_a_message_that_is_not_a_reply(
 ) -> None:
     _answer_with(monkeypatch, HintText(text="Look again.", reply_moves_forward=True))
     assert "reply_moves_forward" not in hint(_state(intent="stuck"))
+
+
+@pytest.mark.parametrize("answer", [None, HintText(text="   ")])
+def test_a_failed_model_on_a_stopped_solution_gives_the_stopped_text(
+    answer: HintText | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _answer_with(monkeypatch, answer)
+    assert hint(_stopped(hint_level=2))["hint_text"] == canned_hint(2, "incomplete")
+
+
+def test_a_stopped_solution_without_an_error_context_gives_the_stopped_text() -> None:
+    state = _state(error_type="incomplete")
+    del state["error_context"]
+    assert hint(state)["hint_text"] == canned_hint(1, "incomplete")
