@@ -205,4 +205,6 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 - **Graph panel v2 (2026-11-08)**: the Graphviz chart became a clickable graph in the style of a GitHub Actions run (status icons, a
   spinner, durations, repeat counts; a click shows that node's runs), the log scrolls to its end, and the "Developer view" toggle
   is gone. Checked in Chromium on a scripted stream, light and dark, with no model calls. No metrics: UI only.
+- **Panel card and log rows (2026-11-08)**: a click on a node shows its card under the graph, and the log became fold-out rows
+  drawn by the panel component. Checked in Chromium on a scripted stream, with no model calls. No metrics: UI only.
 - Planned: the demo video using scenarios A and B.
