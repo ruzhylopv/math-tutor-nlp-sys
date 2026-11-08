@@ -318,3 +318,60 @@ def _rules_section() -> str:
 
 def test_the_no_naming_rule_applies_only_to_the_starting_point() -> None:
     assert "Never name a solution" not in _rules_section()
+
+
+NUMBERS_HINT = "Try x = 2 in both lines. The left side is 12 in the first and 8 in the second."
+
+
+def _chat(tutor: str, student: str) -> list[Any]:
+    return [HumanMessage("3(x + 2) = 15"), AIMessage(tutor), HumanMessage(student)]
+
+
+def test_a_reply_to_the_numbers_does_not_get_them_again(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    hint(
+        _state(
+            hint_level=2,
+            intent="answer",
+            hints_used=2,
+            messages=_chat(NUMBERS_HINT, "they are not equal"),
+        )
+    )
+    assert "Counterexample: already used in your last message" in prompts[0][2]
+    assert "With x = 2, the left side" not in prompts[0][2]
+
+
+def test_a_reply_to_another_question_still_gets_the_numbers(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    hint(
+        _state(
+            hint_level=2,
+            intent="answer",
+            hints_used=1,
+            messages=_chat("What does the 3 multiply?", "only the x"),
+        )
+    )
+    assert "With x = 2, the left side is 12" in prompts[0][2]
+
+
+def test_a_question_about_the_hint_is_passed_on_with_the_tutors_message(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    hint(
+        _state(
+            intent="explain",
+            hints_used=1,
+            messages=_chat("Which part did the 3 reach?", "What do you mean here?"),
+        )
+    )
+    assert "Tutor's last message: Which part did the 3 reach?" in prompts[0][2]
+    assert "Student's question: What do you mean here?" in prompts[0][2]
+
+
+def test_a_question_before_any_hint_is_not_about_a_hint(
+    prompts: list[tuple[str, str, str]],
+) -> None:
+    hint(_state(intent="explain", hints_used=0, messages=[HumanMessage("what is a bracket?")]))
+    assert "Student's question" not in prompts[0][2]

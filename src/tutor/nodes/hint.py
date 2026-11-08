@@ -14,7 +14,9 @@ With `error_type` `incomplete` nothing is wrong: the student stopped before an a
 is told that the work is correct and given the last valid line, with no counterexample or rule.
 With intent `answer` after a diagnosis or an earlier hint, the model also gets the tutor's last
 message and the reply, responds to the reply first and judges whether it moves forward; a failed
-call gives no verdict. An `answer` before any hint is not a reply to one. This is the one
+call gives no verdict. A level-2 reply to numbers already quoted is not given them again. With
+intent `explain` after a hint, the model gets the question and says the same point more simply.
+An `answer` before any hint is not a reply to one. This is the one
 place where the LLM judges a student's math (see CLAUDE.md); submitted steps still go to SymPy.
 A calculation in reply is judged by SymPy alone: the model is told the verdict, and its own
 `reply_moves_forward` is dropped, so the reply does not change the level.
@@ -25,13 +27,14 @@ Eval metric: answer-leakage rate (automatic); rubric judge and a small human che
 """
 
 import logging
+import re
 from typing import Any
 
 from tutor.state import ErrorContext, HintText, Misconception, TutorState
 from tutor.tools import structured
 from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 from tutor.tools.catalogue import load_catalogue
-from tutor.tools.counterexample import counterexample
+from tutor.tools.counterexample import Counterexample, counterexample
 from tutor.tools.diagnosis import is_calculation_reply, is_hint_reply, is_no_working_help
 from tutor.tools.messages import conversation_text, last_tutor_message, latest_student_message
 
@@ -57,6 +60,15 @@ def _stopped_lines(state: TutorState, context: ErrorContext, level: int) -> list
     ]
 
 
+def _already_tried(state: TutorState, found: Counterexample) -> bool:
+    """True when the student is replying to a message that already quoted these numbers."""
+    if not is_hint_reply(state):
+        return False
+    quoted = set(re.findall(r"\d+(?:/\d+)?", last_tutor_message(state)))
+    numbers = {str(value).lstrip("-") for value in found.assignment.values()}
+    return numbers | {found.before_value.lstrip("-"), found.after_value.lstrip("-")} <= quoted
+
+
 def _mistake_lines(state: TutorState, context: ErrorContext, level: int) -> list[str]:
     problem = state.get("problem", "")
     misconception = state.get("misconception")
@@ -72,7 +84,10 @@ def _mistake_lines(state: TutorState, context: ErrorContext, level: int) -> list
     ]
     if level == 2:
         found = counterexample(context.before, context.after, problem)
-        lines.append("Counterexample: " + (found.describe() if found else "none available"))
+        if found is not None and _already_tried(state, found):
+            lines.append("Counterexample: already used in your last message")
+        else:
+            lines.append("Counterexample: " + (found.describe() if found else "none available"))
     if level == MAX_LEVEL and misconception is not None:
         rule = _correct_rule(misconception)
         if rule:
@@ -103,6 +118,13 @@ def _calculation_lines(state: TutorState) -> list[str]:
     ]
 
 
+def _asks_about_the_hint(state: TutorState, context: ErrorContext | None) -> bool:
+    """True for a question about a hint on a diagnosed step. No working has its own prompt."""
+    return (
+        state.get("intent") == "explain" and context is not None and state.get("hints_used", 0) > 0
+    )
+
+
 def _prompt_text(state: TutorState, context: ErrorContext | None, level: int) -> str:
     if context is None:
         lines = _no_working_lines(state, level)
@@ -114,6 +136,9 @@ def _prompt_text(state: TutorState, context: ErrorContext | None, level: int) ->
         lines.append(f"Tutor's last message: {last_tutor_message(state) or 'none'}")
         lines.append(f"Student's reply: {latest_student_message(state)}")
         lines += _calculation_lines(state)
+    elif _asks_about_the_hint(state, context):
+        lines.append(f"Tutor's last message: {last_tutor_message(state) or 'none'}")
+        lines.append(f"Student's question: {latest_student_message(state)}")
     conversation = conversation_text(state)
     if conversation:
         lines.append(f"Conversation so far:\n{conversation}")

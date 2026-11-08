@@ -105,7 +105,8 @@ One node, three modes, chosen from the `stage` field (`new_message`, `diagnosed`
 sets `hinted`:
 - **new_message** (the student wrote something): the LLM `Decision` picks `ask`, `diagnose`, `hint` or
   `reply`. Counters (`turns`) are plain code. When the action is `hint` without a new diagnosis (the
-  student asked a question, as in scenario B T2), plain code escalates `hint_level` by one (capped at 4) for
+  student asked a question, as in scenario B T2), plain code escalates `hint_level` by one (capped at 4; a clarifying
+  question, intent `explain`, after a hint keeps the level) for
   the current misconception, i.e. the last entry of `misconceptions_seen`. A student with a stored problem and no
   working who needs help to begin also gets a `hint`: one guiding question, first at level 1, and never a lesson. The
   tutor coaches a student into a specific problem; it does not teach algebra in general.
