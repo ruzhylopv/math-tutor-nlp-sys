@@ -196,6 +196,8 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   history, "New chat" (same person, same profile), sidebar with hint level, hints used and the `get_profile` summary,
   a visited-nodes toggle. Unit tests (`test_ui.py`, `test_app.py` with Streamlit's `AppTest`) run with the model scripted.
   No metrics: the app is not a node. **Not done yet: the demo video, the report and the single test-split run.**
+- **Sidebar counters (2026-11-08)**: hint level and hints used are normal-size text, and the level shows its cap (`2 / 4`).
+  Checked with `AppTest`. No metrics: UI only.
 - **Graph panel (2026-11-08)**: a fixed right panel with the live graph (running node green, used path blue, failed node red) and
   a log per node; details are behind a "Developer view" toggle, and `orchestrator` now keeps the model's `decision_reason`. Unit
   tests and an `AppTest` run with the model scripted; the layout and redraw were checked in headless Chrome on a scripted stream.

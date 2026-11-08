@@ -9,6 +9,7 @@ from streamlit.testing.v1 import AppTest
 
 from tutor import ui
 from tutor.state import Decision
+from tutor.tools.canned_hints import MAX_LEVEL
 from tutor.trace import VISITED
 
 APP = Path(__file__).resolve().parent.parent / "app.py"
@@ -115,6 +116,27 @@ def test_a_new_chat_clears_the_panel(app: AppTest) -> None:
     app.chat_input[0].set_value("hi").run()
     next(b for b in app.sidebar.button if b.label == "New chat").click().run()
     assert _panel_text(app) == []
+
+
+def _sidebar_text(app: AppTest) -> list[str]:
+    return [m.value for m in app.sidebar.markdown]
+
+
+def test_the_sidebar_counters_are_normal_text_and_show_the_cap(app: AppTest) -> None:
+    _start(app)
+    assert len(app.sidebar.metric) == 0
+    assert f"Hint level: **none yet (max {MAX_LEVEL})**" in _sidebar_text(app)
+    assert "Hints used: **0**" in _sidebar_text(app)
+
+
+def test_the_sidebar_shows_the_current_level_out_of_the_cap(
+    app: AppTest, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    info = ui.SidebarInfo(hint_level=2, hints_used=3, profile=None)
+    monkeypatch.setattr(ui, "sidebar_info", lambda *args: info)
+    _start(app)
+    assert f"Hint level: **2 / {MAX_LEVEL}**" in _sidebar_text(app)
+    assert "Hints used: **3**" in _sidebar_text(app)
 
 
 def _scripted_turn(*args: object, **kwargs: object) -> Iterator[object]:
