@@ -738,3 +738,6 @@ fallback hints" from the roadmap.
 - **A solved problem is recognised by `is_correct`, reset with the per-problem fields** | clearing `problem` on a clean solution; a
   new `solved` state field | clearing `problem` would stop `parse_input` from noticing a new problem and leave the old topic, and
   a new field needs an edit to an existing test; cost: `is_correct` also means "solved" once the verdicts are cleared.
+- **A 429 stops the turn and tells the student there is no quota** | returning None like other transient failures | a None
+  became a fallback such as "write out your solution", which blamed the student for a provider limit; cost: a short rate-limit
+  spike also reads as "no quota", and an eval stops at the first 429 instead of counting Nones.

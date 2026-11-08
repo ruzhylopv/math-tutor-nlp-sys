@@ -6,6 +6,7 @@ import pytest
 
 from tutor import ui
 from tutor.state import Decision
+from tutor.tools import structured
 from tutor.tools.learner_db import record_attempt
 
 
@@ -183,3 +184,14 @@ def test_an_empty_reply_is_an_error(tutor: ui.Tutor, monkeypatch: pytest.MonkeyP
 
     view = _send(replace(tutor, graph=Graph()), "ada", 1, "x")  # type: ignore[arg-type]
     assert view.error and view.reply == ui.ERROR_REPLY
+
+
+def test_no_quota_tells_the_student_through_a_real_graph_run(
+    tutor: ui.Tutor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def no_quota(*args: object, **kwargs: object) -> None:
+        raise structured.QuotaExceededError("429")
+
+    monkeypatch.setattr(structured, "call_structured", no_quota)
+    events = list(ui.send_stream(tutor, "ada", 1, "x + 1 = 2"))
+    assert events[-1] == ui.TurnView(reply=ui.NO_QUOTA_REPLY, error=True)

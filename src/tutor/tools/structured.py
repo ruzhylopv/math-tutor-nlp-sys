@@ -5,7 +5,7 @@ pydantic schema, retries once, and returns None if the output is still invalid. 
 function, and unit tests mock it, so no node touches the network.
 
 Only transient or invalid-output failures are retried (see `_RETRYABLE`): connection errors and
-timeouts, 429, 5xx, a truncated or filtered answer, and output that does not parse (a ValueError,
+timeouts, 5xx, a truncated or filtered answer, and output that does not parse (a ValueError,
 which covers pydantic's ValidationError and langchain's OutputParserException) and a model refusal
 (OpenAIRefusalError). A provider that answers HTTP 200 with a bad body (an `{"error": ...}` object,
 an HTML page, an empty `choices` list) makes the SDK raise TypeError, AttributeError or IndexError;
@@ -13,7 +13,8 @@ these are provider failures, so they are retried too. The price is that a progra
 three types in the call would also be retried once and then give None with the class name logged;
 that is accepted, because the node tests mock this function. Setup errors are raised, not
 swallowed: a missing key (ConfigError), a wrong or revoked key (401, 403) and a bad request (400),
-so a broken eval fails at once instead of giving N silent Nones.
+so a broken eval fails at once instead of giving N silent Nones. A 429 raises `QuotaExceededError`
+after the SDK's own retries, so the student is told there is no quota instead of getting a fallback.
 
 For evals, set LLM_CACHE_DIR: each answer is stored under a hash of the model, the prompt, the
 schema and the user text, so a rerun costs nothing and a changed prompt invalidates itself.
@@ -35,11 +36,15 @@ from tutor.prompts import load_prompt
 
 logger = logging.getLogger("tutor.structured")
 
+
+class QuotaExceededError(RuntimeError):
+    """The model provider answered 429: no quota left, or the rate limit was hit."""
+
+
 # The openai SDK already retries connection errors, 429 and 5xx twice with backoff
 # (default max_retries=2), so our single retry is mainly for invalid output.
 _RETRYABLE = (
     openai.APIConnectionError,  # includes APITimeoutError
-    openai.RateLimitError,
     openai.InternalServerError,
     openai.LengthFinishReasonError,
     openai.ContentFilterFinishReasonError,
@@ -83,6 +88,11 @@ def call_structured[T: BaseModel](
     for attempt in range(1, retries + 2):
         try:
             result = chain.invoke(messages)
+        except openai.RateLimitError as exc:
+            logger.warning(
+                "%s attempt %d failed: RateLimitError (status 429)", prompt_name, attempt
+            )
+            raise QuotaExceededError("the model provider answered 429") from exc
         except _RETRYABLE as exc:  # anything else (401, 403, 400, a bug) propagates
             logger.warning(
                 "%s attempt %d failed: %s (status %s)",

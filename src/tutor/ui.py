@@ -22,10 +22,12 @@ from tutor.graph import build_main_graph, new_turn
 from tutor.state import LearnerProfile, TutorState
 from tutor.tools.checkpointer import sqlite_checkpointer
 from tutor.tools.learner_db import get_profile, learner_db_path
+from tutor.tools.structured import QuotaExceededError
 
 logger = logging.getLogger(__name__)
 
 ERROR_REPLY = "Sorry, something went wrong on my side. Please send your message again."
+NO_QUOTA_REPLY = "Sorry, the tutor has no model quota left right now. Please try again later."
 
 # What the student sees while a node runs. A node missing here (one added later) is shown by its
 # own name, so every step still gets a line in the log.
@@ -170,6 +172,10 @@ def send_stream(
                 logger.info("ui: %s took %.2fs", node, seconds)
                 yield StepFinished(node, label, seconds)
         state = tutor.graph.get_state(config).values
+    except QuotaExceededError:
+        logger.warning("ui: the model provider has no quota left")
+        yield TurnView(reply=NO_QUOTA_REPLY, error=True)
+        return
     except Exception:  # the UI must survive a model, network or config failure
         logger.exception("ui: the graph run failed")
         yield TurnView(reply=ERROR_REPLY, error=True)
