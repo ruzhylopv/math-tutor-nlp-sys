@@ -58,11 +58,10 @@ PANEL_CSS = """
 
 @dataclass(frozen=True)
 class Panel:
-    """The slots that are redrawn while a turn runs, and the graph drawn from them."""
+    """The slot that updates the panel while a turn runs, and the graph drawn from it."""
 
     graph: Graph
     updates: DeltaGenerator
-    log: DeltaGenerator
 
 
 @st.cache_resource
@@ -109,21 +108,10 @@ def show_step_log(lines: list[str], summary: str) -> None:
             st.write(line)
 
 
-def draw_log(panel: Panel, steps: list[StepFinished]) -> None:
-    with panel.log.container():
-        for step in steps:
-            if step.path not in panel.graph.nodes:  # the `diagnosis` wrapper: its steps are listed
-                continue
-            st.text(f"{'✗' if step.failed else '✓'} {step.path} · {step.seconds:.1f}s")
-            if step.details:  # a code block is literal: model text is not Markdown
-                st.code("\n".join(step.details), language=None, wrap_lines=True)
-
-
 def draw_panel(panel: Panel, trace: Trace, steps: list[StepFinished]) -> None:
-    """Send the new progress to the graph that is already on the page, and redraw the log."""
+    """Send the new progress to the panel that is already on the page."""
     with panel.updates:
         push_update(panel_view(panel.graph, trace, steps))
-    draw_log(panel, steps)
 
 
 def open_panel(tutor: Tutor) -> Panel:
@@ -134,9 +122,7 @@ def open_panel(tutor: Tutor) -> Panel:
     with st.container(key="trace_panel"):
         st.markdown("**How the tutor works**")
         mount_graph(panel_view(graph, trace, steps))
-        panel = Panel(graph, st.container(key="trace_updates").empty(), st.empty())
-    draw_log(panel, steps)
-    return panel
+        return Panel(graph, st.container(key="trace_updates").empty())
 
 
 def run_turn(tutor: Tutor, student_id: str, chat: int, text: str, panel: Panel) -> TurnView:

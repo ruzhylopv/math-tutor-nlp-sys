@@ -778,3 +778,8 @@ fallback hints" from the roadmap.
 - **The panel sits above the chat bar (`z-index: 100`)** | make the chat bar narrower with CSS | one line; the bar spans the window
   and otherwise swallows the wheel over the panel's bottom and hides the last log lines; cost: relies on Streamlit's bar staying
   at z-index 99.
+- **The log is drawn by the panel component as fold-out rows, and a click on a node shows that node's card (the developer's
+  choice from a mock)** | one `st.expander` per row; a collapsible around the whole log; dropping the card | an expander's label is
+  one string, so it cannot hold a right-aligned time and a muted preview, and rows that are only appended stay open during a turn; the
+  card stays because a node that ran five times needs a view of just those runs; cost: the log is no longer readable through
+  `AppTest`'s `text` and `code`, so tests read the data sent to the panel.
