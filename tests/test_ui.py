@@ -221,3 +221,15 @@ def test_a_step_inside_the_diagnosis_gets_its_full_path(tutor: ui.Tutor) -> None
     events = list(ui.send_stream(replace(tutor, graph=Graph()), "ada", 1, "x"))  # type: ignore[arg-type]
     assert isinstance(events[0], ui.StepStarted) and events[0].path == "diagnosis:verify"
     assert isinstance(events[1], ui.StepFinished) and events[1].failed
+
+
+def test_a_reason_for_an_action_code_overruled_is_not_shown(
+    tutor: ui.Tutor, canned_llm: Callable[..., None]
+) -> None:
+    canned_llm(Decision=Decision(action="diagnose", reason="has working"))  # no steps, so `ask`
+    events = list(ui.send_stream(tutor, "ada", 1, "hi"))
+    orchestrator = next(
+        e for e in events if isinstance(e, ui.StepFinished) and e.node == "orchestrator"
+    )
+    assert "action: ask" in orchestrator.details
+    assert not any(line.startswith("why:") for line in orchestrator.details)

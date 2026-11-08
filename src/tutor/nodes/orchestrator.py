@@ -133,7 +133,6 @@ def _new_message(state: TutorState) -> dict[str, Any]:
         action = "diagnose" if has_steps else "ask"
     else:
         action, text = decision.action, decision.reply_text
-        update["decision_reason"] = decision.reason
     if action == "diagnose" and not has_steps:
         action = "ask"
     if action == "hint" and not can_hint:
@@ -146,6 +145,8 @@ def _new_message(state: TutorState) -> dict[str, Any]:
         update.update(_reply(OUT_OF_SCOPE_TEXT))
         return update
 
+    if decision is not None and action == decision.action:  # code may have overruled the model
+        update["decision_reason"] = decision.reason
     if action in ("ask", "reply"):
         update.update(_reply(text or (ASK_TEXT if action == "ask" else "Tell me more."), action))
         return update
