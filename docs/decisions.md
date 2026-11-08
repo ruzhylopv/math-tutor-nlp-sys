@@ -751,3 +751,5 @@ fallback hints" from the roadmap.
 - **Everyone sees the graph, node names and timings; what a node decided needs the "Developer view" toggle; nobody sees `hint_text`** |
   a full state dump for everyone | a verdict or misconception tells the student what a level-1 hint wants them to find, and
   `hint_text` can hold a draft the leak check later rejects; cost: a student cannot read why the tutor routed the turn.
+- **The chat input is turned off during a turn with `st.chat_input(submit_mode="disable")`** | `disabled=` driven by a pending
+  message kept in `session_state` | Streamlit re-enables it when the run ends, so no flag of ours can leave it stuck; cost: Python does not know a turn is starting, so the sidebar buttons can still interrupt one.

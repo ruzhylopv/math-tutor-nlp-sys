@@ -233,3 +233,9 @@ def test_a_reason_for_an_action_code_overruled_is_not_shown(
     )
     assert "action: ask" in orchestrator.details
     assert not any(line.startswith("why:") for line in orchestrator.details)
+
+
+def test_hard_line_breaks_keep_every_line_of_a_message() -> None:
+    assert ui.hard_line_breaks("2x = 4\nx = 2") == "2x = 4  \nx = 2"
+    assert ui.hard_line_breaks("a\r\nb") == "a  \nb"
+    assert ui.hard_line_breaks("one line") == "one line"

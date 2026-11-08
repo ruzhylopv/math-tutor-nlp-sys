@@ -105,6 +105,11 @@ def normalise_name(name: str) -> str:
     return " ".join(name.split())
 
 
+def hard_line_breaks(text: str) -> str:
+    """The student's text with every newline kept: Markdown otherwise joins single newlines."""
+    return text.replace("\r\n", "\n").replace("\n", "  \n")
+
+
 def thread_id(student_id: str, chat: int) -> str:
     return f"{student_id}|{chat}"
 
