@@ -4,6 +4,7 @@ import json
 import re
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 import streamlit as st
@@ -93,8 +94,17 @@ def _start(app: AppTest) -> None:
     app.button[0].click().run()
 
 
+def _panel_log(app: AppTest) -> list[dict[str, Any]]:
+    (graph,) = app.get("bidi_component")
+    log: list[dict[str, Any]] = json.loads(graph.proto.json)["log"]
+    return log
+
+
 def _panel_text(app: AppTest) -> list[str]:
-    return [t.value for t in app.text]
+    return [
+        f"{'✗' if step['failed'] else '✓'} {step['node']} · {step['seconds']:.1f}s"
+        for step in _panel_log(app)
+    ]
 
 
 def test_the_panel_lists_nodes_and_timings_for_everyone(app: AppTest) -> None:
@@ -109,7 +119,7 @@ def test_the_panel_lists_nodes_and_timings_for_everyone(app: AppTest) -> None:
 def test_what_a_node_decided_is_always_in_the_log(app: AppTest) -> None:
     _start(app)
     app.chat_input[0].set_value("hi").run()
-    assert any("why: greeting" in block.value for block in app.code)
+    assert any("why: greeting" in line for step in _panel_log(app) for line in step["details"])
     assert list(app.sidebar.toggle) == []
 
 

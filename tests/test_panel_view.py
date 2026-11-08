@@ -108,6 +108,38 @@ def test_runs_durations_and_repeats_belong_to_their_node(graph: Graph) -> None:
     assert "diagnosis" not in {n["id"] for n in view["nodes"]}  # the wrapper is the group
 
 
+def test_the_log_lists_finished_steps_in_order_without_the_wrapper(graph: Graph) -> None:
+    steps = [
+        Step("orchestrator", 0.5, ("action: diagnose",)),
+        Step("diagnosis:verify", 0.25, failed=True),
+        Step("diagnosis", 9.0),
+        Step("orchestrator", 0.75, ("action: hint",)),
+    ]
+    assert panel_view(graph, Trace(), steps)["log"] == [
+        {
+            "node": "orchestrator",
+            "label": "orchestrator",
+            "seconds": 0.5,
+            "failed": False,
+            "details": ["action: diagnose"],
+        },
+        {
+            "node": "diagnosis:verify",
+            "label": "verify",
+            "seconds": 0.25,
+            "failed": True,
+            "details": [],
+        },
+        {
+            "node": "orchestrator",
+            "label": "orchestrator",
+            "seconds": 0.75,
+            "failed": False,
+            "details": ["action: hint"],
+        },
+    ]
+
+
 def test_only_the_edges_this_turn_used_are_taken(graph: Graph) -> None:
     trace = Trace().start("parse_input").finish("parse_input").start("orchestrator")
     view = panel_view(graph, trace, [])
