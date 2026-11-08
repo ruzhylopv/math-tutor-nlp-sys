@@ -49,8 +49,8 @@ it resets `student_steps` to empty; for a message without a problem it keeps the
 DECIDED (M5, 2026-10-27; moved to the orchestrator in 2026-11-08): the orchestrator copies the focus step into `error_context` (step number, the line
 before, the claim, the earlier correct claims), and `hint` reads only that, so the reset above does not matter to it.
 `parse_input` clears `topic` and `level` when the problem changes. DECIDED (M6, 2026-10-27): for an out-of-scope
-subject the orchestrator declines after the diagnosis, with no hint and no `record_attempt`. The orchestrator resets the
-per-problem fields when `topic` is None while an old diagnosis is stored. See "M6" in `docs/decisions.md`.
+subject the orchestrator declines after the diagnosis, with no hint and no `record_attempt`. `parse_input` also resets the
+per-problem fields when a stated problem differs from the stored one. See "M6" and "Layer 6" in `docs/decisions.md`.
 
 ### Diagnosis subgraph
 Fixed order, compiled separately so evals can call it without the chat layer.
@@ -76,7 +76,7 @@ invalid step, therefore goes on to `localize` (error type `reasoning_result_mism
 ## Nodes
 | Node | Type | Purpose | Reads | Writes | Metric |
 |---|---|---|---|---|---|
-| orchestrator | LLM (structured `Decision`) on a new student message; plain code in the other two modes, and for a reply to the tutor when a diagnosis exists | Decide the next action; ask for working when missing; after a diagnosis set or escalate the hint level; after a hint run the leakage check; call DB tools | messages, stage, state so far | next_action, hint_level, hint_retries, learner_profile, reply_text, messages, turns, hints_used, misconceptions_seen | routing accuracy on labelled turns |
+| orchestrator | LLM (structured `Decision`) on a new student message; plain code in the other two modes, and for a reply to the tutor when a diagnosis exists | Decide the next action; ask for working when missing; after a diagnosis set or escalate the hint level; after a hint run the leakage check; call DB tools | messages, stage, state so far | next_action, stage, error_context, hint_level, hint_retries, learner_profile, reply_text, messages, turns, hints_used, misconceptions_seen | routing accuracy on labelled turns |
 | parse_input | LLM, structured output (main graph, before the orchestrator) | Turn the student's raw text into our structure: the problem text and the attempt as `Step`s (claim, kind, justification, optional justification claim, operation tag), the message's intent, and the problem's topic and level. Keeps the stored problem, topic and level when the message has none. Gets the tutor's last message so it can tell a reply (`answer`). | latest student message, tutor's last message, stored problem | problem, student_steps, intent, topic, level | problem-extraction accuracy; step-split accuracy; SymPy parse rate of claims; kind accuracy; intent accuracy; topic accuracy / macro-F1 |
 | verify | deterministic (SymPy) | Solve the original; check the final answer; check each step as equivalent / implies / narrows / not_valid / unparsable; evaluate arithmetic claims in justifications. A definition line (`t = x + 1`, a new letter, recognised by form) is substituted into later lines; a reason/other line SymPy cannot read is not compared. | problem, student_steps | is_correct, step_verdicts | answer-check accuracy; step-verdict accuracy; chain step accuracy |
 | localize | rules on SymPy verdicts (v1: rules only; an LLM interpretation of justifications is a later option) | First wrong step or error type; check that the justification matches what happened; never focuses a `reason`/`other` line SymPy cannot read; a solution that stops with every checked line valid is `incomplete` | step_verdicts, is_correct, student_steps, intent | first_error_step, focus_step, error_type | first-error-step accuracy; error-type accuracy; mismatch detection rate |

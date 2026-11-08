@@ -149,12 +149,12 @@ def test_model_failure_routes_on_the_steps(monkeypatch: pytest.MonkeyPatch) -> N
     assert orch.orchestrator({"messages": _msg()})["next_action"] == "ask"
 
 
-def test_new_problem_resets_the_old_diagnosis(monkeypatch: pytest.MonkeyPatch) -> None:
-    _decide(monkeypatch, Decision(action="hint", reason="r"))
+def test_a_missing_topic_does_not_wipe_the_diagnosis(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))  # parse_input does the real reset
     state: TutorState = {
         "messages": _msg(),
         "problem": "new",
-        "topic": None,  # parse_input cleared it
+        "topic": None,
         "error_context": _context(),
         "misconceptions_seen": ["M001"],
         "hint_level": 3,
@@ -163,12 +163,8 @@ def test_new_problem_resets_the_old_diagnosis(monkeypatch: pytest.MonkeyPatch) -
         "step_verdicts": [StepVerdict(step_index=1, relation="not_valid")],
     }
     out = orch.orchestrator(state)
-    assert out["misconceptions_seen"] == []
-    assert out["error_context"] is None
-    assert out["hint_level"] == 1
-    assert out["hints_used"] == 0
-    assert out["turns"] == 1
-    assert out["next_action"] == "ask"  # the old diagnosis is gone, so no hint
+    assert out["next_action"] == "hint" and out["hint_level"] == 4 and out["turns"] == 6
+    assert "error_context" not in out and "misconceptions_seen" not in out
 
 
 def test_no_reset_without_an_old_diagnosis(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -487,3 +483,26 @@ def test_a_math_reply_with_a_new_misconception_is_recorded_and_keeps_the_level()
 
 def test_a_math_reply_without_a_misconception_keeps_the_level() -> None:
     assert orch.orchestrator(_diagnosed_reply(misconception=None, hint_level=2))["hint_level"] == 2
+
+
+def test_routing_to_a_diagnosis_sets_the_stage(monkeypatch: pytest.MonkeyPatch) -> None:
+    _decide(monkeypatch, Decision(action="diagnose", reason="r"))
+    out = orch.orchestrator({"messages": _msg(), "problem": "p", "student_steps": STEP})
+    assert out["next_action"] == "diagnose" and out["stage"] == "diagnosed"
+
+
+def test_a_diagnosis_stores_the_focus_step_for_the_hint() -> None:
+    state: TutorState = {
+        "stage": "diagnosed",
+        "topic": "Algebra",
+        "problem": "3(x + 2) = 15",
+        "student_steps": [Step(claim="3x + 2 = 15")],
+        "focus_step": 1,
+    }
+    context = orch.orchestrator(state)["error_context"]
+    assert context == ErrorContext(step_number=1, before="3(x + 2) = 15", after="3x + 2 = 15")
+
+
+def test_an_out_of_scope_problem_leaves_nothing_to_hint_about() -> None:
+    state: TutorState = {"stage": "diagnosed", "topic": "Geometry", "error_context": _context()}
+    assert orch.orchestrator(state)["error_context"] is None

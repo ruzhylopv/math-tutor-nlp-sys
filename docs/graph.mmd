@@ -10,23 +10,21 @@ graph TD;
 	hint(hint)
 	__end__([<p>__end__</p>]):::last
 	__start__ --> parse_input;
-	diagnosis\3afinish_diagnosis --> orchestrator;
+	diagnosis\3a__end__ --> orchestrator;
 	hint --> orchestrator;
 	orchestrator -.-> __end__;
-	orchestrator -.-> diagnosis\3aclassify;
+	orchestrator -.-> diagnosis\3averify;
 	orchestrator -.-> hint;
 	parse_input --> orchestrator;
 	subgraph diagnosis
-	diagnosis\3aclassify(classify)
 	diagnosis\3averify(verify)
 	diagnosis\3alocalize(localize)
 	diagnosis\3aretrieve(retrieve)
-	diagnosis\3afinish_diagnosis(finish_diagnosis)
-	diagnosis\3aclassify --> diagnosis\3averify;
+	diagnosis\3a__end__(<p>__end__</p>)
 	diagnosis\3alocalize --> diagnosis\3aretrieve;
-	diagnosis\3aretrieve --> diagnosis\3afinish_diagnosis;
-	diagnosis\3averify -.-> diagnosis\3afinish_diagnosis;
+	diagnosis\3averify -.-> diagnosis\3a__end__;
 	diagnosis\3averify -.-> diagnosis\3alocalize;
+	diagnosis\3aretrieve --> diagnosis\3a__end__;
 	end
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0

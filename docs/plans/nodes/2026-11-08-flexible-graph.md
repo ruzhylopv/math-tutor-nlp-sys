@@ -9,4 +9,5 @@ Layer 6 of `docs/plans/design/2026-11-02-flexible-input.md`. Evals are debt for 
   helper in `tools/diagnosis.py`. A clean solution ends the subgraph after verify; anything else ends after retrieve.
 - App labels for both nodes removed.
 - Tests that name these nodes are updated or removed; only those references change.
-- The orchestrator's reset on `topic` None now needs the key to be present: it relied on `classify` refilling the topic.
+- The orchestrator's reset on `topic` None is removed: `parse_input` does the real reset, and nothing refills `topic` now.
+  One existing test changed (approved by the developer): a `None` topic no longer wipes a diagnosis.

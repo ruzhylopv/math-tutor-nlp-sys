@@ -1,9 +1,8 @@
 """Route the conversation. Three modes, chosen by `stage` (see docs/architecture.md).
 
 new_message: an LLM `Decision` picks ask / diagnose / hint / reply; code guards the impossible
-    choices (diagnose without steps, hint without a diagnosis) and counts the turn. A new problem
-    (`topic` cleared by `parse_input` while a diagnosis of the old one is still stored) resets the
-    per-problem fields. A reply to the tutor when a diagnosis exists is routed by code, with no
+    choices (diagnose without steps, hint without a diagnosis) and counts the turn. A reply to
+    the tutor when a diagnosis exists is routed by code, with no
     model call: with a line of math to `diagnose` (SymPy checks it), otherwise to `hint`, and the
     level stays for its own hint. A line using a letter that is not in the problem also goes to
     `hint`, because definitions from an earlier turn are not known to `verify` (a known limit).
@@ -19,7 +18,7 @@ hinted: plain code runs the leakage check, publishes the hint, or retries once, 
 Reads: messages, stage, intent, reply_moves_forward, and the state so far
 Writes: next_action, stage (when routing to `diagnose`), error_context, hint_level, hint_retries,
         reply_text, messages, turns, hints_used, misconceptions_seen, learner_profile (and the
-        per-problem fields on a reset)
+        per-problem fields after a clean solution)
 Eval metric: routing accuracy on labelled turns
 """
 
@@ -70,15 +69,6 @@ def _db_path() -> str | None:
         return None
 
 
-def _has_old_diagnosis(state: TutorState) -> bool:
-    return bool(
-        state.get("misconceptions_seen")
-        or state.get("error_context") is not None
-        or state.get("step_verdicts")
-        or state.get("hints_used", 0) > 0
-    )
-
-
 def _decide(state: TutorState, message: str) -> Decision | None:
     steps = len(state.get("student_steps", []))
     diagnosed = "yes" if state.get("error_context") is not None else "no"
@@ -99,19 +89,13 @@ def _uses_new_letter(state: TutorState) -> bool:
 
 
 def _new_message(state: TutorState) -> dict[str, Any]:
-    update: dict[str, Any] = {}
-    # parse_input clears topic when the problem changes: drop what described the old problem.
-    # A topic that was never set says nothing, because no node fills it in later.
-    if "topic" in state and state["topic"] is None and _has_old_diagnosis(state):
-        update.update(fresh_problem_fields())
-    update["turns"] = update.get("turns", state.get("turns", 0)) + 1
+    update: dict[str, Any] = {"turns": state.get("turns", 0) + 1}
     path = _db_path()
     if path is not None and "student_id" in state:
         update["learner_profile"] = get_profile(path, state["student_id"])
 
     has_steps = bool(state.get("student_steps")) and bool(state.get("problem"))
-    # after a reset the old diagnosis is gone, so there is nothing to hint about
-    can_hint = state.get("error_context") is not None and "error_context" not in update
+    can_hint = state.get("error_context") is not None
     is_reply = state.get("intent") == "answer" and can_hint
     decision = None if is_reply else _decide(state, latest_student_message(state))
     text = None

@@ -712,6 +712,6 @@ fallback hints" from the roadmap.
   reply is judged by the hint model, not SymPy (a known limit).
 - **Layer 6: `finish_diagnosis`'s work moves to the orchestrator** | an edge condition, as the design said | the node also set
   `stage` and copied `error_context`, which an edge cannot do; cost: the orchestrator does a little more.
-- **Layer 6: the orchestrator's reset on `topic` None needs the key to be present** | removing that reset | it relied on
-  `classify` refilling the topic, and removing it needs an existing test changed; cost: after a new problem whose parse gave no
-  topic, the next message still resets (a known limit; `parse_input` now does the real reset).
+- **Layer 6: the orchestrator no longer resets on `topic` None** | keeping that reset | `parse_input` does the real reset when
+  the problem changes, and nothing refills `topic` now, so a parse with no topic would wipe the diagnosis on every later
+  message; cost: `test_new_problem_resets_the_old_diagnosis` was changed (approved by the developer).
