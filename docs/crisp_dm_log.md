@@ -210,4 +210,7 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   the level and reaches `hint`, level 1 must be true of the student's line, and numbers already quoted are not resent. Unit tests
   with the model scripted. **No eval run: evals are debt (the developer's call).** The debt is `eval_hint` on the dev split, and
   `eval_hint` has no reply or question cases, so those two fixes also need the chat re-sent by hand. No new metrics.
+- **Graph panel v2 (2026-11-08)**: the Graphviz chart became a clickable graph in the style of a GitHub Actions run (status icons, a
+  spinner, durations, repeat counts; a click shows that node's runs), the log scrolls to its end, and the "Developer view" toggle
+  is gone. Checked in Chromium on a scripted stream, light and dark, with no model calls. No metrics: UI only.
 - Planned: the demo video using scenarios A and B.

@@ -762,3 +762,19 @@ fallback hints" from the roadmap.
   cost: a student who keeps getting the calculation wrong gets the same level.
 - **A clarifying question after a hint keeps the level, and `hint` is told what was asked** | raising the level as for "I am stuck" (the previous rule); a new `clarify` intent in `parse_input` | decided by the developer after a real chat, where "What do you mean here?" jumped to a new method; `explain` already says this and needs no change to `parse_input`; cost: "why is that wrong?" also keeps the level, and a student who keeps asking stays on it.
 - **A level-2 reply to numbers already quoted is told the counterexample was used, by a check in code** | a prompt rule alone; raising the level after a good reply | the model was handed the same numbers and repeated them, and a good reply should not make hints more direct; cost: the check compares numbers in the last message, so a message that happens to hold them all also counts.
+- **The graph panel is our own `st.components.v2` component, replacing `st.graphviz_chart`** | keep `st.graphviz_chart`; a new
+  dependency (streamlit-flow, streamlit-agraph, not installed or tried) | `st.graphviz_chart` offers no click handling, and a new
+  package would need the developer's approval and a click that does not rerun the script, which would kill a running turn, whereas
+  a v2 component needs nothing new and was proven in a browser; cost: about 300 lines of our own JS and CSS, and our own simple
+  layout (supersedes the Graphviz entry above).
+- **The graph is mounted once per script run, and updates reach it through a hidden unkeyed component and `window`** | redraw one
+  component in `st.empty` | a repeated key raises, and unkeyed redraws remounted it 30 times in 30 updates with blank frames (0 and
+  1 mount with this design), losing the DOM; cost: a browser global and a second tiny component, and the end-of-turn rerun can
+  still rebuild the graph for one frame when the page above it changes shape (the selection is kept).
+- **Everyone sees what each node decided, and the Developer view toggle is gone (the developer's request)** | keep the toggle |
+  the developer wants the details on by default; consequence: verdicts and the retrieved misconception are visible to a student,
+  which can show what a level-1 hint wants them to find. `hint_text` stays hidden through the `node_details` whitelist (supersedes
+  the "Everyone sees the graph" entry above).
+- **The panel sits above the chat bar (`z-index: 100`)** | make the chat bar narrower with CSS | one line; the bar spans the window
+  and otherwise swallows the wheel over the panel's bottom and hides the last log lines; cost: relies on Streamlit's bar staying
+  at z-index 99.

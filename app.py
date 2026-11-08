@@ -9,7 +9,8 @@ from langchain_core.runnables.graph import Graph
 from streamlit.delta_generator import DeltaGenerator
 
 from tutor.config import ConfigError, load_config
-from tutor.trace import Trace, graph_dot
+from tutor.panel import mount_graph, push_update
+from tutor.trace import Trace, panel_view
 from tutor.ui import (
     StepFinished,
     StepStarted,
@@ -27,14 +28,18 @@ from tutor.ui import (
 
 logging.basicConfig(level=logging.INFO)
 
-# The panel is fixed on the right of a wide window; on a narrow one it stays in the page flow.
+# The panel is fixed on the right of a wide window; on a narrow one it stays in the page flow. It
+# goes above the pinned chat bar (z-index 99, full width), which otherwise swallows the wheel over
+# the bottom of the panel and hides the last lines of the log.
 PANEL_CSS = """
 <style>
+.st-key-trace_updates { display: none; }
 @media (min-width: 1000px) {
   .st-key-trace_panel {
     position: fixed;
     top: 3.75rem;
     right: 0;
+    z-index: 100;
     width: 380px;
     height: calc(100vh - 3.75rem);
     overflow-y: auto;
@@ -53,12 +58,11 @@ PANEL_CSS = """
 
 @dataclass(frozen=True)
 class Panel:
-    """The slots that are redrawn while a turn runs, and the graph drawn in them."""
+    """The slots that are redrawn while a turn runs, and the graph drawn from them."""
 
     graph: Graph
-    chart: DeltaGenerator
+    updates: DeltaGenerator
     log: DeltaGenerator
-    developer: bool
 
 
 @st.cache_resource
@@ -66,8 +70,8 @@ def get_tutor() -> Tutor:
     return build_tutor()
 
 
-def show_sidebar(tutor: Tutor, student_id: str, chat: int) -> bool:
-    """Name, new-chat button, hint counters, learner profile. Returns the developer toggle."""
+def show_sidebar(tutor: Tutor, student_id: str, chat: int) -> None:
+    """Name, new-chat button, hint counters, learner profile."""
     with st.sidebar:
         st.markdown(f"**{student_id}** · chat {chat}")
         if st.button("New chat"):
@@ -91,7 +95,6 @@ def show_sidebar(tutor: Tutor, student_id: str, chat: int) -> bool:
             st.caption(f"Weak topics: {topics}")
             for mid, count in info.profile.misconception_counts.items():
                 st.caption(f"{mid}: seen {count}×")
-        return st.toggle("Developer view", help="Also show what each node decided.")
 
 
 def clear_last_turn_log() -> None:
@@ -106,27 +109,33 @@ def show_step_log(lines: list[str], summary: str) -> None:
             st.write(line)
 
 
-def draw_panel(panel: Panel, trace: Trace, steps: list[StepFinished]) -> None:
-    """Redraw the graph and the log. Details (what a node decided) are for the developer view."""
-    panel.chart.graphviz_chart(graph_dot(panel.graph, trace), width="stretch")
+def draw_log(panel: Panel, steps: list[StepFinished]) -> None:
     with panel.log.container():
         for step in steps:
             if step.path not in panel.graph.nodes:  # the `diagnosis` wrapper: its steps are listed
                 continue
             st.text(f"{'✗' if step.failed else '✓'} {step.path} · {step.seconds:.1f}s")
-            if panel.developer:
-                for detail in step.details:
-                    st.text(f"   {detail}")  # literal: model text is not Markdown
+            if step.details:  # a code block is literal: model text is not Markdown
+                st.code("\n".join(step.details), language=None, wrap_lines=True)
 
 
-def open_panel(tutor: Tutor, developer: bool) -> Panel:
+def draw_panel(panel: Panel, trace: Trace, steps: list[StepFinished]) -> None:
+    """Send the new progress to the graph that is already on the page, and redraw the log."""
+    with panel.updates:
+        push_update(panel_view(panel.graph, trace, steps))
+    draw_log(panel, steps)
+
+
+def open_panel(tutor: Tutor) -> Panel:
     """Create the right-hand panel, showing the last turn if there is one."""
     st.html(PANEL_CSS)
+    graph = tutor.graph.get_graph(xray=True)
+    trace, steps = st.session_state.get("trace", (Trace(), []))
     with st.container(key="trace_panel"):
         st.markdown("**How the tutor works**")
-        panel = Panel(tutor.graph.get_graph(xray=True), st.empty(), st.empty(), developer)
-    trace, steps = st.session_state.get("trace", (Trace(), []))
-    draw_panel(panel, trace, steps)
+        mount_graph(panel_view(graph, trace, steps))
+        panel = Panel(graph, st.container(key="trace_updates").empty(), st.empty())
+    draw_log(panel, steps)
     return panel
 
 
@@ -187,7 +196,7 @@ def main() -> None:
 
     student_id: str = st.session_state.student_id
     chat: int = st.session_state.chat
-    developer = show_sidebar(tutor, student_id, chat)
+    show_sidebar(tutor, student_id, chat)
 
     for role, text in load_history(tutor, student_id, chat):
         with st.chat_message(role):
@@ -200,7 +209,7 @@ def main() -> None:
         st.error(last.reply)
     if step_log := st.session_state.get("step_log"):
         show_step_log(*step_log)
-    panel = open_panel(tutor, developer)
+    panel = open_panel(tutor)
 
     # A message sent during a turn would rerun the script and abort the turn, so the input is off.
     if text := st.chat_input(
