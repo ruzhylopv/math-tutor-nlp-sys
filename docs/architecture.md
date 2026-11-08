@@ -18,7 +18,7 @@ a prompt. The student submits a problem and their own step-by-step attempt
 In scope: school-level arithmetic and algebra (linear equations, brackets, quadratics, factoring,
 radical and rational equations). Out of scope: calculus, proofs, geometry diagrams, other languages.
 Target subjects (decided 2026-10-26): MATH Prealgebra, Algebra and Intermediate Algebra. Levels 1-3 remain the range used
-for the `verify` and `parse_input` datasets; `classify` returns MATH levels 1-5.
+for the `verify` and `parse_input` datasets; `parse_input` tags MATH levels 1-5.
 Input is text for now. Photos of handwritten work would need a vision/OCR model in front of `parse_input`;
 out of scope.
 
@@ -46,7 +46,7 @@ to the orchestrator (see "Orchestrator modes").
 `parse_input` runs on every student message, before the orchestrator, so the orchestrator routes on a
 structure (is there a problem, are there steps) and not only on raw text. For a message without working
 it resets `student_steps` to empty; for a message without a problem it keeps the stored `problem`.
-DECIDED (M5, 2026-10-27): `finish_diagnosis` copies the wrong step into `error_context` (step number, the line
+DECIDED (M5, 2026-10-27; moved to the orchestrator in 2026-11-08): the orchestrator copies the focus step into `error_context` (step number, the line
 before, the claim, the earlier correct claims), and `hint` reads only that, so the reset above does not matter to it.
 `parse_input` clears `topic` and `level` when the problem changes. DECIDED (M6, 2026-10-27): for an out-of-scope
 subject the orchestrator declines after the diagnosis, with no hint and no `record_attempt`. The orchestrator resets the
@@ -56,13 +56,11 @@ per-problem fields when `topic` is None while an old diagnosis is stored. See "M
 Fixed order, compiled separately so evals can call it without the chat layer.
 ```mermaid
 flowchart LR
-  START --> classify --> verify
-  verify -->|"correct, all steps valid, no flagged justification"| finish_diagnosis
-  verify -->|otherwise| localize --> retrieve --> finish_diagnosis
-  finish_diagnosis --> END
+  START --> verify
+  verify -->|"correct, all steps valid, no flagged justification"| END
+  verify -->|otherwise| localize --> retrieve --> END
 ```
-`finish_diagnosis` is a tiny deterministic last node that both exits go through. It only sets
-`stage = diagnosed`, so the orchestrator knows it is back from a diagnosis.
+The orchestrator sets `stage = diagnosed` when it routes here, so it knows it is back from a diagnosis.
 `verify` short-circuits only when the final answer is correct, every step is valid, and no
 `justification_claims_ok` is False. A correct answer with a wrong justification, or reached through an
 invalid step, therefore goes on to `localize` (error type `reasoning_result_mismatch` or
@@ -80,11 +78,9 @@ invalid step, therefore goes on to `localize` (error type `reasoning_result_mism
 |---|---|---|---|---|---|
 | orchestrator | LLM (structured `Decision`) on a new student message; plain code in the other two modes, and for a reply to the tutor when a diagnosis exists | Decide the next action; ask for working when missing; after a diagnosis set or escalate the hint level; after a hint run the leakage check; call DB tools | messages, stage, state so far | next_action, hint_level, hint_retries, learner_profile, reply_text, messages, turns, hints_used, misconceptions_seen | routing accuracy on labelled turns |
 | parse_input | LLM, structured output (main graph, before the orchestrator) | Turn the student's raw text into our structure: the problem text and the attempt as `Step`s (claim, kind, justification, optional justification claim, operation tag), the message's intent, and the problem's topic and level. Keeps the stored problem, topic and level when the message has none. Gets the tutor's last message so it can tell a reply (`answer`). | latest student message, tutor's last message, stored problem | problem, student_steps, intent, topic, level | problem-extraction accuracy; step-split accuracy; SymPy parse rate of claims; kind accuracy; intent accuracy; topic accuracy / macro-F1 |
-| classify | LLM (to be removed in layer 6 of the flexible-input plan; parse_input now writes topic and level) | Tag topic and level | problem | topic, level | topic accuracy / macro-F1 |
 | verify | deterministic (SymPy) | Solve the original; check the final answer; check each step as equivalent / implies / narrows / not_valid / unparsable; evaluate arithmetic claims in justifications. A definition line (`t = x + 1`, a new letter, recognised by form) is substituted into later lines; a reason/other line SymPy cannot read is not compared. | problem, student_steps | is_correct, step_verdicts | answer-check accuracy; step-verdict accuracy; chain step accuracy |
 | localize | rules on SymPy verdicts (v1: rules only; an LLM interpretation of justifications is a later option) | First wrong step or error type; check that the justification matches what happened; never focuses a `reason`/`other` line SymPy cannot read; a solution that stops with every checked line valid is `incomplete` | step_verdicts, is_correct, student_steps, intent | first_error_step, focus_step, error_type | first-error-step accuracy; error-type accuracy; mismatch detection rate |
 | retrieve | retrieval | Query: topic, error type, the previous line and the line written at `focus_step`; search the hand-written misconception catalogue (embeddings, cosine) | above | misconception_candidates, misconception | Recall@k, MAP@k |
-| finish_diagnosis | deterministic | Last node of the diagnosis subgraph; marks the diagnosis as finished | none | stage | none (unit test only; see OPEN in decisions.md) |
 | hint | LLM | Socratic hint grounded in the misconception, at `hint_level`; praise what was right; never give the answer. For an `incomplete` solution it confirms the work and points at what comes next; for a reply (`answer`) it responds to the reply first and judges whether it moves forward (the one exception to the math rule) | misconception, wrong step, error_type, hint_level, intent, tutor's last message, student's reply, profile, counterexample values (from a SymPy tool) | hint_text, stage, reply_moves_forward | answer-leakage rate (automatic); rubric judge and a small human check |
 
 Hard rule: the LLM never does arithmetic or verifies algebra. SymPy does. `localize` uses rules
@@ -102,7 +98,7 @@ Each line is judged against the previous one (step 1 against the problem stateme
 
 ### Orchestrator modes
 One node, three modes, chosen from the `stage` field (`new_message`, `diagnosed`, `hinted`). The UI sets
-`new_message` at the start of each run; `finish_diagnosis` (the last node of the diagnosis subgraph) sets `diagnosed` and `hint`
+`new_message` at the start of each run; the orchestrator sets `diagnosed` when it routes to the diagnosis and `hint`
 sets `hinted`:
 - **new_message** (the student wrote something): the LLM `Decision` picks `ask`, `diagnose`, `hint` or
   `reply`. Counters (`turns`) are plain code. When the action is `hint` without a new diagnosis (the
@@ -240,7 +236,7 @@ support and have rate limits; the first LLM node must check that structured outp
 
 ## Build order
 1. `verify` (no LLM; its tests use hand-built `Step` lists)
-2. `parse_input` and `classify`
+2. `parse_input`
 3. `localize`
 4. `retrieve` (needs the hand-written catalogue)
 5. `hint` and the leakage check

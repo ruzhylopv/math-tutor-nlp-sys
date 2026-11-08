@@ -79,7 +79,7 @@ def test_a_flagged_justification_is_not_clean() -> None:
 
 def test_routing_after_verify() -> None:
     clean = _state(StepVerdict(step_index=1, relation="equivalent"))
-    assert route_after_verify(clean) == "finish_diagnosis"
+    assert route_after_verify(clean) == "__end__"
     assert route_after_verify(_state(is_correct=False)) == "localize"
 
 
@@ -93,15 +93,13 @@ def test_a_failing_verify_takes_the_full_path_through_localize_and_retrieve(
 
     monkeypatch.setattr(graph_module, "verify", failing_verify)
     assert _visited({"problem": "3(x + 2) = 15"}) == [
-        "classify",
         "verify",
         "localize",
         "retrieve",
-        "finish_diagnosis",
     ]
 
 
-def test_a_clean_solution_short_circuits_to_finish_diagnosis(
+def test_a_clean_solution_ends_after_verify(
     monkeypatch: pytest.MonkeyPatch, canned_llm: Callable[..., None]
 ) -> None:
     canned_llm()
@@ -114,7 +112,5 @@ def test_a_clean_solution_short_circuits_to_finish_diagnosis(
 
     monkeypatch.setattr(graph_module, "verify", clean_verify)
     assert _visited({"problem": "x + 1 = 2"}) == [
-        "classify",
         "verify",
-        "finish_diagnosis",
     ]

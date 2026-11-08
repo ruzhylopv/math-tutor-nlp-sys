@@ -1,7 +1,7 @@
 """Replay scenarios A and B through the real graph with the model scripted.
 
-The model nodes (parse_input, classify, orchestrator decision, hint wording) and `retrieve` are
-scripted; verify, localize, finish_diagnosis, the orchestrator's plain-code modes, the leakage
+The model nodes (parse_input, orchestrator decision, hint wording) and `retrieve` are
+scripted; verify, localize, the orchestrator's plain-code modes, the leakage
 check, the checkpointer and the learner DB are real. This tests the wiring and the routing rules,
 not the model; the live replay is `evals/scripts/eval_orchestrator.py`.
 """
@@ -14,7 +14,6 @@ from pydantic import BaseModel
 from evals.scenario_runner import Scenario, ScenarioResult, load_scenario, replay, scenario_paths
 from tutor import graph as graph_module
 from tutor.state import (
-    Classification,
     Decision,
     HintText,
     Misconception,
@@ -73,8 +72,6 @@ def scripted(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake(name: str, schema: type[BaseModel], text: str, retries: int = 1) -> Any:
         if name == "parse_input":
             return PARSED[text.split("Student message:\n", 1)[1]]
-        if name == "classify":
-            return Classification(topic="Algebra", level=2)
         if name == "orchestrator":
             message = text.split("Student message: ", 1)[1].split("\nStored problem:", 1)[0]
             return DECISIONS.get(message, Decision(action="diagnose", reason="steps"))

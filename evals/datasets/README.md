@@ -79,7 +79,7 @@ One line per MATH problem: `id`, `problem` (LaTeX as in MATH), `subject`, `level
 `uv run python -m evals.builders.build_classify --math-dir <dir with train.jsonl and test.jsonl>`. Labels are MATH's own,
 human-assigned, so they do not depend on our code. 60 problems per subject per split (420 each), problems ordered by a
 seeded hash, first 60 to dev and next 60 to test, identical texts kept once. Counts: `review/classify_build_report.json`.
-Limits: the eval feeds LaTeX; in use `classify` receives `parse_input`'s plain-text problem. Level labels are noisy at the
+Limits: the eval feeds LaTeX; the `classify` node was removed in layer 6 of the flexible-input plan, and this dataset now scores `parse_input`'s topic and level. Level labels are noisy at the
 edges, so the eval also reports "within one level".
 
 ## parse_input.jsonl (M3)

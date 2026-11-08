@@ -710,3 +710,8 @@ fallback hints" from the roadmap.
 - **Layer 5: a math reply using a letter not in the problem goes to `hint`** | carrying definitions between turns in the
   state | `verify` builds definitions per run and would mark the reply wrong, and a new field was not wanted; cost: that
   reply is judged by the hint model, not SymPy (a known limit).
+- **Layer 6: `finish_diagnosis`'s work moves to the orchestrator** | an edge condition, as the design said | the node also set
+  `stage` and copied `error_context`, which an edge cannot do; cost: the orchestrator does a little more.
+- **Layer 6: the orchestrator's reset on `topic` None needs the key to be present** | removing that reset | it relied on
+  `classify` refilling the topic, and removing it needs an existing test changed; cost: after a new problem whose parse gave no
+  topic, the next message still resets (a known limit; `parse_input` now does the real reset).

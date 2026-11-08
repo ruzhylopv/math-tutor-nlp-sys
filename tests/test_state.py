@@ -7,7 +7,6 @@ from pydantic import ValidationError
 
 from tutor.state import (
     Action,
-    Classification,
     Decision,
     ErrorType,
     HintText,
@@ -108,7 +107,7 @@ def test_field_types_follow_the_design() -> None:
     assert hints["next_action"] == Action
     assert hints["first_error_step"] == int | None
     assert hints["focus_step"] == int | None
-    assert hints["level"] == int | None  # None after a new problem, until classify runs again
+    assert hints["level"] == int | None  # None until parse_input gets one for the problem
 
 
 def test_literals_match_the_architecture() -> None:
@@ -155,7 +154,7 @@ def test_hint_reply_verdict_defaults_to_none() -> None:
     assert HintText(text="Yes!", reply_moves_forward=True).reply_moves_forward is True
 
 
-def test_classification_level_starts_at_one() -> None:
-    assert Classification(topic="Algebra", level=1).level == 1
+def test_parsed_level_starts_at_one() -> None:
+    assert ParsedInput(topic="Algebra", level=1).level == 1
     with pytest.raises(ValidationError):
-        Classification(topic="Algebra", level=0)
+        ParsedInput(topic="Algebra", level=0)

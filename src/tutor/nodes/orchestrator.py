@@ -17,8 +17,9 @@ hinted: plain code runs the leakage check, publishes the hint, or retries once, 
     last valid line may be quoted, so the line derived from it is what the check flags.
 
 Reads: messages, stage, intent, reply_moves_forward, and the state so far
-Writes: next_action, hint_level, hint_retries, reply_text, messages, turns, hints_used,
-        misconceptions_seen, learner_profile (and the per-problem fields on a reset)
+Writes: next_action, stage (when routing to `diagnose`), error_context, hint_level, hint_retries,
+        reply_text, messages, turns, hints_used, misconceptions_seen, learner_profile (and the
+        per-problem fields on a reset)
 Eval metric: routing accuracy on labelled turns
 """
 
@@ -39,7 +40,7 @@ from tutor.tools import structured
 from tutor.tools.algebra import letters
 from tutor.tools.canned_hints import MAX_LEVEL, canned_hint
 from tutor.tools.catalogue import load_catalogue
-from tutor.tools.diagnosis import fresh_problem_fields, is_clean_solution
+from tutor.tools.diagnosis import error_context, fresh_problem_fields, is_clean_solution
 from tutor.tools.leakage import find_leaks
 from tutor.tools.learner_db import get_profile, learner_db_path, record_attempt
 from tutor.tools.messages import last_tutor_message, latest_student_message
@@ -99,8 +100,9 @@ def _uses_new_letter(state: TutorState) -> bool:
 
 def _new_message(state: TutorState) -> dict[str, Any]:
     update: dict[str, Any] = {}
-    # parse_input clears topic when the problem changes: drop what described the old problem
-    if state.get("topic") is None and _has_old_diagnosis(state):
+    # parse_input clears topic when the problem changes: drop what described the old problem.
+    # A topic that was never set says nothing, because no node fills it in later.
+    if "topic" in state and state["topic"] is None and _has_old_diagnosis(state):
         update.update(fresh_problem_fields())
     update["turns"] = update.get("turns", state.get("turns", 0)) + 1
     path = _db_path()
@@ -129,6 +131,8 @@ def _new_message(state: TutorState) -> dict[str, Any]:
         update.update(_reply(text or (ASK_TEXT if action == "ask" else "Tell me more."), action))
         return update
     update["next_action"] = action
+    if action == "diagnose":
+        update["stage"] = "diagnosed"  # the diagnosis subgraph returns here in this mode
     if action == "hint":
         if not is_reply:  # a reply's own hint keeps the level; `_hinted` applies its verdict
             update["hint_level"] = min(state.get("hint_level", 1) + 1, MAX_LEVEL)
@@ -178,7 +182,7 @@ def _clean_solution(state: TutorState) -> dict[str, Any]:
 def _diagnosed(state: TutorState) -> dict[str, Any]:
     topic = state.get("topic")
     if topic is not None and topic not in IN_SCOPE_TOPICS:
-        return _reply(OUT_OF_SCOPE_TEXT)
+        return {**_reply(OUT_OF_SCOPE_TEXT), "error_context": None}
     if is_clean_solution(state):
         return _clean_solution(state)
     seen = list(state.get("misconceptions_seen", []))
@@ -204,6 +208,7 @@ def _diagnosed(state: TutorState) -> dict[str, Any]:
         "hint_level": level,
         "hint_retries": 0,
         "misconceptions_seen": seen,
+        "error_context": error_context(state),
     }
 
 

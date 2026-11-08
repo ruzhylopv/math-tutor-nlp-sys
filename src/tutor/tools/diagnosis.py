@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from typing import Any
 
-from tutor.state import Step, StepVerdict, TutorState
+from tutor.state import ErrorContext, Step, StepVerdict, TutorState
 
 VALID_RELATIONS = ("equivalent", "implies", "narrows")
 
@@ -75,3 +75,20 @@ def is_clean_solution(state: TutorState) -> bool:
         if verdict.relation not in VALID_RELATIONS or verdict.justification_claims_ok is False:
             return False
     return True
+
+
+def error_context(state: TutorState) -> ErrorContext | None:
+    """The focus step, copied because `parse_input` clears `student_steps` on the next message.
+
+    None without a usable focus step, so a context from an earlier diagnosis cannot survive.
+    """
+    focus = state.get("focus_step")
+    steps = state.get("student_steps", [])
+    if focus is None or not 1 <= focus <= len(steps):
+        return None
+    return ErrorContext(
+        step_number=focus,
+        before=compared_line(state, focus),
+        after=steps[focus - 1].claim,
+        correct_steps=[step.claim for step in steps[: focus - 1]],
+    )

@@ -84,7 +84,7 @@ def test_diagnosis_and_hint_both_return_to_the_orchestrator(
         stage = state.get("stage", "new_message")
         seen.append(stage)
         if stage == "new_message":
-            return {"next_action": "diagnose"}
+            return {"next_action": "diagnose", "stage": "diagnosed"}
         if stage == "diagnosed":
             return {"next_action": "hint"}
         return {"next_action": "reply", "reply_text": "done"}

@@ -180,6 +180,9 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   replay correctly through the real graph with the model scripted, which checks the wiring and rules, not the model.
   **No eval run: evals are debt for layers 4-6 (developer's decision).** Hint and orchestrator evals have no new cases yet.
 
+- **Flexible input layer 6, graph (2026-11-08)**: `classify` and `finish_diagnosis` removed, one model call fewer per diagnosis.
+  `classify.jsonl` stays for the parse_input topic metrics, which have not been run. **Evals are debt for layers 4-6.**
+
 ## Deployment
 - **M7 app (2026-10-27)**: Streamlit chat (`app.py`, `src/tutor/ui.py`): name field, chat bubbles on the checkpointed
   history, "New chat" (same person, same profile), sidebar with hint level, hints used and the `get_profile` summary,
