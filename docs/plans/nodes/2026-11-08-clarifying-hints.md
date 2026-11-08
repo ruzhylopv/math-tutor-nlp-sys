@@ -15,5 +15,5 @@ Includes `5343bf9` (a calculation in reply to a hint), which changes the same fi
 
 Changed existing test: `test_a_clarifying_question_after_a_diagnosis_still_escalates` asserted the rule the developer asked to change.
 
-Eval: `eval_hint` on the dev split, after the developer agrees the number of model calls. It covers level wording only; its cases
-are not replies, so the chat itself is re-sent by hand.
+Eval: not run, added to the eval debt by the developer. `eval_hint` on the dev split covers level wording only; its cases are not
+replies, so the chat itself is re-sent by hand.
