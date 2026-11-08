@@ -111,3 +111,12 @@ def test_a_best_match_exactly_at_the_threshold_is_trusted(monkeypatch: pytest.Mo
     exact = [_match("M001", MIN_SCORE)]
     monkeypatch.setattr(retrieval, "search", lambda previous, written, k=5: exact)
     assert retrieve(_state())["misconception"] == exact[0]
+
+
+def test_an_incomplete_solution_has_nothing_to_look_up(
+    searches: list[tuple[str, str, int]],
+) -> None:
+    state = _state(error_type="incomplete", focus_step=1)
+    assert focus_lines(state) is None
+    assert retrieve(state) == {"misconception_candidates": [], "misconception": None}
+    assert searches == []

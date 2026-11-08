@@ -171,6 +171,10 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   1.000. The chains were written knowing the rules, so 1.000 shows the rules do what was meant, not that they cover
   real students. Result: `evals/results/verify/20261102T163721Z_2a8e19b.json`.
 
+- **Flexible input layer 4, `localize` and `retrieve` (2026-11-08)**: unreadable reason lines are skipped, and a
+  solution that stops with every checked line valid is `incomplete` (focus on the last valid line; retrieve skips it).
+  **No eval run: evals are debt for layers 4-6 (developer's decision).** No new metrics.
+
 ## Deployment
 - **M7 app (2026-10-27)**: Streamlit chat (`app.py`, `src/tutor/ui.py`): name field, chat bubbles on the checkpointed
   history, "New chat" (same person, same profile), sidebar with hint level, hints used and the `get_profile` summary,

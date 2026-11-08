@@ -4,7 +4,8 @@ The search compares the shape of the rewrite from the line before the focus step
 student wrote there (see `tutor.tools.retrieval`). The top 5 matches go to
 `misconception_candidates`. The best one becomes `misconception` only if its score reaches
 `MIN_SCORE`; below it the node abstains (`misconception` is None) and `hint` writes a generic hint.
-With nothing to look for (no focus step, or an error type of None or `other`) both are empty.
+With nothing to look for (no focus step, or an error type of None, `other` or `incomplete`) both
+are empty.
 `MIN_SCORE` was chosen on the dev split (docs/decisions.md, "M5 layer 2").
 
 Reads: problem, student_steps, focus_step, error_type
@@ -25,7 +26,8 @@ def focus_lines(state: TutorState) -> tuple[str, str] | None:
     """(the line before the focus step, the line written at it), or None if nothing to look for."""
     focus = state.get("focus_step")
     steps = state.get("student_steps", [])
-    if state.get("error_type") in (None, "other") or focus is None or not 1 <= focus <= len(steps):
+    nothing_to_find = state.get("error_type") in (None, "other", "incomplete")
+    if nothing_to_find or focus is None or not 1 <= focus <= len(steps):
         return None
     previous = state.get("problem", "") if focus == 1 else steps[focus - 2].claim
     return previous, steps[focus - 1].claim

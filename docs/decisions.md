@@ -686,3 +686,8 @@ fallback hints" from the roadmap.
   `verify_steps.jsonl` | the pair file's format and its build are unchanged; cost: a second dataset file.
 - **Considered and not taken (developer, 2026-11-02): one general verify rule ("compare what parses, skip the rest")
   and dropping `Step.kind`** | the per-kind rules of this plan | the developer chose the plan as written.
+- **Layer 4: `is_clean_solution` skips an unreadable `reason`/`other` line** | leaving it "not clean" | localize finds
+  nothing wrong there, so a correct solution would get a hint; cost: `diagnosis.py` and localize share one more rule.
+- **Layer 4: localize tells a skipped line by `Step.kind` plus the `unparsable` verdict** | matching verify's note text |
+  no coupling to a note string; cost: localize reads `student_steps`, and a `reason` line that parses but follows an
+  unreadable problem is skipped too (the problem itself is then unreadable, so nothing was compared anyway).

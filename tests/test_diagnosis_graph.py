@@ -5,12 +5,31 @@ import pytest
 
 from tutor import graph as graph_module
 from tutor.graph import build_diagnosis_graph, route_after_verify
-from tutor.state import StepVerdict, TutorState
+from tutor.state import Step, StepVerdict, TutorState
 from tutor.tools.diagnosis import is_clean_solution
 
 
 def _state(*verdicts: StepVerdict, is_correct: bool = True) -> TutorState:
     return {"is_correct": is_correct, "step_verdicts": list(verdicts)}
+
+
+def test_a_correct_solution_with_an_unreadable_reason_line_is_clean() -> None:
+    verdicts = [
+        StepVerdict(step_index=1, relation="unparsable"),
+        StepVerdict(step_index=2, relation="equivalent"),
+    ]
+    steps = [Step(claim="5 is not zero", kind="reason"), Step(claim="x = 3")]
+    assert is_clean_solution(
+        {"is_correct": True, "step_verdicts": verdicts, "student_steps": steps}
+    )
+
+
+def test_an_unreadable_equation_line_is_not_clean() -> None:
+    verdict = StepVerdict(step_index=1, relation="unparsable")
+    steps = [Step(claim="x is about three")]
+    assert not is_clean_solution(
+        {"is_correct": True, "step_verdicts": [verdict], "student_steps": steps}
+    )
 
 
 def _visited(state: TutorState) -> list[str]:
