@@ -720,3 +720,56 @@ def test_a_verdict_on_a_first_message_does_not_raise_the_level() -> None:
         reply_moves_forward=False,
     )
     assert "hint_level" not in orch.orchestrator(state)
+
+
+def _after_a_hint(steps: list[Step], intent: str = "stuck") -> TutorState:
+    """A student who got a hint on `3^x - 1 + 1 = 5 + 1` and now sends more lines."""
+    old = ErrorContext(step_number=1, before="3^x - 1 = 4", after="3^x - 1 + 1 = 5 + 1")
+    return _no_working(
+        problem="3^x - 1 = 4",
+        intent=intent,
+        error_context=old,
+        hint_level=1,
+        hints_used=1,
+        student_steps=steps,
+        messages=[HumanMessage("3^x - 1 + 1 = 4 + 1\n3^x = 5\nStill idk what to do next")],
+    )
+
+
+def test_new_working_after_a_hint_is_diagnosed_not_hinted_from_the_old_line(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    steps = [Step(claim="3^x - 1 + 1 = 4 + 1"), Step(claim="3^x = 5")]
+    out = orch.orchestrator(_after_a_hint(steps))
+    assert out["next_action"] == "diagnose" and out["stage"] == "diagnosed"
+    assert "hint_level" not in out  # `_diagnosed` sets it from the new diagnosis
+
+
+def test_a_plain_calculation_after_a_hint_keeps_the_diagnosis(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_after_a_hint([Step(claim="4 + 1 = 5")]))
+    assert out["next_action"] == "hint"
+
+
+def test_working_with_a_new_letter_after_a_hint_still_gets_the_hint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_after_a_hint([Step(claim="y = 3^x")]))
+    assert out["next_action"] == "hint"
+
+
+def test_a_reason_only_line_after_a_hint_still_gets_the_hint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_after_a_hint([Step(claim="I added 1 to both sides")]))
+    assert out["next_action"] == "hint"
+
+
+def test_a_clarifying_question_with_working_after_a_hint_keeps_the_level() -> None:
+    out = orch.orchestrator(_diagnosed_reply(intent="explain", hint_level=2, hints_used=2))
+    assert out["next_action"] == "hint" and out["hint_level"] == 2

@@ -38,7 +38,7 @@ Write the hint for the given level, after a short praise of what was right. When
 
 Levels:
 1. Ask one concrete question that makes the student look at the part of the wrong step that differs from the line before, and that they can answer by comparing the two lines. It must be true of what they wrote: never ask what happened to something that is still there. No numbers from the problem's solution, no name for the mistake, no rule.
-2. Use the counterexample: ask the student to put those numbers into both lines and compare. Quote the numbers exactly as given; do not compute anything. If none is available, ask the student to pick a small whole number and try it in both lines. If it was already used, the student has tried those numbers: do not repeat them or ask for them again. Ask about the idea behind the step instead.
+2. Use the counterexample: ask the student to put those numbers into both lines and compare. Quote the numbers exactly as given; do not compute anything. When the counterexample says what each line becomes, quote both of those lines so the student can check them, and ask about how far apart the two sides are in plain words (how much bigger or smaller one side is); never say "left side minus right side". If none is available, ask the student to pick a small whole number and try it in both lines. If it was already used, the student has tried those numbers: do not repeat them or ask for them again. Ask about the idea behind the step instead.
 3. Say what idea is at stake, in plain words (use the misconception, turned into a neutral statement, not an accusation). Still no corrected line.
 4. State the general rule you are given, then ask the student to redo the wrong step with it. Still do not write the corrected line or the answer.
 

@@ -10,10 +10,13 @@ new_message: an LLM `Decision` picks ask / diagnose / hint / reply; code guards 
     first one is level 1, and an out-of-scope subject is declined instead. A clarifying question
     after any hint keeps the level. Code overrules an `ask` or `reply` from the model for such a
     student, because the model's `reply_text` does not pass the hint rules or the leakage check.
+    Code also overrules a `hint` after a diagnosis when the message brings new working that
+    `verify` can check (a line that parses and has a variable, and no letter that is not in the
+    problem): it goes to `diagnose`, so a hint is never built on a stale wrong line.
 diagnosed: plain code. Out-of-scope subject: decline. Clean solution: record the attempt, maybe
     offer practice. Otherwise set the hint level (different misconception: 1, same: +1; partial
     progress keeps it unless the student is stuck) and hint. A reply keeps the level for its own
-    hint, also when it contains math.
+    hint, also when it contains math, and a clarifying question after a hint keeps the level.
 hinted: plain code runs the leakage check, publishes the hint, or retries once, then falls back
     to the canned hint for the level. A rejected hint never enters `messages`. A reply the hint
     judged as not moving forward raises the level for the next hint. For a stopped solution the
@@ -40,6 +43,7 @@ from tutor.state import (
     TutorState,
 )
 from tutor.tools import structured
+from tutor.tools.algebra import letters
 from tutor.tools.canned_hints import MAX_LEVEL, NO_WORKING, canned_hint
 from tutor.tools.catalogue import load_catalogue
 from tutor.tools.diagnosis import (
@@ -113,6 +117,15 @@ def _next_hint_level(state: TutorState, diagnosed: bool) -> int:
     return min(level + 1, MAX_LEVEL)
 
 
+def _has_checkable_working(state: TutorState) -> bool:
+    """Lines `verify` can compare with the problem: at least one line that parses and has a
+    variable (plain calculations keep the earlier diagnosis, prose cannot be checked) and no
+    letter that is not in the problem (`verify` does not know it)."""
+    steps = state.get("student_steps", [])
+    has_working = any(letters(step.claim) for step in steps)
+    return has_working and not uses_new_letter(state)
+
+
 def _new_message(state: TutorState) -> dict[str, Any]:
     update: dict[str, Any] = {"turns": state.get("turns", 0) + 1}
     path = _db_path()
@@ -134,6 +147,8 @@ def _new_message(state: TutorState) -> dict[str, Any]:
         action = "diagnose" if has_steps else "ask"
     else:
         action, text = decision.action, decision.reply_text
+    if action == "hint" and diagnosed and has_steps and _has_checkable_working(state):
+        action = "diagnose"  # the stored diagnosis is about older lines than these
     if action == "diagnose" and not has_steps:
         action = "ask"
     if action == "hint" and not can_hint:
@@ -226,6 +241,8 @@ def _diagnosed(state: TutorState) -> dict[str, Any]:
             seen.append(misconception.id)
     if state.get("intent") == "answer":  # a reply's own hint keeps the level; `_hinted` raises it
         level = state.get("hint_level", 1)
+    if state.get("intent") == "explain" and state.get("hints_used", 0) > 0:
+        level = state.get("hint_level", 1)  # a clarifying question after a hint keeps the level
     return {
         "next_action": "hint",
         "hint_level": level,
