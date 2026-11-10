@@ -7,7 +7,20 @@ date: 2026-11-10
 
 ## Summary
 
-<!-- layer 6: the one-paragraph summary, links to the repository, the demo video and the requirement checklist -->
+A tutor for school algebra that **finds the wrong step in a student's own solution and helps them repair it**,
+without giving the answer. A student pastes a problem and their working. Three components work together:
+- an LLM turns the message into structured steps;
+- **SymPy** checks every step, and rules find the first wrong one;
+- a retriever names the misconception behind it from a catalogue of 119.
+
+An LLM then writes a Socratic hint at one of four levels. A deterministic check in code rejects any hint that would
+reveal the answer or the corrected line. The system is a LangGraph graph with a Streamlit interface and a live trace
+of every node. Every component has its own eval on fixed dev and test splits. The coding agent that built it was
+steered by rule files, skills, subagent reviews and automatic gates over 84 pull requests.
+
+- Code: [github.com/ruzhylopv/math-tutor-nlp-sys](https://github.com/ruzhylopv/math-tutor-nlp-sys)
+- Demo video: *(link to be added)*
+- Where each assignment requirement is answered: [section 9](#9-requirement-checklist)
 
 ## 1. Business understanding
 
@@ -342,20 +355,164 @@ routing turns are waiting to be labelled by the developer. Labels are deliberate
 
 ## 6. Deployment and demo
 
-<!-- layer 6: how to run the app, the demo-video outline -->
+### Running it
+
+```bash
+uv sync
+cp .env.example .env      # set OPENROUTER_API_KEY and MODEL_NAME (a free OpenRouter model)
+                          # optional: LEARNER_DB_PATH to keep a profile across chats
+uv run streamlit run app.py
+```
+
+Type a name (it only separates people's chats), then paste a problem with your working, or ask a question. The
+sidebar shows the hint level (`2 / 4`), the number of hints used and the profile across all chats; "New chat" keeps
+the profile. The **panel on the right** is the tracing view: it draws the graph live in the style of a CI run (a
+spinner on the running node, the used path, failed nodes), with each node's time. A click on a node shows what it
+decided: the parse, the verdicts, the error type, the retrieved misconception and its score, the routing reason.
+Math in the tutor's replies is typeset with KaTeX. A free model can take up to a minute per message.
+
+Checks: `uv run ruff check . && uv run mypy && uv run pytest -q` (1,179 tests pass, none needs the network).
+Evals: `uv run python evals/scripts/eval_<component>.py --split dev`.
+
+### Demo video outline (≤ 10 minutes)
+
+| Time | Shown | Said |
+|---|---|---|
+| 0:00-1:00 | this report, section 1 | the goal: repair a student's own solution, not solve problems; the scope |
+| 1:00-2:30 | architecture diagram | each component, which ones call a model, why SymPy and not the LLM checks algebra |
+| 2:30-5:30 | the app, scenario B, then scenario A | the four turns of B with the graph panel open: wrong square → question → extraneous root → solved; A: an answer without working is asked for steps |
+| 5:30-7:30 | section 5, the chart, one result file | why these metrics; which scores are high by construction and which are the real measurement; the debt |
+| 7:30-9:30 | `CLAUDE.md`, `.claude/`, a PR with its review comment, the address-review run | how the coding agent was steered and checked |
+| 9:30-10:00 | section 8 | limitations and what comes next |
 
 ## 7. Agentic development setup
 
-<!-- layer 6: CLAUDE.md, skills, subagents, hooks and permissions, the review/fix loop, stacked PRs, the
-/address-review GitHub workflow, reflection -->
+The whole project was written by a coding agent (Claude Code). The developer's job was to decide, review and merge.
+The agent was steered by **files and automatic gates, not by repeating instructions in chat**.
+
+![How a change reaches main](images/agent_workflow.svg)
+
+### What is in the agent's context
+
+- **`CLAUDE.md`**, loaded in every session. It holds the project rules:
+  - the workflow: a plan approved in chat before any multi-file change, one component per session, small diffs,
+    asking before adding dependencies;
+  - the branch and PR rules;
+  - the code rules: the node contract, SymPy for all math, prompts only in `.md` files, structured output for
+    anything that drives logic, type hints, `logging`;
+  - the evaluation rules: tune on dev only, never edit datasets, labels or tests to make results pass, never copy
+    eval examples into prompts;
+  - a definition of done for each component.
+- **Design documents**, read on demand: `docs/architecture.md`, `docs/decisions.md` (237 decisions, each with the
+  alternative that was rejected), `docs/crisp_dm_log.md`, and 39 approved plans in `docs/plans/{workflow,design,nodes}`.
+  A plan is saved before coding starts, so a later session can see *why* the code looks the way it does.
+- **A persistent memory** of the developer's preferences across sessions. Examples: "state the number of model calls
+  and get a yes before any eval", "keep review loops short", "choose datasets together with the developer". It also
+  records where the project stands.
+
+### Skills (`.claude/skills/`)
+
+| Skill | What it does |
+|---|---|
+| `add-node` | scaffolds a node: the node file, its prompt, a unit test, an eval stub and the graph wiring |
+| `run-eval` | runs one component's eval, saves the metrics, compares with the previous run and appends to the CRISP-DM log |
+| `open-pr` | checks the branch, decides between a single PR and a stack (more than one concern, or about 400+ lines), runs the gate, opens drafts from the PR template |
+| `gh-stack` | splits work into stacked PRs, one concern per layer, with dependencies in lower layers |
+| `review-loop` | one review per PR (in parallel for a stack), a fixer only for blockers, then the review is posted as a PR comment |
+| `address-review` | applies the developer's review comments on a PR branch; used by the GitHub Action |
+
+### Subagents (`.claude/agents/`)
+
+- **`code-reviewer`** reviews a diff it did not write, in its own git worktree. It checks the diff against
+  `CLAUDE.md`, runs the gate, and grades findings **P0** (blocker) to **P3** (nit). It also reports *possible
+  over-engineering* separately: each item names the requirement that does not need it, a simpler alternative, and
+  what simplifying would cost.
+- **`review-fixer`** fixes only the P0 and P1 findings in one commit. Anything it cannot fix safely is escalated in
+  the PR.
+
+The loop is deliberately **one pass**: no second review and no ping-pong. P2, P3 and the over-engineering signs go to
+the developer in the PR comment. The first version ran review, fix, review, fix and a final review. It was replaced
+(PR #55) because it took longer than the work it checked. Reviews of a stack run in parallel, each in its own
+worktree, after a reviewer once switched the shared checkout to `main`.
+
+### Gates the agent cannot talk its way past
+
+- **Hooks:**
+  - after every edit, the Python file is formatted and lint errors go back to the agent;
+  - before any Bash command, `git commit` and `git push` are refused on `main`;
+  - before the agent may stop, types and tests must pass if Python changed.
+- **Permissions:**
+  - `.env` cannot be read;
+  - the **test split cannot be edited**;
+  - force-push, pushing `main`, deleting branches, `gh pr merge` and `rm -rf` are denied;
+  - adding or removing a dependency asks the developer.
+
+### Reviewing without an IDE: the `address-review` GitHub Action
+
+When the developer submits **"Request changes"** on a PR, or a comment review that starts with `/address-review`,
+a GitHub Action runs Claude Code on that PR's branch with the `address-review` skill:
+- **Who can trigger it.** It runs only for the developer's account and only on PRs from this repository.
+- **What the agent sees.** The workflow, not the agent, fetches the triggering review and its inline comments. The
+  agent gets no `gh api`, cannot merge and has a turn limit.
+- **What it does.** It fixes the requested changes, runs the gate and pushes to the same branch.
+- **How it reports.** After the run, the workflow posts a "Done in `<commit>`" or "Not done: why" reply in each
+  review thread, and only to comments of that review.
+
+This made it possible to review and iterate from a phone or the GitHub web UI.
+
+### CRISP-DM, enforced rather than remembered
+
+CRISP-DM runs at two levels. For the project, this report's sections follow its phases. For each node, there is a
+small loop: explore the data, build, evaluate on dev, iterate. The loop is enforced by the same files. The definition
+of done in `CLAUDE.md` requires an eval script, a metrics file and a CRISP-DM log entry. `run-eval` writes the entry
+with the change against the last run. A plan cannot be skipped. The clearest iteration is `retrieve`: Recall@1 went
+from 0.16 to 0.90 on dev through a measured redesign (section 5).
+
+### Reflection
+
+- **Rules in files, not in chat.** A rule in `CLAUDE.md`, a skill or a hook applies to every session and every
+  subagent, including the GitHub Action. A rule said in chat applies to one conversation. Corrections that mattered
+  were therefore moved into files: the plan gate, the one-pass review, and the budget question before model calls.
+- **Ask the reviewer for simplicity explicitly.** This is a small project, and the reviewer has to name, for each
+  abstraction, the requirement that needs it, or else propose a simpler alternative and its cost. That keeps
+  "possible future needs" out of the code.
+- **Hard gates matter most where the agent is tempted.** Write-protecting the test split and forbidding label edits
+  removed the easiest way to "fix" a bad metric. When the final test run hit a label the agent believed was stale
+  (`localize` `hand/010`), it reported the label instead of changing it (section 5).
+- **Cost of the process.** Planning, stacking and review add overhead on small changes. Splitting the loop into one
+  review pass and a fixer only for blockers was the compromise.
 
 ## 8. Limitations and future work
 
-<!-- layer 6 -->
+- **Evaluation gaps** (section 5): `parse_input` after the redesign, the orchestrator's routing, and the hint test
+  split and human check are not measured. These come first.
+- **Synthetic data and one author.** No real student work was used. The next step is real attempts, for example the
+  first-error-annotated student chains of Daheim et al. [3], or the Eedi misconceptions [5] as an independent
+  catalogue and test set.
+- **The checker's grammar.** About 10% of mined lines are outside it: inequalities, several variables, trigonometry,
+  and branching solutions (sub-computations). Those steps get no misconception.
+- **Level-1 hints are too direct**, and the self-judge is lenient. A separate judge model and a human-rated sample
+  would make the hint numbers trustworthy.
+- **A free model.** It is slow (around 20 s per call) and rate-limited. A paid small model would make full eval runs
+  affordable. The estimate is about $2 for the rest of the project.
+- **Text only.** Photos of handwritten work would need an OCR or vision step in front of `parse_input`.
 
 ## 9. Requirement checklist
 
-<!-- layer 6: every item of the assignment mapped to a section -->
+| Assignment item | Where |
+|---|---|
+| App idea based on NLP components, beyond vanilla RAG | §1 (goal, why a pipeline); §3 (5 components, 3 LLM calls, retrieval over misconceptions, symbolic verification) |
+| Working prototype that accepts input and gives useful output; tools, model, interface chosen | §3, §6 (Streamlit app, OpenRouter model, SymPy, LangGraph) |
+| Follow CRISP-DM and show how | section structure (§1 business → §2 data → §3-4 modeling → §5 evaluation → §6 deployment); §7 "CRISP-DM, enforced"; `docs/crisp_dm_log.md` |
+| 1. Define the task | §1 |
+| 2. Prepare the data, checking existing datasets first | §2 (what was checked, what was used, what was generated and why) |
+| 3. Components: data-flow diagram; purpose, input and output; model and tool calls; one input through the system | §3 (diagram, components table, model and tool calls, scenario B walkthrough) |
+| 4. Build with an AI coding assistant steered by agent/convention files, CRISP-DM in those files | §7 (`CLAUDE.md`, skills, subagents, hooks, permissions) |
+| 5. Evaluate every component; choose proper metrics; tell high from low scores and explain | §5 (metric choice, results on dev and test, analysis, debt) |
+| Skills for the agentic development flow | §7 (six skills, two subagents) |
+| Code with setup and run instructions | repository `README.md`; §6 |
+| High-level diagrams, business logic in scope, eval results | §3, §4, §5 figures; §1 scope; §5 results |
+| Video: requirements, components, running demo with tracing, evals, agentic setup | §6 outline (the graph panel is the tracing view) |
 
 ## References
 
