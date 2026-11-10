@@ -760,3 +760,16 @@ def test_working_with_a_new_letter_after_a_hint_still_gets_the_hint(
     _decide(monkeypatch, Decision(action="hint", reason="r"))
     out = orch.orchestrator(_after_a_hint([Step(claim="y = 3^x")]))
     assert out["next_action"] == "hint"
+
+
+def test_a_reason_only_line_after_a_hint_still_gets_the_hint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _decide(monkeypatch, Decision(action="hint", reason="r"))
+    out = orch.orchestrator(_after_a_hint([Step(claim="I added 1 to both sides")]))
+    assert out["next_action"] == "hint"
+
+
+def test_a_clarifying_question_with_working_after_a_hint_keeps_the_level() -> None:
+    out = orch.orchestrator(_diagnosed_reply(intent="explain", hint_level=2, hints_used=2))
+    assert out["next_action"] == "hint" and out["hint_level"] == 2
