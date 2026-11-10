@@ -793,3 +793,9 @@ fallback hints" from the roadmap.
   "the left side minus the right side is 4 ... and 3" is abstract and the student cannot check it from what they see, while the two
   evaluated lines can be checked by hand and SymPy still does every computation; cost: the hint prompt gets one more rule, and a
   side SymPy cannot evaluate falls back to the old sentence.
+- **Math in the tutor's replies is shown as LaTeX by converting backtick fragments to `$...$` as text, when the reply is displayed
+  (2026-11-10)** | have the LLM write LaTeX; parse each fragment with SymPy and print it with `sp.latex` | the leakage check
+  reads backtick fragments with the SymPy parser, and earlier tutor messages go back to `parse_input` and `hint` as plain text, so
+  the stored reply must stay plain; `sp.latex` reorders and evaluates (`x + 2 - 2` becomes `x`), so the student could see a form
+  the tutor did not write, at worst the corrected line; cost: a small hand-written converter, and a fragment it cannot read (a
+  word, unicode, unbalanced brackets) stays as code. Only assistant replies are converted (the developer's choice).

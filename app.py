@@ -22,6 +22,7 @@ from tutor.ui import (
     load_history,
     next_chat,
     normalise_name,
+    render_math,
     send_stream,
     sidebar_info,
 )
@@ -155,7 +156,7 @@ def run_turn(tutor: Tutor, student_id: str, chat: int, text: str, panel: Panel) 
             total = time.monotonic() - start
             summary = f"Failed after {total:.1f}s" if view.error else f"Done in {total:.1f}s"
             status.update(label=summary, state="error" if view.error else "complete")
-        st.write(view.reply)
+        st.write(render_math(view.reply))
     st.session_state.step_log = (lines, summary)
     st.session_state.trace = (trace, steps)
     return view
@@ -186,7 +187,7 @@ def main() -> None:
 
     for role, text in load_history(tutor, student_id, chat):
         with st.chat_message(role):
-            st.write(hard_line_breaks(text) if role == "user" else text)
+            st.write(hard_line_breaks(text) if role == "user" else render_math(text))
     last: TurnView | None = st.session_state.get("last_turn")
     if last is not None and last.error:  # a failed run is not in the checkpoint
         if failed := st.session_state.get("failed_text"):

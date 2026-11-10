@@ -6,6 +6,7 @@ second copy. The learner profile is read only (`get_profile`); starting a new ch
 """
 
 import logging
+import re
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -110,6 +111,130 @@ def normalise_name(name: str) -> str:
 def hard_line_breaks(text: str) -> str:
     """The student's text with every newline kept: Markdown otherwise joins single newlines."""
     return text.replace("\r\n", "\n").replace("\n", "  \n")
+
+
+# Display-only LaTeX for the tutor's replies. The hint prompt puts math in backticks as plain text
+# (`x^2 + 5x = 6`); the leakage check and the next prompts read that form, so it is converted only
+# here, as text: no SymPy round-trip, which would reorder or evaluate what the tutor quoted.
+_FRAGMENT = re.compile(r"`([^`\n]+)`")
+_MATH_CHARS = re.compile(r"[A-Za-z0-9\s+\-*/^=<>!().,|]+")
+_TOKEN = re.compile(r"\s+|\d+(?:\.\d+)?|[A-Za-z]+|\+-|<=|>=|!=|.")
+_FUNCTIONS = {"sqrt", "abs"}
+_WORDS = {"or", "and"}
+_SYMBOLS = {"*": r"\cdot ", "+-": r"\pm ", "<=": r"\le ", ">=": r"\ge ", "!=": r"\ne "}
+
+# A parsed fragment: a token ("tok", text), a bracketed group ("group", nodes), a function call
+# ("func", name, nodes), a power ("pow", base, exponent) or a fraction ("frac", a, b).
+_Node = tuple[Any, ...]
+
+
+class _NotMath(Exception):
+    """The fragment is not plain math this converter can render; it stays in backticks."""
+
+
+def _parse(tokens: list[str], start: int, closing: bool) -> tuple[list[_Node], int]:
+    """Nodes up to the matching ")" (when `closing`) or the end, and the index after them."""
+    nodes: list[_Node] = []
+    i = start
+    while i < len(tokens):
+        token = tokens[i]
+        if token == ")":
+            if not closing:
+                raise _NotMath
+            return _operators(nodes), i + 1
+        if token == "(":
+            inner, i = _parse(tokens, i + 1, closing=True)
+            if nodes and nodes[-1][0] == "tok" and nodes[-1][1] in _FUNCTIONS:
+                nodes[-1] = ("func", nodes[-1][1], inner)
+            else:
+                nodes.append(("group", inner))
+            continue
+        if token.isalpha() and len(token) > 2 and token not in _FUNCTIONS:
+            raise _NotMath  # a word, not a product of letters
+        nodes.append(("tok", token))
+        i += 1
+    if closing:
+        raise _NotMath
+    return _operators(nodes), i
+
+
+def _operators(nodes: list[_Node]) -> list[_Node]:
+    """Attach each `^` to its base and exponent, then each `/` to its two operands."""
+    for symbol, kind in (("^", "pow"), ("/", "frac")):
+        out: list[_Node] = []
+        i = 0
+        while i < len(nodes):
+            if nodes[i] != ("tok", symbol):
+                out.append(nodes[i])
+                i += 1
+                continue
+            if not out or i + 1 >= len(nodes):
+                raise _NotMath
+            if symbol == "^" and out[-1][0] == "pow":  # a double superscript: KaTeX rejects it
+                raise _NotMath
+            operand, i = nodes[i + 1], i + 2
+            if symbol == "^" and operand == ("tok", "-") and i < len(nodes):
+                operand, i = ("group", [operand, nodes[i]]), i + 1  # a negative exponent
+            if operand[0] == "tok" and not operand[1][0].isalnum():  # an operator, not an operand
+                raise _NotMath
+            out[-1] = (kind, out[-1], operand)
+        nodes = out
+    return nodes
+
+
+def _latex(nodes: list[_Node]) -> str:
+    return "".join(_node_latex(node) for node in nodes)
+
+
+def _bare(node: _Node) -> str:
+    """A node without its outer parentheses: they are not needed inside braces."""
+    return _latex(node[1]) if node[0] == "group" else _node_latex(node)
+
+
+def _node_latex(node: _Node) -> str:
+    kind = node[0]
+    if kind == "group":
+        return rf"\left({_latex(node[1])}\right)"
+    if kind == "func":
+        inner = _latex(node[2])
+        return rf"\sqrt{{{inner}}}" if node[1] == "sqrt" else rf"\left|{inner}\right|"
+    if kind == "pow":
+        return rf"{_node_latex(node[1])}^{{{_bare(node[2])}}}"
+    if kind == "frac":
+        return rf"\frac{{{_bare(node[1])}}}{{{_bare(node[2])}}}"
+    token: str = node[1]
+    if token in _FUNCTIONS:
+        raise _NotMath  # "sqrt" without its brackets
+    if token in _WORDS:
+        return rf"\text{{ {token} }}"
+    return _SYMBOLS.get(token, token)
+
+
+def _fragment_latex(fragment: str) -> str | None:
+    """The fragment as LaTeX, or None when it is not plain math."""
+    if not _MATH_CHARS.fullmatch(fragment):
+        return None
+    try:
+        tokens = [token for token in _TOKEN.findall(fragment) if not token.isspace()]
+        return _latex(_parse(tokens, 0, closing=False)[0])
+    except _NotMath:
+        return None
+
+
+def render_math(text: str) -> str:
+    """A tutor reply for Markdown: backtick math becomes `$...$`, and a `$` in the prose is escaped.
+
+    A fragment that is not plain math (a word, unicode, unbalanced brackets) keeps its backticks.
+    """
+    out: list[str] = []
+    last = 0
+    for match in _FRAGMENT.finditer(text):
+        out.append(text[last : match.start()].replace("$", r"\$"))
+        latex = _fragment_latex(match.group(1))
+        out.append(match.group(0) if latex is None else f"${latex}$")
+        last = match.end()
+    out.append(text[last:].replace("$", r"\$"))
+    return "".join(out)
 
 
 def thread_id(student_id: str, chat: int) -> str:
