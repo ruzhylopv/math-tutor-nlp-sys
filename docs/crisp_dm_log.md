@@ -222,4 +222,7 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
 - **Plainer balance counterexample (2026-11-10)**: a level-2 hint for a step that changed both sides now shows what each line
   becomes at the number ("8 = 4", "9 = 6") and how far apart the sides are, instead of "left side minus right side". Unit tests
   only. **Eval debt:** the hint eval was not re-run (real model calls need the developer's yes on a budget).
+- **LaTeX in replies (2026-11-10)**: math in the tutor's replies is typeset (KaTeX, already in Streamlit) instead of shown as
+  code; the stored text, prompts and leakage check are unchanged. Unit tests; checked in headless Chromium on a scripted reply
+  (9 formulas, no KaTeX errors). No model calls. No metrics: UI only.
 - Planned: the demo video using scenarios A and B.
