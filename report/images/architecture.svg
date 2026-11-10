@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 790" width="1000" height="790" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#37474f"/>
+    </marker>
+    <style>
+      .t { font-size: 15px; font-weight: 600; fill: #1b1b1b; }
+      .s { font-size: 12px; fill: #37474f; }
+      .e { font-size: 12px; fill: #263238; font-style: italic; }
+      .edge { stroke: #37474f; stroke-width: 1.6; fill: none; marker-end: url(#a); }
+      .dash { stroke: #78909c; stroke-width: 1.3; fill: none; stroke-dasharray: 5 4; }
+      .llm { fill: #ede7ff; stroke: #6b4fd8; stroke-width: 1.6; }
+      .det { fill: #e6f4ea; stroke: #2e7d32; stroke-width: 1.6; }
+      .ret { fill: #fff3e0; stroke: #ef6c00; stroke-width: 1.6; }
+      .sto { fill: #eceff1; stroke: #546e7a; stroke-width: 1.6; }
+      .ui  { fill: #e3f2fd; stroke: #1565c0; stroke-width: 1.6; }
+    </style>
+  </defs>
+  <rect width="1000" height="790" fill="#ffffff"/>
+
+  <!-- legend -->
+  <g transform="translate(20,20)">
+    <rect x="0" y="0" width="14" height="14" rx="3" class="llm"/><text x="22" y="12" class="s">LLM call (structured output)</text>
+    <rect x="0" y="22" width="14" height="14" rx="3" class="det"/><text x="22" y="34" class="s">deterministic code / SymPy</text>
+    <rect x="0" y="44" width="14" height="14" rx="3" class="ret"/><text x="22" y="56" class="s">retrieval (local embeddings)</text>
+    <rect x="0" y="66" width="14" height="14" rx="3" class="sto"/><text x="22" y="78" class="s">storage (SQLite)</text>
+  </g>
+
+  <!-- UI -->
+  <rect x="320" y="20" width="360" height="58" rx="10" class="ui"/>
+  <text x="500" y="44" text-anchor="middle" class="t">Streamlit chat (app.py)</text>
+  <text x="500" y="63" text-anchor="middle" class="s">student message in · tutor reply out · live graph panel</text>
+
+  <!-- parse_input -->
+  <path d="M500,78 V128" class="edge"/>
+  <text x="508" y="108" class="e">raw message</text>
+  <rect x="360" y="130" width="280" height="66" rx="10" class="llm"/>
+  <text x="500" y="155" text-anchor="middle" class="t">parse_input</text>
+  <text x="500" y="174" text-anchor="middle" class="s">problem · steps (claim, kind, justification)</text>
+  <text x="500" y="189" text-anchor="middle" class="s">intent · topic and level</text>
+
+  <!-- orchestrator -->
+  <path d="M500,196 V246" class="edge"/>
+  <rect x="340" y="248" width="320" height="84" rx="10" class="llm"/>
+  <text x="500" y="273" text-anchor="middle" class="t">orchestrator</text>
+  <text x="500" y="292" text-anchor="middle" class="s">new message: LLM picks ask / diagnose / hint / reply</text>
+  <text x="500" y="308" text-anchor="middle" class="s">after a diagnosis or hint: plain code (hint level,</text>
+  <text x="500" y="323" text-anchor="middle" class="s">leakage check, retry, canned fallback, DB tools)</text>
+
+  <!-- reply back to UI -->
+  <path d="M340,290 H280 V49 H318" class="edge"/>
+  <text x="272" y="150" text-anchor="end" class="e">reply_text:</text>
+  <text x="272" y="166" text-anchor="end" class="e">a question, a reply,</text>
+  <text x="272" y="182" text-anchor="end" class="e">or a hint that passed</text>
+  <text x="272" y="198" text-anchor="end" class="e">the leakage check</text>
+
+  <!-- tools of the orchestrator -->
+  <rect x="740" y="232" width="240" height="52" rx="8" class="sto"/>
+  <text x="860" y="254" text-anchor="middle" class="t">learner DB</text>
+  <text x="860" y="272" text-anchor="middle" class="s">get_profile · record_attempt</text>
+  <rect x="740" y="296" width="240" height="52" rx="8" class="det"/>
+  <text x="860" y="318" text-anchor="middle" class="t">leakage check · canned hints</text>
+  <text x="860" y="336" text-anchor="middle" class="s">SymPy: answer or corrected line?</text>
+  <path d="M660,272 H738" class="dash"/>
+  <path d="M660,316 H738" class="dash"/>
+
+  <!-- diagnosis subgraph -->
+  <rect x="30" y="400" width="460" height="320" rx="12" fill="#fafafa" stroke="#90a4ae" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="50" y="426" class="t">diagnosis subgraph (no LLM)</text>
+
+  <rect x="70" y="442" width="380" height="62" rx="10" class="det"/>
+  <text x="260" y="466" text-anchor="middle" class="t">verify</text>
+  <text x="260" y="486" text-anchor="middle" class="s">SymPy: each step equivalent / implies / narrows /</text>
+  <text x="260" y="500" text-anchor="middle" class="s">not_valid / unparsable; is the final answer right?</text>
+
+  <path d="M260,504 V532" class="edge"/>
+  <rect x="70" y="534" width="380" height="62" rx="10" class="det"/>
+  <text x="260" y="558" text-anchor="middle" class="t">localize</text>
+  <text x="260" y="578" text-anchor="middle" class="s">rules on the verdicts: first wrong step, focus step,</text>
+  <text x="260" y="592" text-anchor="middle" class="s">error type (5 types, e.g. extraneous root, mismatch)</text>
+
+  <path d="M260,596 V624" class="edge"/>
+  <rect x="70" y="626" width="380" height="62" rx="10" class="ret"/>
+  <text x="260" y="650" text-anchor="middle" class="t">retrieve</text>
+  <text x="260" y="670" text-anchor="middle" class="s">MiniLM cosine + string similarity on the step's shape</text>
+  <text x="260" y="684" text-anchor="middle" class="s">over 119 hand-written misconceptions; abstains &lt; 0.85</text>
+
+  <text x="260" y="710" text-anchor="middle" class="e">a correct answer with every step valid ends after verify</text>
+
+  <!-- orchestrator <-> diagnosis -->
+  <path d="M380,332 L240,398" class="edge"/>
+  <text x="222" y="364" text-anchor="end" class="e">diagnose (new working)</text>
+  <path d="M330,398 L440,334" class="edge"/>
+  <text x="398" y="388" class="e">verdicts, focus step, misconception</text>
+
+  <!-- hint -->
+  <rect x="580" y="452" width="300" height="80" rx="10" class="llm"/>
+  <text x="730" y="477" text-anchor="middle" class="t">hint</text>
+  <text x="730" y="496" text-anchor="middle" class="s">Socratic hint at level 1-4, grounded in the</text>
+  <text x="730" y="511" text-anchor="middle" class="s">misconception; praises what was right; judges a</text>
+  <text x="730" y="526" text-anchor="middle" class="s">reply to its own question</text>
+  <path d="M600,332 L680,450" class="edge"/>
+  <text x="650" y="380" class="e">hint (level set in code)</text>
+  <path d="M780,450 L650,334" class="edge"/>
+  <text x="742" y="415" class="e">hint_text → check</text>
+
+  <rect x="580" y="572" width="300" height="52" rx="8" class="det"/>
+  <text x="730" y="594" text-anchor="middle" class="t">counterexample</text>
+  <text x="730" y="612" text-anchor="middle" class="s">SymPy picks the numbers for a level-2 hint</text>
+  <path d="M730,532 V570" class="dash"/>
+
+  <!-- checkpointer -->
+  <rect x="30" y="742" width="940" height="36" rx="8" class="sto"/>
+  <text x="500" y="765" text-anchor="middle" class="s"><tspan font-weight="600">checkpointer (SQLite)</tspan> · the whole TutorState is saved after every message, keyed by student|chat: hint level and diagnosis survive across turns</text>
+</svg>

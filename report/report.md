@@ -125,12 +125,102 @@ with a sample for the developer to spot-check.
 
 ## 3. System architecture
 
-<!-- layer 4: data-flow diagram, components (purpose, input, output), model calls and tool calls, a walkthrough of
-one input through the system -->
+The system is a **LangGraph** state machine with a deterministic diagnosis core, wrapped in a small agentic layer.
+The agent decides *when* and *whether* to do something; the pipeline decides *how* a diagnosis is done. All nodes read
+and write one typed state (`TutorState`, pydantic models in `src/tutor/state.py`). Each node is a pure function that
+returns only the fields it changed, and all I/O goes through `src/tutor/tools/`.
+
+![Architecture: data flow through the main graph and the diagnosis subgraph](images/architecture.svg)
+
+### Components
+
+| Component | Kind | Purpose | Input | Output |
+|---|---|---|---|---|
+| `parse_input` | **LLM**, structured `ParsedInput` | turn a messy message (plain, LaTeX, unicode, spoken math, chatty text) into structure | the student's message, the tutor's last message, the stored problem | `problem`; `student_steps` (claim, kind, justification); `intent` (`check_work`, `stuck`, `answer`, `explain`, `new_problem`, `other`); `topic`, `level` |
+| `orchestrator` | **LLM**, structured `Decision`, on a new message; **plain code** otherwise | route the conversation; set or escalate the hint level; run the leakage check; call the learner DB | messages, the parse, the stage, the stored diagnosis | `next_action`; `hint_level`; `error_context`; `reply_text`; profile updates |
+| `verify` | **SymPy** | judge every step against the previous line (`equivalent`, `implies`, `narrows`, `not_valid`, `unparsable`) and check the final answer | `problem`, `student_steps` | `step_verdicts`, `is_correct` |
+| `localize` | **rules** | first wrong step, the step to talk about, and the error type (`algebraic_transformation`, `omission_extraneous_root`, `reasoning_result_mismatch`, `incomplete`, `other`) | the verdicts and steps | `first_error_step`, `focus_step`, `error_type` |
+| `retrieve` | **retrieval** (local MiniLM embeddings + string similarity) | find the misconception behind the wrong step; abstain below a score of 0.85 | the line before the focus step and the line written there | top-5 `misconception_candidates`, `misconception` |
+| `hint` | **LLM**, structured `HintText` | write a Socratic hint at the given level, grounded in the misconception; for a reply to its own question, judge whether it moves forward | `error_context`, misconception, level, SymPy counterexample, recent chat | `hint_text`, `reply_moves_forward` |
+
+**Model calls** (the three LLM nodes) go to an OpenRouter free model through `langchain-openai`, always with
+structured output (a pydantic model, one retry). The evals used `nvidia/nemotron-3.5-super-vl:free`. A typical
+message costs 2-3 calls: `parse_input`, `orchestrator` (skipped when code can route a reply), and `hint` (one more if
+the first hint leaks). Prompts live in `src/tutor/prompts/*.md` and are never inline in Python.
+
+**Tool calls** (no model): SymPy parsing and solution sets (`tools/algebra.py`), the counterexample generator that
+picks the numbers for a level-2 hint, the leakage check, canned hints for each level, the embedding search over the
+119-entry catalogue, the learner DB (`get_profile`, `record_attempt`) and the SQLite checkpointer.
+
+**One hard rule:** the LLM never does arithmetic or checks algebra. A hint may use only numbers that SymPy produced or
+that are already in the chat. The one exception: `hint` judges a student's reply to its own question. Every
+*submitted step* still goes through SymPy.
+
+### One input, through the whole system
+
+Scenario B is the system's acceptance test and the demo script. The problem is $\sqrt{x+7} = x - 5$, whose only
+solution is $x = 9$.
+
+**Turn 1.** The student writes:
+`sqrt(x + 7) = x - 5. x + 7 = x^2 - 25; x^2 - x - 32 = 0; x = (1 +- sqrt(129))/2`
+
+1. `parse_input` (LLM) splits it into the problem and three steps, and tags the message as a request to check work.
+2. `orchestrator` (LLM) sees a problem with working and chooses `diagnose`.
+3. `verify` (SymPy) squares the original, compares solution sets and finds that step 1 is `not_valid`:
+   $(x-5)^2 \ne x^2 - 25$. The later steps follow from step 1, and the final answer is wrong.
+4. `localize` (rules) sets the first wrong step to 1, the focus to step 1 and the type to `algebraic_transformation`.
+5. `retrieve` reduces the rewrite to its *shape*, with variables replaced by `v` and numbers by `n`:
+   `(v - n)^n -> v^n - n`. It compares this shape with the catalogue and returns **M038** "believes that $(a - b)^2$
+   equals $a^2 - b^2$".
+6. Back in `orchestrator` (code): this is a new misconception, so the hint level is 1. The step is copied into
+   `error_context`.
+7. `hint` (LLM) writes a level-1 question that points at how $x - 5$ was squared, after a word on what was right.
+8. `orchestrator` (code) runs the leakage check. The hint must not contain $x = 9$ or the corrected line
+   $x^2 - 10x + 25$, compared with SymPy, not only as strings. It passes, so the hint is shown and saved.
+
+**Turn 2.** "isn't (x - 5)^2 just x^2 - 25?" The message has no new steps, so `orchestrator` sends it to `hint`
+without a new diagnosis. In the replay the level rises to 2. At level 2 the counterexample tool picks a small whole
+number that is not a solution, here $x = 2$. SymPy evaluates both lines there: the line before step 1 becomes
+$3 = -3$ and the student's line becomes $9 = -21$. The two lines are unbalanced by different amounts (6 and 30), so
+step 1 cannot follow from the line before it. The LLM only words the hint around these numbers.
+
+**Turn 3.** The student squares correctly but keeps both roots, $x = 9$ or $x = 2$. Every step is valid; step 1 is
+`implies`, not `equivalent`, because squaring can add roots. So `localize` reports `omission_extraneous_root`.
+`retrieve` returns a different misconception (accepting roots after squaring without a check), and the level
+**resets to 1**.
+
+**Turn 4.** The student substitutes both roots and rejects $x = 2$. `verify` accepts the step that drops $x = 2$
+as `narrows`, which is valid only because the remaining set equals the original problem's solution set. The answer
+is correct, so `orchestrator` calls `record_attempt` with both misconceptions and replies without a hint.
+
+In the app, the right-hand panel draws this path live: the running node, the path used, and each node's decisions
+and timings (section 6).
 
 ## 4. Development plan
 
-<!-- layer 4: milestones M1-M7, the flexible-input redesign, polishing; timeline -->
+The project followed a roadmap of seven milestones (`docs/plans/design/2026-10-25-roadmap.md`), built in the order
+of dependencies: the deterministic core first, because everything else is measured against it. Every milestone had
+an approved plan in `docs/plans/`, its own PRs, and an evaluation entry in the CRISP-DM log.
+
+![Development timeline](images/timeline.svg)
+
+| Phase | What was built | Why in this order |
+|---|---|---|
+| Setup and design | agent rules (`CLAUDE.md`), skills, PR template, review workflow; architecture, decisions log, roadmap | the process had to exist before the first line of code (section 7) |
+| M1 skeleton | typed state, config, OpenRouter client, shared eval runner, stub nodes and both graphs compiling | every later node plugs into a fixed contract |
+| M2 `verify` | SymPy step relations, the `narrows` relation, the mined and generated datasets | no LLM, and every other node trusts its verdicts |
+| M3 input | `parse_input` and `classify` with their datasets | the first LLM nodes, behind one structured-call helper |
+| M4 `localize`, `retrieve` | rule-based localization; the hand-written catalogue and shape-based retrieval | needs `verify`'s verdicts |
+| M5 `hint` | counterexample tool, leakage check, canned hints, the hint node and its eval | needs a localized step and a misconception |
+| M6 orchestration | the orchestrator's three modes, learner DB, checkpointer, scenarios A and B | wires everything into a conversation |
+| M7 app | Streamlit chat, step log with timings | makes the system usable and demoable |
+| Flexible-input redesign | a 6-layer stack: line kinds and intent in `parse_input`; definitions and prose lines in `verify`; `incomplete` solutions; hints that answer replies; `classify` merged into `parse_input` | real chats showed the pipeline was too strict about input (for example, a correct substitution flagged as an error) |
+| Polishing from use | stale-diagnosis fix, clarifying questions, calculation replies, quota message; the live graph panel; LaTeX in replies | each fix came from a real chat in the app |
+
+Two choices shaped the plan. First, the pipeline was **kept** when it got hard: collapsing it to three LLM nodes was
+considered and rejected, because it would remove what is measurable and enforceable. Second, when model calls became
+the bottleneck (free-tier rate limits, HTTP 429), the redesign layers were shipped with their **evaluation recorded as
+debt** rather than measured on noisy partial runs. Section 5 shows what that debt is.
 
 ## 5. Evaluation
 
