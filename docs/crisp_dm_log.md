@@ -191,6 +191,27 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   (limited model credits, developer's decision).** The hint rubric's `on_target` does not fit this mode, and the routing dev set
   still needs about 10 labelled "stuck with no working" cases, to be picked with the developer. No new metrics.
 
+- 2026-11-10 | verify | dev | accuracy unchanged from 2026-11-02 (no metric moved; n=1621) | 6dc17e7 | Eval debt paid, no model
+  calls. Still high by construction (see the 2026-10-26 entries). Result file: `evals/results/verify/20261110T135917Z_6dc17e7.json`.
+- 2026-11-10 | localize | dev | accuracy unchanged from 2026-10-27 (n=78) | 6dc17e7 | No model calls. One gold label moved from `other`
+  to `incomplete` in ae3e080 (2026-11-08, when localize started reporting incomplete solutions), and the case is still right; no
+  metric moved. Result file: `evals/results/localize/20261110T135918Z_6dc17e7.json`.
+- 2026-11-10 | retrieve | dev | recall@1=0.898, recall@5=0.978, map@5=0.931 (all unchanged; n=324) | 6dc17e7 | No API calls (local
+  embedding model). Still optimistic: agent-written catalogue and queries. Result file:
+  `evals/results/retrieve/20261110T135929Z_6dc17e7.json`.
+- 2026-11-10 | hint | dev, SUBSET 16 of 60 (4 per level) | leakage=0.062 (was 0.067 on a different 15-case subset), canned=0.000 (was
+  0.133), judge_failures=0.000 (was 0.200), counterexample_use=0.667 (was 1.000), fits_level=0.812 (was 0.833) | 6dc17e7 | Model
+  `nvidia/nemotron-3.5-super-vl:free`, prompt hash 18861f5fa264, 32 real calls (16 cached from a first 8-case stage).
+  - **The counterexample_use drop is the metric, not the hint.** The metric looks for the two gap values, but the new "balance"
+    wording (#101) quotes the lines instead (`21 = 45`, `5 = 5`). The hint did quote them.
+  - **A real side effect of #101.** The new level-2 sentence about "how far apart the sides are" reaches plain expressions ("How
+    much bigger is one side than the other?" for `54` vs `37`), which have no sides.
+  - **Pre-existing failures.** The one leak is level 4 stating the catalogue rule `x * x = x^2`, which is also the corrected line
+    (same pattern as before). Level 1 fits only 1 of 4: the questions point straight at the error ("Did you keep that plus sign?").
+  - The subsets differ and n is tiny, so a change of one case is about 6-8 points.
+  - **Still owed:** eval_parse_input (about 45 calls) and the orchestrator (no dev set yet).
+  - Result file: `evals/results/hint/20261110T140719Z_6dc17e7.json`.
+
 ## Deployment
 - **M7 app (2026-10-27)**: Streamlit chat (`app.py`, `src/tutor/ui.py`): name field, chat bubbles on the checkpointed
   history, "New chat" (same person, same profile), sidebar with hint level, hints used and the `get_profile` summary,
