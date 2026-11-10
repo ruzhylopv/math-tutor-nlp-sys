@@ -19,13 +19,16 @@ This breaks the CLAUDE.md rule that every submitted step goes through SymPy.
 
 ## Layer 1: `fix/stale-diagnosis-hint` (orchestrator)
 - **Rule:** when the model picks `hint` and an old diagnosis exists, new working that `verify` can check goes to `diagnose`
-  instead. Working that `verify` can check means at least one line that is not a plain calculation, and no letter that is not in
-  the problem.
+  instead. Working that `verify` can check means at least one line that parses and has a variable (so neither a plain
+  calculation nor a prose line such as "I added 1 to both sides"), and no letter that is not in the problem.
+- **Level:** in `diagnosed`, a clarifying question (intent `explain`) after a hint keeps the level, as it does on the
+  `hint` route.
 - **Kept as they are:** plain calculations (`is_calculation_reply` keeps the earlier diagnosis for them) and lines with a new
   letter (`verify` does not know definitions from an earlier turn). Both keep going to `hint`, as today.
 - **Scope:** only the model's `hint` is overruled. `ask` and `reply` with working stay as they are, because existing tests pin
   them on purpose (for example `test_the_override_leaves_a_message_with_working_alone`).
-- **Tests:** the reported case with a scripted model, a plain calculation, and a line with a new letter.
+- **Tests:** the reported case with a scripted model, a plain calculation, a line with a new letter, a reason-only line,
+  and a clarifying question with the same misconception keeping the level.
 
 ## Layer 2: `fix/balance-counterexample-wording` (hint, through `tools/counterexample`)
 - **Problem:** a "balance" counterexample (both sides of the equation changed) is described as "the left side minus the right
