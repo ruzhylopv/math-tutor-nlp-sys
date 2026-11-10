@@ -159,7 +159,8 @@ that are already in the chat. The one exception: `hint` judges a student's reply
 ### One input, through the whole system
 
 Scenario B is the system's acceptance test and the demo script. The problem is $\sqrt{x+7} = x - 5$, whose only
-solution is $x = 9$.
+solution is $x = 9$. The replay test (`tests/test_scenarios.py`) scripts the LLM calls and `retrieve`; where its
+outcome differs from a live run, both are stated below.
 
 **Turn 1.** The student writes:
 `sqrt(x + 7) = x - 5. x + 7 = x^2 - 25; x^2 - x - 32 = 0; x = (1 +- sqrt(129))/2`
@@ -169,14 +170,18 @@ solution is $x = 9$.
 3. `verify` (SymPy) squares the original, compares solution sets and finds that step 1 is `not_valid`:
    $(x-5)^2 \ne x^2 - 25$. The later steps follow from step 1, and the final answer is wrong.
 4. `localize` (rules) sets the first wrong step to 1, the focus to step 1 and the type to `algebraic_transformation`.
-5. `retrieve` reduces the rewrite to its *shape*, with variables replaced by `v` and numbers by `n`:
-   `(v - n)^n -> v^n - n`. It compares this shape with the catalogue and returns **M038** "believes that $(a - b)^2$
-   equals $a^2 - b^2$".
+5. `retrieve` reduces the rewrite from the line before step 1 (here the problem itself) to step 1 to its *shape*,
+   with variables replaced by `v` and numbers by `n`: `sqrt(v + n) = v - n -> v + n = v^n - n`. It compares this
+   shape with the catalogue and returns **M063** "squares both sides of an equation with a radical by squaring each
+   term on the right separately" (score 1.0). The replay test scripts `retrieve` to return M038 ("believes that
+   $(a - b)^2$ equals $a^2 - b^2$") instead.
 6. Back in `orchestrator` (code): this is a new misconception, so the hint level is 1. The step is copied into
    `error_context`.
 7. `hint` (LLM) writes a level-1 question that points at how $x - 5$ was squared, after a word on what was right.
-8. `orchestrator` (code) runs the leakage check. The hint must not contain $x = 9$ or the corrected line
-   $x^2 - 10x + 25$, compared with SymPy, not only as strings. It passes, so the hint is shown and saved.
+8. `orchestrator` (code) runs the leakage check. It blocks the answer $x = 9$ and the expanded, factored or
+   simplified form of a side of the problem or of the line before the wrong step, compared with SymPy, not only as
+   strings. Its limit: it does not catch every correct next step, so the corrected line $x^2 - 10x + 25$ is not
+   blocked by it; only the hint prompt keeps it out. The hint passes, so it is shown and saved.
 
 **Turn 2.** "isn't (x - 5)^2 just x^2 - 25?" The message has no new steps, so `orchestrator` sends it to `hint`
 without a new diagnosis. In the replay the level rises to 2. At level 2 the counterexample tool picks a small whole
@@ -186,12 +191,15 @@ step 1 cannot follow from the line before it. The LLM only words the hint around
 
 **Turn 3.** The student squares correctly but keeps both roots, $x = 9$ or $x = 2$. Every step is valid; step 1 is
 `implies`, not `equivalent`, because squaring can add roots. So `localize` reports `omission_extraneous_root`.
-`retrieve` returns a different misconception (accepting roots after squaring without a check), and the level
-**resets to 1**.
+Live, `retrieve` again returns M063 (score 0.966, above the 0.85 threshold; M064 "accepts every root found after
+squaring without checking it" is third at 0.702). It is the same misconception as before, so `orchestrator` raises
+the hint level by one instead of resetting it. The replay test scripts M064 here, so in the replay the
+misconception is new and the level resets to 1.
 
 **Turn 4.** The student substitutes both roots and rejects $x = 2$. `verify` accepts the step that drops $x = 2$
 as `narrows`, which is valid only because the remaining set equals the original problem's solution set. The answer
-is correct, so `orchestrator` calls `record_attempt` with both misconceptions and replies without a hint.
+is correct, so `orchestrator` calls `record_attempt` with the misconceptions seen on this problem (live: M063 only;
+replay: M038 and M064) and replies without a hint.
 
 In the app, the right-hand panel draws this path live: the running node, the path used, and each node's decisions
 and timings (section 6).
