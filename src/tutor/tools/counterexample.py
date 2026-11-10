@@ -8,7 +8,8 @@ put in for the variable(s) at which the lines disagree:
   help here: two different equations are both false at almost every number, and the number that
   makes the line before true is the problem's answer;
 - two equations where both sides changed and the difference left - right is not just scaled: the
-  value of left - right in each line (`kind` "balance").
+  value of left - right in each line (`kind` "balance"), and what each line becomes at that
+  number, so the hint can show the student something they can check ("8 = 4" and "9 = 6").
 A number that solves the original problem is never used, so the counterexample cannot hand over the
 answer. Returns None when there is no such number or the lines are not handled (inequalities,
 prose, a mix of expression and equation, equations joined by "or", valid rewrites).
@@ -35,10 +36,18 @@ class Counterexample:
     before_value: str
     after_value: str
     where: str = ""  # "left" or "right" for kind "side"
+    before_line: str = ""  # kind "balance": the line before at these numbers, e.g. "8 = 4"
+    after_line: str = ""  # kind "balance": the student's line at these numbers
 
     def describe(self) -> str:
         """One plain sentence with the numbers, for the hint prompt."""
         numbers = ", ".join(f"{name} = {value}" for name, value in self.assignment.items())
+        if self.kind == "balance" and self.before_line and self.after_line:
+            return (
+                f"With {numbers}, the line before becomes {self.before_line}, "
+                f"{_gap(self.before_value)}; the student's line becomes {self.after_line}, "
+                f"{_gap(self.after_value)}."
+            )
         target = {
             "expression": "the expression",
             "side": f"the {self.where} side",
@@ -48,6 +57,15 @@ class Counterexample:
             f"With {numbers}, {target} is {self.before_value} in the line before "
             f"and {self.after_value} in the student's line."
         )
+
+
+def _gap(value: str) -> str:
+    """How far apart the two sides are, in words, from SymPy's value of left - right."""
+    if value == "0":
+        return "where the two sides are equal"
+    if value.startswith("-"):
+        return f"where the left side is {value[1:]} less than the right side"
+    return f"where the left side is {value} more than the right side"
 
 
 def _finite(value: sp.Expr) -> bool:
@@ -113,8 +131,27 @@ def _equation_counterexample(
         found = _first_difference(old_gap, new_gap, excluded)
         if found:
             numbers, left, right = found
-            return Counterexample("balance", numbers, str(left), str(right))
+            old_line, new_line = _line_at(before, numbers), _line_at(after, numbers)
+            if old_line is None or new_line is None:  # a side is not a number: only the gaps
+                return Counterexample("balance", numbers, str(left), str(right))
+            return Counterexample(
+                "balance", numbers, str(left), str(right), before_line=old_line, after_line=new_line
+            )
     return None
+
+
+def _line_at(sides: tuple[sp.Expr, sp.Expr], numbers: dict[str, int]) -> str | None:
+    """The equation with the numbers put in, such as "8 = 4"; None if a side is not a number."""
+    values = []
+    for side in sides:
+        missing = {str(symbol) for symbol in side.free_symbols} - numbers.keys()
+        if missing:
+            return None
+        value = side.subs({symbol: numbers[str(symbol)] for symbol in side.free_symbols})
+        if not _finite(value):
+            return None
+        values.append(str(value))
+    return f"{values[0]} = {values[1]}"
 
 
 _NONE: Counterexample | None = None

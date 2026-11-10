@@ -58,3 +58,29 @@ def test_unhandled_input_gives_none() -> None:
 
 def test_candidates_avoid_zero_and_one() -> None:
     assert 0 not in CANDIDATES and 1 not in CANDIDATES
+
+
+def test_a_balance_shows_what_each_line_becomes() -> None:
+    found = counterexample("3^x - 1 = 4", "3^x - 1 + 1 = 5 + 1", "3^x - 1 = 4")
+    assert found is not None and found.kind == "balance"
+    assert (found.before_line, found.after_line) == ("8 = 4", "9 = 6")
+    assert found.describe() == (
+        "With x = 2, the line before becomes 8 = 4, where the left side is 4 more than the right "
+        "side; the student's line becomes 9 = 6, where the left side is 3 more than the right side."
+    )
+
+
+def test_a_balance_says_less_or_equal_when_the_gap_is_not_positive() -> None:
+    found = counterexample("x + 1 = 7", "x = 2", "x + 1 = 7")
+    assert found is not None and found.kind == "balance"
+    assert found.describe() == (
+        "With x = 2, the line before becomes 3 = 7, where the left side is 4 less than the right "
+        "side; the student's line becomes 2 = 2, where the two sides are equal."
+    )
+
+
+def test_the_other_kinds_keep_their_wording() -> None:
+    found = counterexample("3(x + 2) = 15", "3x + 2 = 15", "3(x + 2) = 15")
+    assert found is not None and found.describe() == (
+        "With x = 2, the left side is 12 in the line before and 8 in the student's line."
+    )

@@ -219,4 +219,7 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   model's `hint` reused the stored diagnosis. New checkable working now goes back to `diagnose`. Reproduced with a scripted
   model; on the real lines SymPy gives `equivalent`, `equivalent`, `incomplete`. **Eval debt:** the orchestrator eval was not
   re-run (real model calls need the developer's yes on a budget).
+- **Plainer balance counterexample (2026-11-10)**: a level-2 hint for a step that changed both sides now shows what each line
+  becomes at the number ("8 = 4", "9 = 6") and how far apart the sides are, instead of "left side minus right side". Unit tests
+  only. **Eval debt:** the hint eval was not re-run (real model calls need the developer's yes on a budget).
 - Planned: the demo video using scenarios A and B.

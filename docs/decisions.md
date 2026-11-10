@@ -788,3 +788,8 @@ fallback hints" from the roadmap.
   `error_context` talked about a wrong line the student had already fixed, which breaks "every submitted step goes through SymPy";
   plain calculations and lines with a new letter keep the hint because the old diagnosis still applies or `verify` cannot read them,
   and existing tests route working to `ask` on purpose; cost: a model `reply` or `ask` with new working is still not checked.
+- **A "balance" counterexample also says what each line becomes at the number ("8 = 4" and "9 = 6") and how far apart the sides
+  are, in words (2026-11-10)** | drop the "balance" kind and give no counterexample; keep only the two gaps with plainer words |
+  "the left side minus the right side is 4 ... and 3" is abstract and the student cannot check it from what they see, while the two
+  evaluated lines can be checked by hand and SymPy still does every computation; cost: the hint prompt gets one more rule, and a
+  side SymPy cannot evaluate falls back to the old sentence.
