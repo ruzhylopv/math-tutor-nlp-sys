@@ -170,6 +170,8 @@ def _operators(nodes: list[_Node]) -> list[_Node]:
                 continue
             if not out or i + 1 >= len(nodes):
                 raise _NotMath
+            if symbol == "^" and out[-1][0] == "pow":  # a double superscript: KaTeX rejects it
+                raise _NotMath
             operand, i = nodes[i + 1], i + 2
             if symbol == "^" and operand == ("tok", "-") and i < len(nodes):
                 operand, i = ("group", [operand, nodes[i]]), i + 1  # a negative exponent

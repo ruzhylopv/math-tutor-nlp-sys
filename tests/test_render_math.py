@@ -39,7 +39,22 @@ def test_the_form_is_kept_as_written_not_simplified() -> None:
 
 
 @pytest.mark.parametrize(
-    "fragment", ["factor", "(x + 1", "x + 1)", "x²", "2^", "/3", "sqrt x", "x/-2", "a_1", "x$"]
+    "fragment",
+    [
+        "factor",
+        "(x + 1",
+        "x + 1)",
+        "x²",
+        "2^",
+        "/3",
+        "sqrt x",
+        "x/-2",
+        "a_1",
+        "x$",
+        "x^2^3",
+        "e^x^2",
+        "2^-x^2",
+    ],
 )
 def test_a_fragment_that_is_not_plain_math_keeps_its_backticks(fragment: str) -> None:
     assert render_math(f"See `{fragment}` here.") == f"See `{fragment}` here."
