@@ -61,11 +61,14 @@ class Counterexample:
 
 def _gap(value: str) -> str:
     """How far apart the two sides are, in words, from SymPy's value of left - right."""
-    if value == "0":
+    number = sp.sympify(value)  # decide the sign on the value: "-3 + sqrt(2)" is negative
+    if number.is_zero:
         return "where the two sides are equal"
-    if value.startswith("-"):
-        return f"where the left side is {value[1:]} less than the right side"
-    return f"where the left side is {value} more than the right side"
+    if number.is_negative:
+        return f"where the left side is {-number} less than the right side"
+    if number.is_positive:
+        return f"where the left side is {number} more than the right side"
+    return f"where the left side minus the right side is {value}"
 
 
 def _finite(value: sp.Expr) -> bool:
