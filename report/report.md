@@ -232,7 +232,111 @@ debt** rather than measured on noisy partial runs. Section 5 shows what that deb
 
 ## 5. Evaluation
 
-<!-- layer 5: metric choice per component, results on dev and test, charts, why scores are not higher, debt -->
+### How it is run
+
+Every component has a script `evals/scripts/eval_<component>.py`. It calls the node (or the diagnosis subgraph)
+directly, not the whole app, and writes a JSON file to `evals/results/<component>/<timestamp>_<git-hash>.json` with
+the metrics, the model name and a hash of the prompt. LLM evals cache responses, so a rerun of an unchanged prompt
+costs nothing. All iteration used the **dev** split. The **test** split was run once, at the end, for the
+deterministic components. Every run is logged in `docs/crisp_dm_log.md` with its change against the previous run, by
+the `run-eval` skill.
+
+### Why these metrics
+
+| Component | Metrics | Why these, and what would mislead |
+|---|---|---|
+| `verify` | accuracy, per-relation precision and recall, macro recall; chain step accuracy | the relations are very unbalanced (`implies` has 8 dev cases next to 800 `equivalent`), so plain accuracy would hide a broken rare relation. Macro recall and per-relation support expose it |
+| `localize` | accuracy of first wrong step, focus step and error type, and all three together, **per source**; mismatch detection rate | a case is useful only if all three fields are right. The generated cases are near-trivial, so the blended number is never quoted alone |
+| `retrieve` | Recall@1/3/5, MAP@5, per source and per category; random baseline; abstention coverage and precision | the hint uses the top candidate (Recall@1), and the other candidates matter for the profile (Recall@5). With one right answer, MAP@5 equals MRR. Per-source numbers separate near-lookups from real generalisation |
+| `parse_input` | case accuracy; problem and step accuracy; claim recall; dropped and invented steps; SymPy parse rate of the claims; intent, kind and topic accuracy | a parse is only useful if every claim survives unchanged, including a wrong one. *Invented* steps are the dangerous error, because they would be diagnosed as the student's |
+| `hint` | **leakage rate** (automatic, SymPy-based); counterexample use; LLM-judge rubric: praises correct work, Socratic, on target, fits the level, reveals the answer; per level | leakage is the one property that must never fail, so it is checked by code and not by a judge. The rubric covers what code cannot. Per-level numbers show whether the ladder is really a ladder |
+| `orchestrator` | routing accuracy on labelled turns; scenario replay: visited nodes, hint levels, leakage, hints to solve | routing errors are what a student notices first (a question treated as an attempt) |
+
+### Results
+
+![Headline metrics per component, dev and test](images/eval_headline.svg)
+
+| Component | Split | Headline (n) | Result file |
+|---|---|---|---|
+| `verify` | dev | accuracy 0.998 (1,621); macro recall 0.999; hand-written chains: step and chain accuracy 1.000 (14 chains, 53 steps) | `verify/20261110T135917Z_6dc17e7.json` |
+| `verify` | test | accuracy 0.999 (671); macro recall 0.950; hand-written 0.957 (22 of 23) | `verify/20261110T151656Z_75072c2.json` |
+| `localize` | dev | case accuracy: generated 1.000 (60), hand-written 1.000 (18) | `localize/20261110T135918Z_6dc17e7.json` |
+| `localize` | test | case accuracy: generated 1.000 (60), hand-written 0.941 (16 of 17); mismatch detection 1.000 | `localize/20261110T151657Z_75072c2.json` |
+| `retrieve` | dev | Recall@1 0.898, Recall@5 0.978, MAP@5 0.931 (324); random 0.008 / 0.042 | `retrieve/20261110T135929Z_6dc17e7.json` |
+| `retrieve` | test | Recall@1 0.900, Recall@5 0.993, MAP@5 0.941 (300); hand-written 0.778 / 1.000; wrapped 0.844 / 0.978 | `retrieve/20261110T151705Z_75072c2.json` |
+| `parse_input` | dev subset | case accuracy 0.933 (15); SymPy parse rate 1.000; invented steps 0; no-working accuracy 1.000 (7) | `parse_input/20261027T132533Z_e42d774.json` |
+| `hint` | dev subset | leakage 0.062 (1 of 16); fits level 0.812; praise, Socratic, on target 1.000; canned fallback 0.000 | `hint/20261110T140719Z_6dc17e7.json` |
+| `orchestrator` | – | no live metric; scenarios A and B pass end to end with the model scripted | unit tests |
+
+All result files are under `evals/results/`.
+
+### Reading the numbers: what is high, what is low, and why
+
+**`verify`: high by construction, so the real number is elsewhere.** A mined pair was kept only if SymPy agreed with
+the MATH author, so ~1.0 on mined pairs is guaranteed. The independent numbers come from the build report: SymPy agrees
+with the human author on **99.2%** of parseable pairs (1,118 of 1,127), and it **cannot parse 9.9%** of mined pairs.
+That parse rate, not the accuracy, is the checker's real ceiling. The test run found one genuine gap that dev never
+showed: `x/(x-3) = 3/(x-3)` → `x = 3` should be `implies`, because the original has *no* solution, so the step only
+adds one. The checker says `not_valid`; its handling of an empty original solution set is too strict. This was not
+tuned on, because it was seen on test.
+
+**`localize`: the hand-written cases are the measurement.** Generated cases are single-token corruptions that
+`verify` was used to select, so 1.000 there is a regression check. On hand-written attempts the test score is 0.941.
+The one miss (`2(x + 3) = 14` stopping at `2x = 8`) is a **stale label**: it predates the `incomplete` error type, and
+the system's `incomplete` answer is the better one. The test split is protected, so the label is left for the
+developer to fix, not edited to make the number pass.
+
+**`retrieve`: good, but only partly independent.** Recall@1 is 0.90 against a random 0.008. The honest subsets are
+lower: **0.778** on hand-written test queries (n = 18, 95% Wilson interval 0.55-0.91) and **0.844** on wrapped
+queries. The weak categories are `absolute_value` (Recall@1 0.50) and `distribution` (0.73). Their misconceptions
+have nearly the same shape. For example, "gives only the positive case" (`|x - 3| = 5 -> x - 3 = 5`) and "removes the
+bars without considering the sign" (`|x - 5| -> x - 5`) both just drop the bars. The retriever's first design embedded
+the catalogue description and queried with the raw lines, and it scored **Recall@1 0.16** on dev. Comparing the
+*shape* of the rewrite (variables to `v`, numbers to `n`) with a mean of string and embedding similarity raised it to
+0.90. This is the clearest example of a dev-only CRISP-DM iteration in the project. Caveats: one author (the agent)
+wrote both the catalogue and the queries, and the test split's aggregate score was seen once during the build.
+
+**`parse_input`: promising, under-measured.** 14 of 15 messages parsed correctly (95% interval 0.70-0.99): a smoke
+test, not an estimate. The miss kept the first step inside the problem text, probably because the renderer put a lone
+`.` between them that read as a multiplication dot. That run predates the flexible-input redesign (line kinds and
+intent), whose metrics have never been run live. This is the largest gap in the evaluation.
+
+**`hint`: the one leak and the weak level 1 are real.**
+- The one leak (level 4) states the catalogue rule `x * x = x^2` for a problem that *is* that rule, so the rule
+  doubles as the corrected line. The automatic check caught it. In the app, a leaking hint is regenerated once and
+  then replaced by a canned hint, so it would not reach a student.
+- Level 1 fits its level in only **1 of 4** cases. The model's "Socratic question" points straight at the error
+  ("Did you keep that plus sign?"), which is closer to level 3. The ladder works at levels 2-4 but starts too high.
+- The judge is the same free model that writes the hints, and it gave 1.000 on praise, Socratic and on-target. A
+  perfect score from a self-judge is a warning sign, not a result. The planned human check of the sample file was
+  not done.
+- Counterexample use fell from 1.000 to 0.667. That is a metric bug: the metric looks for two gap values, while the
+  newer wording (#101) quotes the evaluated lines instead.
+
+**`orchestrator`: not measured live.** Scenarios A and B replay through the real graph, with real `verify`,
+`localize`, leakage check, checkpointer and learner DB, and meet every expectation. A asks for steps, gives a level-1
+hint, records the solution and offers practice. B gives hints at levels 1, 2 and 1 and ends correct. But the model is
+scripted, so this tests wiring and rules, not routing quality. The live replay hit HTTP 429 on every call. 32 draft
+routing turns are waiting to be labelled by the developer. Labels are deliberately not written by the agent.
+
+### Why scores are not higher, in one list
+
+1. **Free-model limits.** Rate limits (429) cut runs to 15-16 cases, and one run lost 20% of its judge calls.
+2. **Synthetic inputs.** No real student work was available, so generated errors are simpler than real ones. The
+   hand-written subsets carry the conclusions and are small.
+3. **The checker's grammar.** About 10% of real solution lines cannot be parsed (inequalities, multiple variables,
+   trigonometry), and those steps go to `other` with no misconception.
+4. **One author.** The agent wrote the catalogue, queries and hand-written labels. The spot checks marked `pending`
+   in the data are the planned independent review.
+
+### Evaluation debt (stated, not hidden)
+
+| Owed | Cost | Status |
+|---|---|---|
+| `parse_input` dev run after the redesign | about 45 model calls | not run (developer's decision: free runs only for this report) |
+| `orchestrator` routing set | label 32 drafted turns, then about 32 calls | not labelled |
+| `hint` test split and a human check of the samples | a builder run by the developer, then about 30 calls at the usual 15-case limit | not done |
+| Test-split label fix (`localize` `hand/010`) | one line, protected file | left for the developer |
 
 ## 6. Deployment and demo
 
