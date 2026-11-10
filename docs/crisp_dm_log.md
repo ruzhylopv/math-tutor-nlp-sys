@@ -215,4 +215,8 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   is gone. Checked in Chromium on a scripted stream, light and dark, with no model calls. No metrics: UI only.
 - **Panel card and log rows (2026-11-08)**: a click on a node shows its card under the graph, and the log became fold-out rows
   drawn by the panel component. Checked in Chromium on a scripted stream, with no model calls. No metrics: UI only.
+- **Stale diagnosis (2026-11-10)**: a developer-reported hint quoted a wrong line the student had already fixed, because the
+  model's `hint` reused the stored diagnosis. New checkable working now goes back to `diagnose`. Reproduced with a scripted
+  model; on the real lines SymPy gives `equivalent`, `equivalent`, `incomplete`. **Eval debt:** the orchestrator eval was not
+  re-run (real model calls need the developer's yes on a budget).
 - Planned: the demo video using scenarios A and B.

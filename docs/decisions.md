@@ -783,3 +783,8 @@ fallback hints" from the roadmap.
   one string, so it cannot hold a right-aligned time and a muted preview, and rows that are only appended stay open during a turn; the
   card stays because a node that ran five times needs a view of just those runs; cost: the log is no longer readable through
   `AppTest`'s `text` and `code`, so tests read the data sent to the panel.
+- **A `hint` chosen by the model after a diagnosis becomes `diagnose` when the message has new working that `verify` can check
+  (2026-11-10)** | send every message with steps to `diagnose`; overrule `ask` and `reply` too | a hint built on the stored
+  `error_context` talked about a wrong line the student had already fixed, which breaks "every submitted step goes through SymPy";
+  plain calculations and lines with a new letter keep the hint because the old diagnosis still applies or `verify` cannot read them,
+  and existing tests route working to `ask` on purpose; cost: a model `reply` or `ask` with new working is still not checked.
