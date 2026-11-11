@@ -30,8 +30,8 @@
 <text x="318" y="197" font-size="11.5" text-anchor="end" fill="#6b6b66">case accuracy, hand-written</text>
 <path d="M330,170 H846.0 Q850.0,170 850.0,174 V180 Q850.0,184 846.0,184 H330 Z" fill="#2a78d6"/>
 <text x="856.0" y="181" font-size="11" fill="#1b1b1b">1.000 <tspan fill="#6b6b66">(n=18)</tspan></text>
-<path d="M330,186 H815.3199999999999 Q819.3199999999999,186 819.3199999999999,190 V196 Q819.3199999999999,200 815.3199999999999,200 H330 Z" fill="#eb6834"/>
-<text x="825.3199999999999" y="197" font-size="11" fill="#1b1b1b">0.941 <tspan fill="#6b6b66">(n=17)</tspan></text>
+<path d="M330,186 H846.0 Q850.0,186 850.0,190 V196 Q850.0,200 846.0,200 H330 Z" fill="#eb6834"/>
+<text x="856.0" y="197" font-size="11" fill="#1b1b1b">1.000 <tspan fill="#6b6b66">(n=17)</tspan></text>
 <text x="318" y="228" font-size="12.5" font-weight="600" text-anchor="end" fill="#1b1b1b">retrieve</text>
 <text x="318" y="243" font-size="11.5" text-anchor="end" fill="#6b6b66">recall@1, hand-written</text>
 <path d="M330,216 H794.0 Q798.0,216 798.0,220 V226 Q798.0,230 794.0,230 H330 Z" fill="#2a78d6"/>

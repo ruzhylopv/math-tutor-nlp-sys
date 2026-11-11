@@ -261,7 +261,7 @@ the `run-eval` skill.
 | `verify` | dev | accuracy 0.998 (1,621); macro recall 0.999; hand-written chains: step and chain accuracy 1.000 (14 chains, 53 steps) | `verify/20261110T135917Z_6dc17e7.json` |
 | `verify` | test | accuracy 0.999 (671); macro recall 0.950; hand-written 0.957 (22 of 23) | `verify/20261110T151656Z_75072c2.json` |
 | `localize` | dev | case accuracy: generated 1.000 (60), hand-written 1.000 (18) | `localize/20261110T135918Z_6dc17e7.json` |
-| `localize` | test | case accuracy: generated 1.000 (60), hand-written 0.941 (16 of 17); mismatch detection 1.000 | `localize/20261110T151657Z_75072c2.json` |
+| `localize` | test | case accuracy: generated 1.000 (60), hand-written 1.000 (17), after one stale label was fixed (see below); mismatch detection 1.000 | `localize/20261111T181242Z_b5a3d35.json` |
 | `retrieve` | dev | Recall@1 0.898, Recall@5 0.978, MAP@5 0.931 (324); random 0.008 / 0.042 | `retrieve/20261110T135929Z_6dc17e7.json` |
 | `retrieve` | test | Recall@1 0.900, Recall@5 0.993, MAP@5 0.941 (300); hand-written 0.778 / 1.000; wrapped 0.844 / 0.978 | `retrieve/20261110T151705Z_75072c2.json` |
 | `parse_input` | dev subset | case accuracy 0.933 (15); SymPy parse rate 1.000; invented steps 0; no-working accuracy 1.000 (7) | `parse_input/20261027T132533Z_e42d774.json` |
@@ -281,10 +281,12 @@ adds one. The checker says `not_valid`; its handling of an empty original soluti
 tuned on, because it was seen on test.
 
 **`localize`: the hand-written cases are the measurement.** Generated cases are single-token corruptions that
-`verify` was used to select, so 1.000 there is a regression check. On hand-written attempts the test score is 0.941.
-The one miss (`2(x + 3) = 14` stopping at `2x = 8`) is a **stale label**: it predates the `incomplete` error type, and
-the system's `incomplete` answer is the better one. The test split is protected, so the label is left for the
-developer to fix, not edited to make the number pass.
+`verify` was used to select, so 1.000 there is a regression check. On hand-written attempts the first test run scored
+0.941 (16 of 17). The one miss (`2(x + 3) = 14` stopping at `2x = 8`) was a **stale label**: it predated the
+`incomplete` error type, and the system's `incomplete` answer was the better one. The test split is protected, so the
+agent reported the label rather than editing it. The developer reviewed the case and fixed the label by hand, following
+the rule already applied to its dev twin, and the re-run scores 1.000 (17 of 17). Because the fix came after that miss
+was seen, 1.000 is not a clean held-out number.
 
 **`retrieve`: good, but only partly independent.** Recall@1 is 0.90 against a random 0.008. The honest subsets are
 lower: **0.778** on hand-written test queries (n = 18, 95% Wilson interval 0.55-0.91) and **0.844** on wrapped
@@ -336,7 +338,7 @@ routing turns are waiting to be labelled by the developer. Labels are deliberate
 | `parse_input` dev run after the redesign | about 45 model calls | not run (developer's decision: free runs only for this report) |
 | `orchestrator` routing set | label 32 drafted turns, then about 32 calls | not labelled |
 | `hint` test split and a human check of the samples | a builder run by the developer, then about 30 calls at the usual 15-case limit | not done |
-| Test-split label fix (`localize` `hand/010`) | one line, protected file | left for the developer |
+| Test-split label fix (`localize` `hand/010`) | one line, protected file | done: the developer reviewed and fixed the label (PR #112) |
 
 ## 6. Deployment and demo
 
