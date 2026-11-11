@@ -137,9 +137,30 @@ a:hover {
 }
 
 .hero {
+  position: relative;
+  overflow: hidden;
   background: var(--sand);
   border-bottom: 1px solid var(--border);
   padding: 56px 0 44px;
+}
+
+.hero > .container {
+  position: relative;
+}
+
+.hero-art {
+  position: absolute;
+  bottom: 0;
+  right: max(16px, calc((100% - 1140px) / 2));
+  height: 94%;
+  width: auto;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .hero-art {
+    display: none;
+  }
 }
 
 .hero h1 {
@@ -448,6 +469,10 @@ a:hover {
   .hero {
     background: none;
     padding: 0 0 16px;
+  }
+
+  .hero-art {
+    display: none;
   }
 
   .report {
