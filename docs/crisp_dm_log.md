@@ -212,6 +212,26 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   - **Still owed:** eval_parse_input (about 45 calls) and the orchestrator (no dev set yet).
   - Result file: `evals/results/hint/20261110T140719Z_6dc17e7.json`.
 
+- 2026-11-10 | verify | test | accuracy=0.999 (670 of 671; first test run), macro_recall=0.950 | 75072c2 | No model calls. Per source:
+  math 1.000 (331), generated 1.000 (317), handwritten 0.957 (22 of 23). The miss is `hand/030`: `x/(x-3) = 3/(x-3)` to `x = 3` is
+  labelled `implies` (the original has no solution, so the new set only grows) and the checker says `not_valid`; a real gap
+  in how an empty original solution set is handled, seen for the first time here and not tuned on. Still high by
+  construction for the mined and generated cases. Result file: `evals/results/verify/20261110T151656Z_75072c2.json`.
+- 2026-11-10 | localize | test | case_accuracy/source=generated=1.000 (60), case_accuracy/source=handwritten=0.941 (16 of 17) | 75072c2 |
+  No model calls; first test run. The miss is `hand/010` (`2(x + 3) = 14` stopping at `2x = 8`): localize says `incomplete`,
+  the label says `other`. The label predates the `incomplete` type (2026-11-02), as the dev twin did before ae3e080; the
+  test split is protected, so the label is left for the developer. Result file:
+  `evals/results/localize/20261110T151657Z_75072c2.json`.
+- 2026-11-10 | retrieve | test | recall@1=0.900, recall@5=0.993, map@5=0.941 (n=300; random 0.008 / 0.042) | 75072c2 | Local
+  embedding model, no API calls. Per source recall@1 / recall@5: handwritten (18) 0.778 / 1.000, generated_wrapped (90)
+  0.844 / 0.978, generated (192) 0.938 / 1.000. Lowest recall@1 by category: absolute_value 0.50 (16), distribution 0.73
+  (26). Abstention at 0.85: answered 0.937, precision 0.922. Not a clean held-out number: the test split's aggregate scores
+  were seen once on 2026-10-27 and a reviewer read its misses. Result file:
+  `evals/results/retrieve/20261110T151705Z_75072c2.json`.
+- 2026-11-10 | parse_input, orchestrator, hint | test | not run (developer's decision: free runs only for the final report).
+  parse_input's last number is the 15-case dev baseline of 2026-10-27, before the flexible-input changes; orchestrator has
+  no labelled set; hint has no test set.
+
 ## Deployment
 - **M7 app (2026-10-27)**: Streamlit chat (`app.py`, `src/tutor/ui.py`): name field, chat bubbles on the checkpointed
   history, "New chat" (same person, same profile), sidebar with hint level, hints used and the `get_profile` summary,
