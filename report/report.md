@@ -460,6 +460,14 @@ a GitHub Action runs Claude Code on that PR's branch with the `address-review` s
 
 This made it possible to review and iterate from a phone or the GitHub web UI.
 
+![The address-review Action answering two inline review comments on a throwaway test PR](images/address_review_example.png)
+
+The example above is a throwaway PR made to test the Action. The developer left two inline comments: fix a typo, and
+fix a second typo and add a fitting Taras Shevchenko quote. The Action pushed one commit (`58a0186`) and answered
+each thread with "Done in `58a0186`" and what it changed. For the second comment, which asked for a judgement, it also
+asked the developer to check the quote. The developer read the diff and resolved both conversations. Merging stays
+with the developer.
+
 ### CRISP-DM, enforced rather than remembered
 
 CRISP-DM runs at two levels. For the project, this report's sections follow its phases. For each node, there is a
