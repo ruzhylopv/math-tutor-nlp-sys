@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 536" width="960" height="536" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+<rect width="960" height="536" fill="#fcfcfb"/>
+<text x="20" y="28" font-size="16" font-weight="600" fill="#1b1b1b">Headline metrics per component (higher is better)</text>
+<rect x="330" y="42" width="12" height="12" rx="2" fill="#2a78d6"/><text x="348" y="52" font-size="12" fill="#1b1b1b">dev split</text>
+<rect x="430" y="42" width="12" height="12" rx="2" fill="#eb6834"/><text x="448" y="52" font-size="12" fill="#1b1b1b">test split</text>
+<text x="540" y="52" font-size="12" fill="#6b6b66">n = cases behind each bar</text>
+<line x1="330" y1="68" x2="330" y2="488" stroke="#e6e6e3"/>
+<text x="330" y="504" font-size="11" text-anchor="middle" fill="#6b6b66">0</text>
+<line x1="460.0" y1="68" x2="460.0" y2="488" stroke="#e6e6e3"/>
+<text x="460.0" y="504" font-size="11" text-anchor="middle" fill="#6b6b66">0.25</text>
+<line x1="590.0" y1="68" x2="590.0" y2="488" stroke="#e6e6e3"/>
+<text x="590.0" y="504" font-size="11" text-anchor="middle" fill="#6b6b66">0.5</text>
+<line x1="720.0" y1="68" x2="720.0" y2="488" stroke="#e6e6e3"/>
+<text x="720.0" y="504" font-size="11" text-anchor="middle" fill="#6b6b66">0.75</text>
+<line x1="850.0" y1="68" x2="850.0" y2="488" stroke="#e6e6e3"/>
+<text x="850.0" y="504" font-size="11" text-anchor="middle" fill="#6b6b66">1</text>
+<text x="318" y="90" font-size="12.5" font-weight="600" text-anchor="end" fill="#1b1b1b">verify</text>
+<text x="318" y="105" font-size="11.5" text-anchor="end" fill="#6b6b66">accuracy, hand-written pairs</text>
+<path d="M330,78 H846.0 Q850.0,78 850.0,82 V88 Q850.0,92 846.0,92 H330 Z" fill="#2a78d6"/>
+<text x="856.0" y="89" font-size="11" fill="#1b1b1b">1.000 <tspan fill="#6b6b66">(n=53)</tspan></text>
+<path d="M330,94 H823.64 Q827.64,94 827.64,98 V104 Q827.64,108 823.64,108 H330 Z" fill="#eb6834"/>
+<text x="833.64" y="105" font-size="11" fill="#1b1b1b">0.957 <tspan fill="#6b6b66">(n=23)</tspan></text>
+<text x="318" y="136" font-size="12.5" font-weight="600" text-anchor="end" fill="#1b1b1b">verify</text>
+<text x="318" y="151" font-size="11.5" text-anchor="end" fill="#6b6b66">accuracy, all pairs</text>
+<path d="M330,124 H844.96 Q848.96,124 848.96,128 V134 Q848.96,138 844.96,138 H330 Z" fill="#2a78d6"/>
+<text x="854.96" y="135" font-size="11" fill="#1b1b1b">0.998 <tspan fill="#6b6b66">(n=1621)</tspan></text>
+<path d="M330,140 H845.48 Q849.48,140 849.48,144 V150 Q849.48,154 845.48,154 H330 Z" fill="#eb6834"/>
+<text x="855.48" y="151" font-size="11" fill="#1b1b1b">0.999 <tspan fill="#6b6b66">(n=671)</tspan></text>
+<text x="318" y="182" font-size="12.5" font-weight="600" text-anchor="end" fill="#1b1b1b">localize</text>
+<text x="318" y="197" font-size="11.5" text-anchor="end" fill="#6b6b66">case accuracy, hand-written</text>
+<path d="M330,170 H846.0 Q850.0,170 850.0,174 V180 Q850.0,184 846.0,184 H330 Z" fill="#2a78d6"/>
+<text x="856.0" y="181" font-size="11" fill="#1b1b1b">1.000 <tspan fill="#6b6b66">(n=18)</tspan></text>
+<path d="M330,186 H846.0 Q850.0,186 850.0,190 V196 Q850.0,200 846.0,200 H330 Z" fill="#eb6834"/>
+<text x="856.0" y="197" font-size="11" fill="#1b1b1b">1.000 <tspan fill="#6b6b66">(n=17)</tspan></text>
+<text x="318" y="228" font-size="12.5" font-weight="600" text-anchor="end" fill="#1b1b1b">retrieve</text>
+<text x="318" y="243" font-size="11.5" text-anchor="end" fill="#6b6b66">recall@1, hand-written</text>
+<path d="M330,216 H794.0 Q798.0,216 798.0,220 V226 Q798.0,230 794.0,230 H330 Z" fill="#2a78d6"/>
+<text x="804.0" y="227" font-size="11" fill="#1b1b1b">0.900 <tspan fill="#6b6b66">(n=20)</tspan></text>
+<path d="M330,232 H730.56 Q734.56,232 734.56,236 V242 Q734.56,246 730.56,246 H330 Z" fill="#eb6834"/>
+<text x="740.56" y="243" font-size="11" fill="#1b1b1b">0.778 <tspan fill="#6b6b66">(n=18)</tspan></text>
+<text x="318" y="274" font-size="12.5" font-weight="600" text-anchor="end" fill="#1b1b1b">retrieve</text>
+<text x="318" y="289" font-size="11.5" text-anchor="end" fill="#6b6b66">recall@1, wrapped generated</text>
+<path d="M330,262 H752.4 Q756.4,262 756.4,266 V272 Q756.4,276 752.4,276 H330 Z" fill="#2a78d6"/>
+<text x="762.4" y="273" font-size="11" fill="#1b1b1b">0.820 <tspan fill="#6b6b66">(n=100)</tspan></text>
+<path d="M330,278 H764.88 Q768.88,278 768.88,282 V288 Q768.88,292 764.88,292 H330 Z" fill="#eb6834"/>
+<text x="774.88" y="289" font-size="11" fill="#1b1b1b">0.844 <tspan fill="#6b6b66">(n=90)</tspan></text>
+<text x="318" y="320" font-size="12.5" font-weight="600" text-anchor="end" fill="#1b1b1b">retrieve</text>
+<text x="318" y="335" font-size="11.5" text-anchor="end" fill="#6b6b66">recall@5, hand-written</text>
+<path d="M330,308 H820.0 Q824.0,308 824.0,312 V318 Q824.0,322 820.0,322 H330 Z" fill="#2a78d6"/>
+<text x="830.0" y="319" font-size="11" fill="#1b1b1b">0.950 <tspan fill="#6b6b66">(n=20)</tspan></text>
+<path d="M330,324 H846.0 Q850.0,324 850.0,328 V334 Q850.0,338 846.0,338 H330 Z" fill="#eb6834"/>
+<text x="856.0" y="335" font-size="11" fill="#1b1b1b">1.000 <tspan fill="#6b6b66">(n=18)</tspan></text>
+<text x="318" y="366" font-size="12.5" font-weight="600" text-anchor="end" fill="#1b1b1b">parse_input</text>
+<text x="318" y="381" font-size="11.5" text-anchor="end" fill="#6b6b66">case accuracy (old 15-case subset)</text>
+<path d="M330,354 H811.1600000000001 Q815.1600000000001,354 815.1600000000001,358 V364 Q815.1600000000001,368 811.1600000000001,368 H330 Z" fill="#2a78d6"/>
+<text x="821.1600000000001" y="365" font-size="11" fill="#1b1b1b">0.933 <tspan fill="#6b6b66">(n=15)</tspan></text>
+<text x="334" y="381" font-size="11" fill="#6b6b66">test: not run</text>
+<text x="318" y="412" font-size="12.5" font-weight="600" text-anchor="end" fill="#1b1b1b">hint</text>
+<text x="318" y="427" font-size="11.5" text-anchor="end" fill="#6b6b66">fits its level (LLM judge)</text>
+<path d="M330,400 H748.24 Q752.24,400 752.24,404 V410 Q752.24,414 748.24,414 H330 Z" fill="#2a78d6"/>
+<text x="758.24" y="411" font-size="11" fill="#1b1b1b">0.812 <tspan fill="#6b6b66">(n=16)</tspan></text>
+<text x="334" y="427" font-size="11" fill="#6b6b66">test: not run</text>
+<text x="318" y="458" font-size="12.5" font-weight="600" text-anchor="end" fill="#1b1b1b">hint</text>
+<text x="318" y="473" font-size="11.5" text-anchor="end" fill="#6b6b66">no answer leakage (automatic)</text>
+<path d="M330,446 H813.76 Q817.76,446 817.76,450 V456 Q817.76,460 813.76,460 H330 Z" fill="#2a78d6"/>
+<text x="823.76" y="457" font-size="11" fill="#1b1b1b">0.938 <tspan fill="#6b6b66">(n=16)</tspan></text>
+<text x="334" y="473" font-size="11" fill="#6b6b66">test: not run</text>
+</svg>
