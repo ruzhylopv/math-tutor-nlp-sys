@@ -486,7 +486,8 @@ from 0.16 to 0.90 on dev through a measured redesign (section 5).
   "possible future needs" out of the code.
 - **Hard gates matter most where the agent is tempted.** Write-protecting the test split and forbidding label edits
   removed the easiest way to "fix" a bad metric. When the final test run hit a label the agent believed was stale
-  (`localize` `hand/010`), it reported the label instead of changing it (section 5).
+  (`localize` `hand/010`), it reported the label instead of changing it. The developer then reviewed and fixed it
+  (section 5).
 - **Cost of the process.** Planning, stacking and review add overhead on small changes. Splitting the loop into one
   review pass and a fixer only for blockers was the compromise.
 
