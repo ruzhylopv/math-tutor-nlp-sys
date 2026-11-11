@@ -23,5 +23,6 @@ decision): no new cases and no eval run in this layer.
   error types in `test_the_hand_written_cases_are_well_formed_and_cover_every_type` includes it.
 - Relabelled to `incomplete` with the focus on the last valid line: the two "incomplete" cases in
   `evals/builders/handwritten_localize.py` and dev `hand/004`.
-- Open debt: test `hand/010` (line 7 of `evals/datasets/test/localize.jsonl`) still says `other`, no focus. The
-  test split is write-protected, so the developer changes it to `"focus_step": 2, "error_type": "incomplete"`.
+- Closed 2026-11-11: test `hand/010` (line 7 of `evals/datasets/test/localize.jsonl`) said `other`, no focus. The
+  test split is write-protected, so the developer reviewed it and changed it by hand to `"focus_step": 2,
+  "error_type": "incomplete"`.

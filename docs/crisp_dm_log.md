@@ -222,6 +222,12 @@ build, evaluate, iterate). Evaluation entries are appended by the `run-eval` ski
   the label says `other`. The label predates the `incomplete` type (2026-11-02), as the dev twin did before ae3e080; the
   test split is protected, so the label is left for the developer. Result file:
   `evals/results/localize/20261110T151657Z_75072c2.json`.
+- 2026-11-11 | localize | test | case_accuracy/source=generated=1.000 (60), case_accuracy/source=handwritten=1.000 (17 of 17) | b5a3d35 |
+  No model calls. Only change: the developer relabelled test `hand/010` (`2(x + 3) = 14` stopping at `2x = 8`) from `other`
+  to `incomplete`, focus step 2, by hand (the test split is write-protected for agents). This follows the rule decided on
+  2026-11-08 for the dev twin `hand/004`, before the first test run, and matches the builder source. But the label was
+  fixed after the 2026-11-10 test run showed this case as the only miss, so 17 of 17 is not a clean held-out number;
+  quote it with that caveat. No code changed. Result file: `evals/results/localize/20261111T181242Z_b5a3d35.json`.
 - 2026-11-10 | retrieve | test | recall@1=0.900, recall@5=0.993, map@5=0.941 (n=300; random 0.008 / 0.042) | 75072c2 | Local
   embedding model, no API calls. Per source recall@1 / recall@5: handwritten (18) 0.778 / 1.000, generated_wrapped (90)
   0.844 / 0.978, generated (192) 0.938 / 1.000. Lowest recall@1 by category: absolute_value 0.50 (16), distribution 0.73
