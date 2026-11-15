@@ -5,6 +5,8 @@ course: Natural Language Processing · UCU
 date: 2026-11-10
 ---
 
+**Video demo:** [watch on Google Drive](https://drive.google.com/file/d/1DBFqlalBGDM6VX7YRrwT2OgHVDPoD6O8/view?usp=sharing)
+
 ## Summary
 
 A tutor for school algebra that **finds the wrong step in a student's own solution and helps them repair it**,
