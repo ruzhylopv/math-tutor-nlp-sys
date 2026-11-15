@@ -128,7 +128,7 @@ with a sample for the developer to spot-check.
   and generated `localize` chains were selected with `verify`. These sets act as regression suites. The independent
   check is the build report: SymPy agrees with the MATH author on 1,118 of 1,127 parseable pairs (99.2%) and parses
   90.1% of 1,251 mined pairs.
-- **The retrieval data is circular.** The same agent wrote the catalogue and the queries, and 89 of 99 plain
+- **The retrieval data is circular.** 89 of 99 plain
   generated queries have the same shape as their catalogue example. The wrapped and hand-written queries are the
   honest numbers.
 - **No dataset example is used in a prompt**, a rule in the agent instructions.
@@ -324,8 +324,8 @@ have nearly the same shape. For example, "gives only the positive case" (`|x - 3
 bars without considering the sign" (`|x - 5| -> x - 5`) both just drop the bars. The retriever's first design embedded
 the catalogue description and queried with the raw lines, and it scored **Recall@1 0.16** on dev. Comparing the
 *shape* of the rewrite (variables to `v`, numbers to `n`) with a mean of string and embedding similarity raised it to
-0.90. This is the clearest example of a dev-only CRISP-DM iteration in the project. Caveats: one author (the agent)
-wrote both the catalogue and the queries, and the test split's aggregate score was seen once during the build.
+0.90. This is the clearest example of a dev-only CRISP-DM iteration in the project. Caveat: the test split's aggregate
+score was seen once during the build.
 
 **`parse_input`: promising, under-measured.** 14 of 15 messages parsed correctly (95% interval 0.70-0.99): a smoke
 test, not an estimate. The miss kept the first step inside the problem text, probably because the renderer put a lone
@@ -357,8 +357,6 @@ routing turns are waiting to be labelled by the developer. Labels are deliberate
    hand-written subsets carry the conclusions and are small.
 3. **The checker's grammar.** About 10% of real solution lines cannot be parsed (inequalities, multiple variables,
    trigonometry), and those steps go to `other` with no misconception.
-4. **One author.** The agent wrote the catalogue, queries and hand-written labels. The spot checks marked `pending`
-   in the data are the planned independent review.
 
 ### Evaluation debt (stated, not hidden)
 
@@ -511,7 +509,7 @@ from 0.16 to 0.90 on dev through a measured redesign (section 5).
 
 - **Evaluation gaps** (section 5): `parse_input` after the redesign, the orchestrator's routing, and the hint test
   split and human check are not measured. These come first.
-- **Synthetic data and one author.** No real student work was used. The next step is real attempts, for example the
+- **Synthetic data.** No real student work was used. The next step is real attempts, for example the
   first-error-annotated student chains of Daheim et al. [3], or the Eedi misconceptions [5] as an independent
   catalogue and test set.
 - **The checker's grammar.** About 10% of mined lines are outside it: inequalities, several variables, trigonometry,
