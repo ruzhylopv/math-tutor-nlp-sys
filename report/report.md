@@ -254,6 +254,22 @@ costs nothing. All iteration used the **dev** split. The **test** split was run 
 deterministic components. Every run is logged in `docs/crisp_dm_log.md` with its change against the previous run, by
 the `run-eval` skill.
 
+An excerpt of one result file (`retrieve/20261110T151705Z_75072c2.json`, 90 metrics in full, rounded here):
+
+```json
+{
+  "component": "retrieve", "split": "test", "n_examples": 300,
+  "metrics": {
+    "recall@1": 0.9, "recall@5": 0.993, "map@5": 0.941,
+    "random_recall@1": 0.008,
+    "recall@1/source=handwritten": 0.778,
+    "recall@1/category=absolute_value": 0.5,
+    "answered_precision": 0.922
+  },
+  "git_hash": "75072c2", "timestamp": "2026-11-10T15:17:05Z"
+}
+```
+
 ### Why these metrics
 
 | Component | Metrics | Why these, and what would mislead |
